@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job: analyze
+  # Runs static analysis on the Flutter codebase.
+  # Mirrors the same check enforced locally by the lefthook pre-push hook.
+  # ---------------------------------------------------------------------------
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run dart format check
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Run flutter analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+  # ---------------------------------------------------------------------------
+  # Job: test
+  # Runs the full unit and widget test suite with coverage reporting.
+  # All tests must be green before a PR is eligible for merge.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Unit & Widget Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: analyze
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests with coverage
+        run: |
+          flutter test \
+            --coverage \
+            --reporter=github \
+            --test-randomize-ordering-seed=random
+
+      - name: Upload coverage report as artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/lcov.info
+          retention-days: 14
+
+      - name: Generate coverage summary
+        run: |
+          sudo apt-get install -y lcov
+          lcov --summary coverage/lcov.info
+
+  # ---------------------------------------------------------------------------
+  # Job: build-web (runs on main branch only)
+  # Verifies that the Flutter web build compiles without errors.
+  # Does not deploy; deployment is handled by a separate workflow.
+  # ---------------------------------------------------------------------------
+  build-web:
+    name: Build (web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web (release)
+        run: flutter build web --release --no-tree-shake-icons
+
+      - name: Upload web build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+          retention-days: 7
