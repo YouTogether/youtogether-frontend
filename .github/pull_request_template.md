@@ -53,7 +53,6 @@ Closes #
 <!--
   List the tests written or updated in this PR.
   For TDD PRs, indicate which use cases or BLoC states are now covered.
-  Evidence for RNCP C2.2.2.
 -->
 
 - [ ] Unit tests written / updated for: 
