@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # release-please inspects all commits on main since the last release,
+  # computes the next semantic version from Conventional Commit types,
+  # and creates or updates a Release PR.
+  #
+  # When the Release PR is merged, release-please:
+  #   1. Creates a GitHub Release with the computed version tag (vX.Y.Z).
+  #   2. Updates CHANGELOG.md with the categorised commit list.
+  #   3. Bumps the version field in pubspec.yaml.
+  #
+  # No tag is ever created on a direct push to main; only the merge of
+  # the Release PR triggers a release. This preserves explicit control
+  # over the release moment while fully automating changelog content.
+  # ---------------------------------------------------------------------------
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: dart
+          # The manifest file release-please will update.
+          # Adjust the version field path if it differs in pubspec.yaml.
+          manifest-file: .release-please-manifest.json
+          config-file: release-please-config.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Optional post-release job.
+  # Runs only when the Release PR has been merged and a new tag is created.
+  # Can be extended to trigger deployment, notify a Slack channel, etc.
+  # ---------------------------------------------------------------------------
+  post-release:
+    name: Post-release
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+
+    steps:
+      - name: Checkout repository at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web release artefact
+        run: flutter build web --release --no-tree-shake-icons
+
+      - name: Attach web build to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: build/web/**
