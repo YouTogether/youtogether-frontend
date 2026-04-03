@@ -1,3 +1,6 @@
+# IDE related
+.idea
+
 # Miscellaneous
 *.class
 *.lock
