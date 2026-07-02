@@ -54,9 +54,8 @@ sealed class Failure with _$Failure {
   /// [errors] maps field names to a human-readable message, mirroring the
   /// per-field error shape returned by the backend's `ValidationPipe`
   /// (see `RegisterDto`, `LoginDto` on the NestJS side).
-  const factory Failure.validation({
-    required Map<String, String> errors,
-  }) = ValidationFailure;
+  const factory Failure.validation({required Map<String, String> errors}) =
+      ValidationFailure;
 
   /// Error from the Firebase Realtime Database (video sync bounded context).
   const factory Failure.firebase({required String message}) = FirebaseFailure;
