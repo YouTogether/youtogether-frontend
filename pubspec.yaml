@@ -35,6 +35,24 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # --- Internationalization ---
+  # flutter_localizations provides the built-in Material/Cupertino/Widgets
+  # delegates (date formats, scroll physics text, etc.) for each supported
+  # locale; intl backs the generated AppLocalizations class.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # Functional error handling - Either<Failure, T> across all repository
+  # and use case return types
+  either_dart: ^1.0.0
+
+  # Immutable value objects (Entities, Failures, Models, BLoC Events/States).
+  freezed_annotation: ^3.1.0
+
+  # Value-equality base class for simple Params objects (e.g. NoParams).
+  equatable: ^2.0.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -46,11 +64,24 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+  # Dart build system to trigger code generation (freezed, json_serializable).
+  build_runner: ^2.15.0
+
+  # Code generator for all @freezed classes.
+  freezed: ^3.2.5
+
+  # Mock generation for all interface test doubles
+  mocktail: ^1.0.5
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # Enables `flutter gen-l10n`, driven by l10n.yaml, to run automatically
+  # as part of `flutter pub get` / `flutter build` / `flutter run`.
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

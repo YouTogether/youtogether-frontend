@@ -1,0 +1,24 @@
+# Configuration for `flutter gen-l10n`, invoked automatically by
+# `flutter pub get` / `flutter build` (the `generate: true` flag in
+# pubspec.yaml enables this), or manually via `flutter gen-l10n`.
+#
+# English is the template ARB — the source of truth for key structure
+# and placeholder definitions. This is a Flutter tooling convention
+# (every other locale is validated against the template's placeholders
+# and pluralization rules), independent of which locale end users see
+# by default. `supportedLocales` in the app shell (forthcoming, when the
+# root MaterialApp is built) determines actual user-facing precedence.
+
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# Generated output is isolated in its own directory so it can be excluded
+# from version control via .gitignore, consistent with the project
+# convention of excluding all generated code (*.freezed.dart, *.g.dart —
+# see Interface Contracts v1.1 §1.3).
+output-dir: lib/l10n/generated
+
+synthetic-package: false
+nullable-getter: false

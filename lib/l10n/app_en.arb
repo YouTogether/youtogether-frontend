@@ -1,0 +1,8 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "YouTogether",
+  "@appTitle": {
+    "description": "Application name shown in the OS task switcher and window title. Used by MaterialApp.title once the app shell exists."
+  }
+}
