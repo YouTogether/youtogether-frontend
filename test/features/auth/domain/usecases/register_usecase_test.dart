@@ -11,8 +11,8 @@ import 'package:youtogether/features/auth/domain/usecases/register_usecase.dart'
 ///
 /// Location matches Interface Contracts v1.1 §6.1 (Testing Contracts):
 /// `MockAuthRepository`, defined alongside the test that consumes it
-/// rather than in a separate shared mocks file, since F-A01-T1 is the
-/// first task to need it. Later tasks (F-A02-T1 onward) reuse this same
+/// rather than in a separate shared mocks file, since this is the
+/// first task to need it. Later tasks reuse this same
 /// class as the interface grows.
 class MockAuthRepository extends Mock implements IAuthRepository {}
 
