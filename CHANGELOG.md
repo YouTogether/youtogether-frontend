@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.5.0...v0.6.0) (2026-07-06)
+
+
+### Features
+
+* **auth:** [F-A01-T3] register remote datasource ([#44](https://github.com/YouTogether/youtogether-frontend/issues/44)) ([3511d13](https://github.com/YouTogether/youtogether-frontend/commit/3511d13606cbc08fcf453852c1b1301fdeda2878))
+
 ## [0.5.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.4.0...v0.5.0) (2026-07-06)
 
 
