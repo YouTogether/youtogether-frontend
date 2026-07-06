@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.4.0...v0.5.0) (2026-07-06)
+
+
+### Features
+
+* **auth:** F-A01-T2 register repository impl ([#42](https://github.com/YouTogether/youtogether-frontend/issues/42)) ([e249f8d](https://github.com/YouTogether/youtogether-frontend/commit/e249f8dbb8411c7fca989aaf1968dce02f2da46f))
+
 ## [0.4.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.3.0...v0.4.0) (2026-07-06)
 
 
