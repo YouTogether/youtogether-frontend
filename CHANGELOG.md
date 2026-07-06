@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.2.0...v0.3.0) (2026-07-06)
+
+
+### Features
+
+* **auth:** [F-A03-T1] session restoration usecases ([#38](https://github.com/YouTogether/youtogether-frontend/issues/38)) ([ebe5672](https://github.com/YouTogether/youtogether-frontend/commit/ebe5672ffe85f0600497552f858512a92b1fa467))
+
 ## [0.2.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.1.0...v0.2.0) (2026-07-06)
 
 
