@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.3.0...v0.4.0) (2026-07-06)
+
+
+### Features
+
+* **auth:** [F-A04-T1] logout usecase contract ([#40](https://github.com/YouTogether/youtogether-frontend/issues/40)) ([dd07223](https://github.com/YouTogether/youtogether-frontend/commit/dd07223447bb6d5799e512d55acd0fb0a9d5820b))
+
 ## [0.3.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.2.0...v0.3.0) (2026-07-06)
 
 
