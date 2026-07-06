@@ -5,7 +5,7 @@ void main() {
   group('UserEntity', () {
     final createdAt = DateTime.utc(2025, 1, 1);
 
-    UserEntity buildUser({String? avatarUrl}) => UserEntity(
+    UserEntity buildUser() => UserEntity(
       id: '550e8400-e29b-41d4-a716-446655440000',
       email: 'test@example.com',
       displayName: 'testuser',
