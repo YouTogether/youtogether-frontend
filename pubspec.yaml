@@ -53,6 +53,9 @@ dependencies:
   # Value-equality base class for simple Params objects (e.g. NoParams).
   equatable: ^2.0.8
 
+  # HTTP client for all remote data source implementations.
+  dio: ^5.10.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
