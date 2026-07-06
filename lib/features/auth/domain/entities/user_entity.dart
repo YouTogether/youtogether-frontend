@@ -21,11 +21,11 @@ enum UserRole { registered, guest }
 
 /// Domain entity representing the currently known profile of a user.
 ///
-/// Declared with `@freezed` per Interface Contracts v1.1 §2.1: immutable,
-/// no `fromJson`/`toJson` (that belongs to `UserModel` in the data layer).
+/// Declared with `@freezed`: immutable, no `fromJson`/`toJson` (that
+/// belongs to `UserModel` in the data layer).
 ///
 /// Field mapping from the backend's `AuthResponseDto.user` /
-/// `UserProfileDto` (see `youtogether-backend` `auth-response.dto.ts`):
+/// `UserProfileDto`:
 /// - [displayName] is populated from the backend's `username` field. The
 ///   backend's wire vocabulary (`username`) is a persistence/credential
 ///   term; `displayName` better reflects how the frontend actually uses
