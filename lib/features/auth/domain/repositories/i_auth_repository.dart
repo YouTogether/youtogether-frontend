@@ -15,7 +15,7 @@ import '../entities/user_entity.dart';
 /// layer implementation, enforcing the same dependency-inversion boundary
 /// on both sides of the stack.
 ///
-/// This interface grows incrementally, one method per task, mirroring how
+/// This interface grows incrementally, one method (or pair) per task, mirroring how
 /// the backend's `IAuthRepository` was built (register → login → refresh
 /// → logout → getCurrentUser) rather than being fully specified up front:
 /// - `register()`
@@ -25,6 +25,8 @@ import '../entities/user_entity.dart';
 ///
 /// @see RegisterUseCase — primary consumer of [register]
 /// @see LoginUseCase — primary consumer of [login]
+/// @see GetCurrentUserUseCase — primary consumer of [getCurrentUser]
+/// @see RefreshTokenUseCase — primary consumer of [refreshToken]
 abstract class IAuthRepository {
   /// Registers a new account and establishes a session immediately.
   ///
@@ -70,4 +72,50 @@ abstract class IAuthRepository {
     required String email,
     required String password,
   });
+
+  /// Returns the current authenticated user by validating the cached
+  /// access token against `GET /auth/me`.
+  ///
+  /// Always performs a fresh server-side lookup rather than trusting the
+  /// cached token's claims alone, mirroring the backend's own design (a
+  /// `GET /auth/me` call always re-reads the database — see backend
+  /// `GetCurrentUserUseCase`, which exists precisely to catch a token
+  /// whose underlying account was deactivated after issuance).
+  ///
+  /// This method takes no parameters: the access token is read
+  /// internally from local secure storage by the implementation (via
+  /// `IAuthLocalDataSource`, forthcoming), not supplied by the caller.
+  ///
+  /// Absence of a valid session (no cached token, or a cached token the
+  /// server no longer honours) is modelled as `Left(Failure)`, never as
+  /// `Right(null)` — see [GetCurrentUserUseCase] for the rationale.
+  ///
+  /// @returns `Right(UserEntity)` on success.
+  ///   `Left(AuthFailure)` if no access token is cached, or the cached
+  ///   token is invalid/expired/orphaned (HTTP 401).
+  ///   `Left(NetworkFailure)` if the request never reaches the server.
+  Future<Either<Failure, UserEntity>> getCurrentUser();
+
+  /// Silently renews the session using the cached refresh token via
+  /// `POST /auth/refresh`, persisting the newly issued access/refresh
+  /// token pair locally on success.
+  ///
+  /// This method takes no parameters: the refresh token is read
+  /// internally from local secure storage by the implementation, not
+  /// supplied by the caller.
+  ///
+  /// Returns the renewed [UserEntity], not `void`: the backend's
+  /// `POST /auth/refresh` already returns the full user profile
+  /// alongside the rotated tokens (see backend `AuthResponseDto`), so
+  /// this contract avoids forcing a redundant `getCurrentUser()` call
+  /// immediately after a successful refresh — see [RefreshTokenUseCase]
+  /// for the full rationale.
+  ///
+  /// @returns `Right(UserEntity)` on success, with new tokens persisted.
+  ///   `Left(AuthFailure)` if no refresh token is cached, or the cached
+  ///   refresh token is invalid, expired, or has already been used
+  ///   (rotation/replay — see backend `InvalidRefreshTokenFailure`, which
+  ///   the same generic HTTP 401 covers on this endpoint too).
+  ///   `Left(NetworkFailure)` if the request never reaches the server.
+  Future<Either<Failure, UserEntity>> refreshToken();
 }
