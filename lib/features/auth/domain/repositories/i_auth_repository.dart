@@ -27,6 +27,7 @@ import '../entities/user_entity.dart';
 /// @see LoginUseCase — primary consumer of [login]
 /// @see GetCurrentUserUseCase — primary consumer of [getCurrentUser]
 /// @see RefreshTokenUseCase — primary consumer of [refreshToken]
+/// @see LogoutUseCase — primary consumer of [logout]
 abstract class IAuthRepository {
   /// Registers a new account and establishes a session immediately.
   ///
@@ -118,4 +119,25 @@ abstract class IAuthRepository {
   ///   the same generic HTTP 401 covers on this endpoint too).
   ///   `Left(NetworkFailure)` if the request never reaches the server.
   Future<Either<Failure, UserEntity>> refreshToken();
+
+  /// Terminates the current session on both client and server.
+  ///
+  /// Calls `POST /auth/logout` (via `IAuthRemoteDataSource`, forthcoming)
+  /// with the cached access token to invalidate the refresh token
+  /// server-side, then unconditionally clears the locally cached token
+  /// pair (via `IAuthLocalDataSource`, forthcoming) — even if the remote
+  /// call fails (e.g. no network connectivity). The user must never be
+  /// left in a state where the app still behaves as authenticated after
+  /// requesting logout, regardless of server reachability.
+  /// This method takes no parameters: the access token is read
+  /// internally from local secure storage by the implementation, not
+  /// supplied by the caller.
+  ///
+  /// @returns `Right(null)` once local tokens are cleared, whether or not
+  ///   the remote call succeeded — logout is not expected to fail from
+  ///   the caller's perspective. Implementations should not surface
+  ///   `Left(NetworkFailure)` here; a failed remote call is logged and
+  ///   swallowed, not propagated, precisely because local token clearing
+  ///   is unconditional.
+  Future<Either<Failure, void>> logout();
 }
