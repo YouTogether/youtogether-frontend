@@ -54,5 +54,55 @@
   "registerErrorGeneric": "Something went wrong. Please try again.",
   "@registerErrorGeneric": {
     "description": "Fallback SnackBar message for any other Failure subtype (AuthFailure, NotFoundFailure, FirebaseFailure) that register() is not expected to produce in practice, but which the exhaustive switch must still handle."
+  },
+
+  "loginPageTitle": "Log in",
+  "@loginPageTitle": {
+    "description": "AppBar title on the login screen (F-A02-T3)."
+  },
+
+  "loginEmailLabel": "Email",
+  "@loginEmailLabel": {
+    "description": "Label for the email field on the login form."
+  },
+
+  "loginPasswordLabel": "Password",
+  "@loginPasswordLabel": {
+    "description": "Label for the password field on the login form."
+  },
+
+  "loginSubmitButton": "Log in",
+  "@loginSubmitButton": {
+    "description": "Submit button label on the login form."
+  },
+
+  "loginRegisterLinkLabel": "Don't have an account? Sign up",
+  "@loginRegisterLinkLabel": {
+    "description": "Navigation link from LoginPage to RegisterPage."
+  },
+
+  "loginErrorAuth": "Invalid email or password.",
+  "@loginErrorAuth": {
+    "description": "SnackBar message for LoginState.failure(AuthFailure), i.e. HTTP 401. Deliberately generic and identical regardless of whether the email or the password was wrong (OWASP A07:2021)."
+  },
+
+  "loginErrorServer": "The server rejected the request. Please try again.",
+  "@loginErrorServer": {
+    "description": "SnackBar message for LoginState.failure(ServerFailure) — never renders the raw ServerFailure.message."
+  },
+
+  "loginErrorNetwork": "No internet connection. Please check your network and try again.",
+  "@loginErrorNetwork": {
+    "description": "SnackBar message for LoginState.failure(NetworkFailure)."
+  },
+
+  "loginErrorCache": "You are logged in, but we could not save your session on this device. Please try again.",
+  "@loginErrorCache": {
+    "description": "SnackBar message for LoginState.failure(CacheFailure) — a cache failure here means the credentials were valid server-side but local token persistence failed (see AuthRepositoryImpl.login, F-A02-T2)."
+  },
+
+  "loginErrorGeneric": "Something went wrong. Please try again.",
+  "@loginErrorGeneric": {
+    "description": "Fallback SnackBar message for any other Failure subtype (NotFoundFailure, FirebaseFailure) that login() is not expected to produce in practice, but which the exhaustive switch must still handle."
   }
 }
