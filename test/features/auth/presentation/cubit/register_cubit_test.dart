@@ -279,5 +279,34 @@ void main() {
         },
       );
     });
+
+    group('reset', () {
+      blocTest<RegisterCubit, RegisterState>(
+        'emits RegisterState.initial when called after a success',
+        setUp: () {
+          when(
+            () => authRepository.register(
+              email: any(named: 'email'),
+              password: any(named: 'password'),
+              username: any(named: 'username'),
+            ),
+          ).thenAnswer((_) async => Right(mockUser));
+        },
+        build: buildCubit,
+        act: (cubit) async {
+          await cubit.register(
+            email: validEmail,
+            password: validPassword,
+            username: validUsername,
+          );
+          cubit.reset();
+        },
+        expect: () => [
+          const RegisterState.loading(),
+          const RegisterState.success(),
+          const RegisterState.initial(),
+        ],
+      );
+    });
   });
 }
