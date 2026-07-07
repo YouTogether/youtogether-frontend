@@ -56,6 +56,9 @@ dependencies:
   # HTTP client for all remote data source implementations.
   dio: ^5.10.0
 
+  # BLoC / Cubit state management for the presentation layer.
+  flutter_bloc: ^9.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -75,6 +78,9 @@ dev_dependencies:
 
   # Mock generation for all interface test doubles
   mocktail: ^1.0.5
+
+  # BLoC / Cubit test utilities (blocTest, state transition assertions).
+  bloc_test: ^10.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
