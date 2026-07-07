@@ -84,13 +84,52 @@ class AuthRepositoryImpl implements IAuthRepository {
     }
   }
 
+  /// Authenticates an existing account with email and password.
+  ///
+  /// HTTP 401 is mapped to [Failure.auth] with a fixed, literal message
+  /// — never the exception's own `message` field — regardless of what
+  /// the backend actually sent. This is a deliberate, defensive
+  /// duplication of the anti-enumeration guarantee already enforced
+  /// server-side (`InvalidCredentialsFailure` on the backend): even if
+  /// the backend's exact wording ever changed, this repository would
+  /// still surface the same fixed message for every 401, preserving the
+  /// guarantee documented on `IAuthRepository.login` that an unknown
+  /// email and a wrong password remain indistinguishable to the caller.
+  ///
+  /// Any other status code falls through to the same generic
+  /// [ServerFailure] mapping used by [register].
   @override
   Future<Either<Failure, UserEntity>> login({
     required String email,
     required String password,
-  }) {
-    // TODO implement later
-    throw UnimplementedError('AuthRepositoryImpl.login is implemented later.');
+  }) async {
+    try {
+      final userModel = await _remoteDataSource.login(
+        email: email,
+        password: password,
+      );
+
+      await _localDataSource.saveTokens(
+        accessToken: userModel.accessToken,
+        refreshToken: userModel.refreshToken,
+      );
+
+      return Right(userModel.toDomain());
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 401) {
+        return const Left(Failure.auth(message: 'Invalid email or password.'));
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    } on CacheException catch (exception) {
+      return Left(Failure.cache(message: exception.message));
+    }
   }
 
   @override
