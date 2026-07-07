@@ -16,8 +16,7 @@ output-class: AppLocalizations
 
 # Generated output is isolated in its own directory so it can be excluded
 # from version control via .gitignore, consistent with the project
-# convention of excluding all generated code (*.freezed.dart, *.g.dart —
-# see Interface Contracts v1.1 §1.3).
+# convention of excluding all generated code (*.freezed.dart, *.g.dart).
 output-dir: lib/l10n/generated
 
 synthetic-package: false

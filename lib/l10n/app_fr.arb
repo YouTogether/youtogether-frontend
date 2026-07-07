@@ -1,5 +1,16 @@
 {
   "@@locale": "fr",
 
-  "appTitle": "YouTogether"
+  "appTitle": "YouTogether",
+
+  "registerPageTitle": "Créer votre compte",
+  "registerEmailLabel": "E-mail",
+  "registerPasswordLabel": "Mot de passe",
+  "registerUsernameLabel": "Nom d'utilisateur",
+  "registerSubmitButton": "S'inscrire",
+  "registerLoginLinkLabel": "Vous avez déjà un compte ? Se connecter",
+  "registerErrorServer": "Cette adresse e-mail est peut-être déjà enregistrée, ou le serveur a rejeté la demande. Veuillez vérifier vos informations et réessayer.",
+  "registerErrorNetwork": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
+  "registerErrorCache": "Votre compte a été créé, mais nous n'avons pas pu enregistrer votre session sur cet appareil. Veuillez vous connecter manuellement.",
+  "registerErrorGeneric": "Une erreur est survenue. Veuillez réessayer."
 }

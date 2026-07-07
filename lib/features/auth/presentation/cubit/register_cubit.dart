@@ -78,6 +78,16 @@ class RegisterCubit extends Cubit<RegisterState> {
     );
   }
 
+  /// Returns the cubit to [RegisterState.initial].
+  ///
+  /// called on navigation away from
+  /// the registration form before completion (e.g. `RegisterView.dispose`)
+  /// so that if the same cubit instance were ever reused —
+  /// which does not happen with the current one-cubit-per-page wiring,
+  /// but is a cheap guarantee to make explicit — it would never resume
+  /// showing a stale success or failure state from a previous attempt.
+  void reset() => emit(const RegisterState.initial());
+
   /// Runs every field-level check and collects all violations, keyed by
   /// field name — mirroring the shape of the backend's `ValidationPipe`
   /// error body.

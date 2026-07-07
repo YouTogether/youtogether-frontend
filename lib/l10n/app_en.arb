@@ -4,5 +4,55 @@
   "appTitle": "YouTogether",
   "@appTitle": {
     "description": "Application name shown in the OS task switcher and window title. Used by MaterialApp.title once the app shell exists."
+  },
+
+  "registerPageTitle": "Create your account",
+  "@registerPageTitle": {
+    "description": "AppBar title on the registration screen (F-A01-T5)."
+  },
+
+  "registerEmailLabel": "Email",
+  "@registerEmailLabel": {
+    "description": "Label for the email field on the registration form."
+  },
+
+  "registerPasswordLabel": "Password",
+  "@registerPasswordLabel": {
+    "description": "Label for the password field on the registration form."
+  },
+
+  "registerUsernameLabel": "Username",
+  "@registerUsernameLabel": {
+    "description": "Label for the username field on the registration form."
+  },
+
+  "registerSubmitButton": "Sign up",
+  "@registerSubmitButton": {
+    "description": "Submit button label on the registration form."
+  },
+
+  "registerLoginLinkLabel": "Already have an account? Log in",
+  "@registerLoginLinkLabel": {
+    "description": "Navigation link from RegisterPage to LoginPage."
+  },
+
+  "registerErrorServer": "This email may already be registered, or the server rejected the request. Please check your details and try again.",
+  "@registerErrorServer": {
+    "description": "SnackBar message for RegisterState.failure(ServerFailure). Deliberately generic per the Failure internationalisation convention (core/error/failures.dart) — never renders the raw ServerFailure.message."
+  },
+
+  "registerErrorNetwork": "No internet connection. Please check your network and try again.",
+  "@registerErrorNetwork": {
+    "description": "SnackBar message for RegisterState.failure(NetworkFailure)."
+  },
+
+  "registerErrorCache": "Your account was created, but we could not save your session on this device. Please log in manually.",
+  "@registerErrorCache": {
+    "description": "SnackBar message for RegisterState.failure(CacheFailure) — specific to register(), where a cache failure means the account was already created server-side before local token persistence failed (see AuthRepositoryImpl.register, F-A01-T2)."
+  },
+
+  "registerErrorGeneric": "Something went wrong. Please try again.",
+  "@registerErrorGeneric": {
+    "description": "Fallback SnackBar message for any other Failure subtype (AuthFailure, NotFoundFailure, FirebaseFailure) that register() is not expected to produce in practice, but which the exhaustive switch must still handle."
   }
 }
