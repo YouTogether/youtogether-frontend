@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.7.0...v0.8.0) (2026-07-07)
+
+
+### Features
+
+* **auth:** [F-A01-T5] register page ([#48](https://github.com/YouTogether/youtogether-frontend/issues/48)) ([8b4ad40](https://github.com/YouTogether/youtogether-frontend/commit/8b4ad402440d9497ecdaf945a8e53535c7c82a8b))
+
 ## [0.7.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.6.0...v0.7.0) (2026-07-07)
 
 
