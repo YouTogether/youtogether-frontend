@@ -9,7 +9,7 @@
 /// domain-facing contract.
 ///
 /// This file has no feature-specific ticket — it is a prerequisite for
-/// the first data-source contract (`IAuthRemoteDataSource`, F-A01-T2)
+/// the first data-source contract (`IAuthRemoteDataSource`)
 /// and is created here rather than deferred, mirroring how
 /// `core/error/failures.dart` was introduced ahead of its own first
 /// consumer.
