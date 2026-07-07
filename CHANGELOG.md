@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.6.0...v0.7.0) (2026-07-07)
+
+
+### Features
+
+* **auth:** [F-A01-T4] register cubit ([#46](https://github.com/YouTogether/youtogether-frontend/issues/46)) ([86f751a](https://github.com/YouTogether/youtogether-frontend/commit/86f751a929d2fb6ee38ba4116dba620e033f60dc))
+
 ## [0.6.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.5.0...v0.6.0) (2026-07-06)
 
 
