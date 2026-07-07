@@ -9,7 +9,7 @@ import 'package:youtogether/features/auth/domain/usecases/register_usecase.dart'
 
 /// Mocktail mock for [IAuthRepository].
 ///
-/// Location matches Interface Contracts v1.1 §6.1 (Testing Contracts):
+/// Location matches (Testing Contracts):
 /// `MockAuthRepository`, defined alongside the test that consumes it
 /// rather than in a separate shared mocks file, since this is the
 /// first task to need it. Later tasks reuse this same
