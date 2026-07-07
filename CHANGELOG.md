@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.8.0...v0.9.0) (2026-07-07)
+
+
+### Features
+
+* **auth:** [F-A02-T2] login data layer ([#50](https://github.com/YouTogether/youtogether-frontend/issues/50)) ([f64ad2a](https://github.com/YouTogether/youtogether-frontend/commit/f64ad2a1257dacc97dfa15453bb6f1e1d39fa88c))
+
 ## [0.8.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.7.0...v0.8.0) (2026-07-07)
 
 
