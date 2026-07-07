@@ -259,4 +259,196 @@ void main() {
       );
     });
   });
+
+  group('AuthRepositoryImpl.login', () {
+    test(
+      'should call IAuthRemoteDataSource.login with the given credentials',
+      () async {
+        when(
+          () => remoteDataSource.login(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenAnswer((_) async => userModel);
+        when(
+          () => localDataSource.saveTokens(
+            accessToken: any(named: 'accessToken'),
+            refreshToken: any(named: 'refreshToken'),
+          ),
+        ).thenAnswer((_) async {});
+
+        await authRepository.login(email: email, password: password);
+
+        verify(
+          () => remoteDataSource.login(email: email, password: password),
+        ).called(1);
+      },
+    );
+
+    test('should persist the returned tokens on success', () async {
+      when(
+        () => remoteDataSource.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => userModel);
+      when(
+        () => localDataSource.saveTokens(
+          accessToken: any(named: 'accessToken'),
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await authRepository.login(email: email, password: password);
+
+      verify(
+        () => localDataSource.saveTokens(
+          accessToken: userModel.accessToken,
+          refreshToken: userModel.refreshToken,
+        ),
+      ).called(1);
+    });
+
+    test(
+      'should return Right(UserEntity) mapped from the UserModel on success',
+      () async {
+        when(
+          () => remoteDataSource.login(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenAnswer((_) async => userModel);
+        when(
+          () => localDataSource.saveTokens(
+            accessToken: any(named: 'accessToken'),
+            refreshToken: any(named: 'refreshToken'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final result = await authRepository.login(
+          email: email,
+          password: password,
+        );
+
+        expect(result.isRight, isTrue);
+        expect(result.right, userModel.toDomain());
+      },
+    );
+
+    test('should map a 401 ServerException to Left(AuthFailure) with a fixed '
+        'message, not the exception message', () async {
+      when(
+        () => remoteDataSource.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 401,
+          message: 'some-backend-specific-diagnostic-text',
+        ),
+      );
+
+      final result = await authRepository.login(
+        email: email,
+        password: password,
+      );
+
+      expect(result.isLeft, isTrue);
+      expect(
+        result.left,
+        const Failure.auth(message: 'Invalid email or password.'),
+      );
+    });
+
+    test(
+      'should return the identical AuthFailure for an unknown email and '
+      'for a wrong password (both surface as a 401 ServerException)',
+      () async {
+        when(
+          () => remoteDataSource.login(
+            email: any(named: 'email'),
+            password: any(named: 'password'),
+          ),
+        ).thenThrow(
+          const ServerException(statusCode: 401, message: 'irrelevant'),
+        );
+
+        final unknownEmailResult = await authRepository.login(
+          email: 'nobody@example.com',
+          password: 'anything',
+        );
+        final wrongPasswordResult = await authRepository.login(
+          email: email,
+          password: 'wrongpassword',
+        );
+
+        expect(unknownEmailResult.left, wrongPasswordResult.left);
+      },
+    );
+
+    test('should map a non-401 ServerException to Left(ServerFailure) with '
+        'the real status code', () async {
+      when(
+        () => remoteDataSource.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(
+        const ServerException(statusCode: 500, message: 'Server error'),
+      );
+
+      final result = await authRepository.login(
+        email: email,
+        password: password,
+      );
+
+      expect(result.isLeft, isTrue);
+      expect((result.left as ServerFailure).statusCode, 500);
+    });
+
+    test('should map NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(const NetworkException());
+
+      final result = await authRepository.login(
+        email: email,
+        password: password,
+      );
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+
+    test('should map a CacheException thrown while saving tokens to '
+        'Left(CacheFailure)', () async {
+      when(
+        () => remoteDataSource.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => userModel);
+      when(
+        () => localDataSource.saveTokens(
+          accessToken: any(named: 'accessToken'),
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenThrow(const CacheException(message: 'Secure storage unavailable'));
+
+      final result = await authRepository.login(
+        email: email,
+        password: password,
+      );
+
+      expect(result.isLeft, isTrue);
+      expect(
+        result.left,
+        const Failure.cache(message: 'Secure storage unavailable'),
+      );
+    });
+  });
 }

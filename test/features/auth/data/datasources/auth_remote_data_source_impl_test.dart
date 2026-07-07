@@ -262,4 +262,90 @@ void main() {
       },
     );
   });
+
+  group('AuthRemoteDataSourceImpl.login', () {
+    test('should POST to /auth/login with the correct request body', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => Response(
+          data: buildSuccessBody(),
+          statusCode: 200,
+          requestOptions: requestOptions,
+        ),
+      );
+
+      await dataSource.login(email: email, password: password);
+
+      verify(
+        () => dio.post<Map<String, dynamic>>(
+          '/auth/login',
+          data: {'email': email, 'password': password},
+        ),
+      ).called(1);
+    });
+
+    test(
+      'should return a UserModel parsed from the response body on 200',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildSuccessBody(),
+            statusCode: 200,
+            requestOptions: requestOptions,
+          ),
+        );
+
+        final result = await dataSource.login(email: email, password: password);
+
+        expect(result.email, email);
+        expect(result.accessToken, 'mock.access.token');
+      },
+    );
+
+    test('should throw ServerException with statusCode 401 on invalid '
+        'credentials', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: requestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 401, 'message': 'Invalid email or password.'},
+            statusCode: 401,
+            requestOptions: requestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.login(email: email, password: password),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 401),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: requestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.login(email: email, password: password),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }
