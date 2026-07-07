@@ -44,6 +44,29 @@ class AuthRemoteDataSourceImpl implements IAuthRemoteDataSource {
     }
   }
 
+  @override
+  Future<UserModel> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+      );
+
+      return UserModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      // Reuses the same generic mapper as register(): a 401 here becomes
+      // a ServerException(401, ...) like any other status code. The
+      // semantic decision to treat 401 specifically as an AuthFailure
+      // belongs to AuthRepositoryImpl.login, not to this data source —
+      // keeping this class's exception mapping identical across every
+      // method it exposes.
+      throw _mapDioException(exception);
+    }
+  }
+
   /// Maps a [DioException] to the typed exception hierarchy consumed by
   /// [AuthRepositoryImpl].
   ///

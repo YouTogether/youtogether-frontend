@@ -30,4 +30,17 @@ abstract class IAuthRemoteDataSource {
     required String password,
     required String username,
   });
+
+  /// Sends `POST /auth/login` with the given credentials.
+  ///
+  /// @returns The parsed [UserModel], including the issued session
+  ///   tokens.
+  /// @throws `ServerException` (statusCode 401) on invalid credentials.
+  ///   The backend returns the identical generic message for an unknown
+  ///   email and for a wrong password (OWASP A07:2021 — see backend
+  ///   `InvalidCredentialsFailure`); this data source forwards that
+  ///   status code and message without attempting to distinguish the
+  ///   two cases either.
+  /// @throws `NetworkException` if the request never reaches the server.
+  Future<UserModel> login({required String email, required String password});
 }
