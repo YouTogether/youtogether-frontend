@@ -18,6 +18,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(requestOptions);
+    registerFallbackValue(Options());
   });
 
   setUp(() {
@@ -343,6 +344,213 @@ void main() {
 
         await expectLater(
           () => dataSource.login(email: email, password: password),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
+
+  group('AuthRemoteDataSourceImpl.getCurrentUser', () {
+    Map<String, dynamic> buildProfileBody() => {
+      'id': '550e8400-e29b-41d4-a716-446655440000',
+      'email': email,
+      'username': username,
+      'role': 'registered',
+      'createdAt': '2025-01-01T00:00:00.000Z',
+    };
+
+    test(
+      'should GET /auth/me with the access token as a Bearer header',
+      () async {
+        when(
+          () => dio.get<Map<String, dynamic>>(
+            any(),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildProfileBody(),
+            statusCode: 200,
+            requestOptions: requestOptions,
+          ),
+        );
+
+        await dataSource.getCurrentUser(accessToken: 'my-access-token');
+
+        final captured = verify(
+          () => dio.get<Map<String, dynamic>>(
+            '/auth/me',
+            options: captureAny(named: 'options'),
+          ),
+        ).captured;
+        final options = captured.single as Options;
+        expect(options.headers?['Authorization'], 'Bearer my-access-token');
+      },
+    );
+
+    test(
+      'should return a UserProfileModel parsed from the response body',
+      () async {
+        when(
+          () => dio.get<Map<String, dynamic>>(
+            any(),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildProfileBody(),
+            statusCode: 200,
+            requestOptions: requestOptions,
+          ),
+        );
+
+        final result = await dataSource.getCurrentUser(
+          accessToken: 'my-access-token',
+        );
+
+        expect(result.email, email);
+        expect(result.username, username);
+      },
+    );
+
+    test('should throw ServerException with statusCode 401 on an invalid '
+        'or expired token', () async {
+      when(
+        () => dio.get<Map<String, dynamic>>(
+          any(),
+          options: any(named: 'options'),
+        ),
+      ).thenThrow(
+        DioException(
+          requestOptions: requestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 401, 'message': 'Invalid or expired session.'},
+            statusCode: 401,
+            requestOptions: requestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.getCurrentUser(accessToken: 'invalid-token'),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 401),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(
+          () => dio.get<Map<String, dynamic>>(
+            any(),
+            options: any(named: 'options'),
+          ),
+        ).thenThrow(
+          DioException(
+            requestOptions: requestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.getCurrentUser(accessToken: 'my-access-token'),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
+
+  group('AuthRemoteDataSourceImpl.refreshToken', () {
+    test(
+      'should POST to /auth/refresh with the refresh token in the body',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildSuccessBody(),
+            statusCode: 200,
+            requestOptions: requestOptions,
+          ),
+        );
+
+        await dataSource.refreshToken(refreshToken: 'cached-refresh-token');
+
+        verify(
+          () => dio.post<Map<String, dynamic>>(
+            '/auth/refresh',
+            data: {'refreshToken': 'cached-refresh-token'},
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'should return a UserModel with the rotated tokens on success',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildSuccessBody(),
+            statusCode: 200,
+            requestOptions: requestOptions,
+          ),
+        );
+
+        final result = await dataSource.refreshToken(
+          refreshToken: 'cached-refresh-token',
+        );
+
+        expect(result.accessToken, 'mock.access.token');
+        expect(result.refreshToken, List.filled(64, 'a').join());
+      },
+    );
+
+    test('should throw ServerException with statusCode 401 on an invalid, '
+        'expired, or replayed refresh token', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: requestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {
+              'statusCode': 401,
+              'message': 'Invalid or expired refresh token.',
+            },
+            statusCode: 401,
+            requestOptions: requestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.refreshToken(refreshToken: 'stale-token'),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 401),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: requestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.refreshToken(refreshToken: 'cached-refresh-token'),
           throwsA(isA<NetworkException>()),
         );
       },

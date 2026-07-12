@@ -11,14 +11,12 @@ import '../datasources/i_auth_remote_data_source.dart';
 ///
 /// `IAuthRepository` was fully specified through
 /// five methods: register, login, getCurrentUser,
-/// refreshToken, logout before any concrete implementation existed. As
-/// a result, this class is scoped
-/// to `register()` only — must nonetheless provide a body for every
-/// abstract method to satisfy the interface. The four methods outside
-/// this ticket's scope ([login], [getCurrentUser], [refreshToken],
-/// [logout]) are temporary stubs that throw [UnimplementedError]; each
-/// is replaced by real logic in its own ticket. No test exercises a stub — there is
-/// no behaviour yet to verify.
+/// refreshToken, logout, before any concrete implementation existed.
+/// [register], [login], [getCurrentUser], and
+/// [refreshToken] are now implemented; only [logout]
+/// remains a temporary stub that throws [UnimplementedError], replaced
+/// by real logic. No test exercises that stub — there is no
+/// behaviour yet to verify.
 ///
 /// [register] orchestrates:
 /// 1. Delegate the network call to [IAuthRemoteDataSource.register].
@@ -30,15 +28,26 @@ import '../datasources/i_auth_remote_data_source.dart';
 /// 3. Convert the [UserModel] to the domain [UserEntity] via
 ///    `toDomain()` only after the above succeeds.
 ///
-/// Exception-to-Failure mapping: [ServerException] becomes
+/// [login] follows the identical remote-call-then-cache-tokens sequence
+/// as [register] (see its own doc comment for the failure mapping,
+/// which differs on one point: HTTP 401 becomes [AuthFailure], not
+/// [ServerFailure] — see [login]'s own doc comment).
+///
+/// [getCurrentUser] and [refreshToken] both read a cached token from
+/// [IAuthLocalDataSource] *before* making any network call: a `null`
+/// result (nothing cached) is treated as an ordinary [AuthFailure] —
+/// "no active session" — resolved entirely locally, never as an error
+/// requiring a network round-trip. See each method's own doc comment for
+/// its specific failure mapping.
+///
+/// Exception-to-Failure mapping (shared by all four implemented
+/// methods except where noted): [ServerException] becomes
 /// [ServerFailure] (carrying the original status code and message),
-/// [NetworkException] becomes [NetworkFailure], and [CacheException] —
-/// which can only arise from the local token-saving step, since the
-/// remote call already succeeded by that point — becomes [CacheFailure].
-/// No other exception type is expected from either data source at this
-/// stage; anything else propagates unhandled rather than being silently
-/// swallowed, so a genuine bug surfaces instead of being misreported as
-/// a known failure category.
+/// [NetworkException] becomes [NetworkFailure], and [CacheException]
+/// becomes [CacheFailure]. No other exception type is expected from
+/// either data source at this stage; anything else propagates unhandled
+/// rather than being silently swallowed, so a genuine bug surfaces
+/// instead of being misreported as a known failure category.
 ///
 /// @see IAuthRepository — the domain port being implemented
 class AuthRepositoryImpl implements IAuthRepository {
@@ -132,20 +141,96 @@ class AuthRepositoryImpl implements IAuthRepository {
     }
   }
 
+  /// Retrieves the profile of the currently authenticated user.
+  ///
+  /// Reads the cached access token before making any network call. If
+  /// none is cached, returns [Failure.auth] locally — "no active
+  /// session" — without attempting `GET /auth/me` at all.
+  ///
+  /// A 401 response (token invalid, expired, or its account no longer
+  /// exists — see backend `UserNotFoundFailure`) is also mapped to
+  /// [Failure.auth], with a fixed literal message, for the same reason
+  /// documented on [login]: never forward a server-provided message for
+  /// an authentication failure, regardless of what the backend
+  /// specifically said.
   @override
-  Future<Either<Failure, UserEntity>> getCurrentUser() {
-    // TODO implement later
-    throw UnimplementedError(
-      'AuthRepositoryImpl.getCurrentUser is implemented later.',
-    );
+  Future<Either<Failure, UserEntity>> getCurrentUser() async {
+    final accessToken = await _localDataSource.getAccessToken();
+    if (accessToken == null) {
+      return const Left(Failure.auth(message: 'No active session.'));
+    }
+
+    try {
+      final profile = await _remoteDataSource.getCurrentUser(
+        accessToken: accessToken,
+      );
+      return Right(profile.toDomain());
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 401) {
+        return const Left(Failure.auth(message: 'Invalid or expired session.'));
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    } on CacheException catch (exception) {
+      return Left(Failure.cache(message: exception.message));
+    }
   }
 
+  /// Silently renews the session using the cached refresh token.
+  ///
+  /// Reads the cached refresh token before making any network call. If
+  /// none is cached, returns [Failure.auth] locally, without attempting
+  /// `POST /auth/refresh` at all.
+  ///
+  /// On success, the newly rotated token pair is persisted via
+  /// [IAuthLocalDataSource.saveTokens] before returning — mirroring
+  /// [register] and [login]'s "cache before returning" sequencing.
+  ///
+  /// A 401 response (invalid, expired, or already-rotated/replayed
+  /// token — see backend `InvalidRefreshTokenFailure`) is mapped to
+  /// [Failure.auth] with a fixed literal message, for the same reason
+  /// documented on [login].
   @override
-  Future<Either<Failure, UserEntity>> refreshToken() {
-    // TODO implement later
-    throw UnimplementedError(
-      'AuthRepositoryImpl.refreshToken is implemented later.',
-    );
+  Future<Either<Failure, UserEntity>> refreshToken() async {
+    final cachedRefreshToken = await _localDataSource.getRefreshToken();
+    if (cachedRefreshToken == null) {
+      return const Left(Failure.auth(message: 'No refresh token cached.'));
+    }
+
+    try {
+      final userModel = await _remoteDataSource.refreshToken(
+        refreshToken: cachedRefreshToken,
+      );
+
+      await _localDataSource.saveTokens(
+        accessToken: userModel.accessToken,
+        refreshToken: userModel.refreshToken,
+      );
+
+      return Right(userModel.toDomain());
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 401) {
+        return const Left(
+          Failure.auth(message: 'Invalid or expired refresh token.'),
+        );
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    } on CacheException catch (exception) {
+      return Left(Failure.cache(message: exception.message));
+    }
   }
 
   @override

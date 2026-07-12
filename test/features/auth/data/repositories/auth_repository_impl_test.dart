@@ -5,6 +5,7 @@ import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/features/auth/data/datasources/i_auth_local_data_source.dart';
 import 'package:youtogether/features/auth/data/datasources/i_auth_remote_data_source.dart';
 import 'package:youtogether/features/auth/data/models/user_model.dart';
+import 'package:youtogether/features/auth/data/models/user_profile_model.dart';
 import 'package:youtogether/features/auth/data/repositories/auth_repository_impl.dart';
 
 class MockAuthRemoteDataSource extends Mock implements IAuthRemoteDataSource {}
@@ -445,6 +446,284 @@ void main() {
       );
 
       expect(result.isLeft, isTrue);
+      expect(
+        result.left,
+        const Failure.cache(message: 'Secure storage unavailable'),
+      );
+    });
+  });
+
+  group('AuthRepositoryImpl.getCurrentUser', () {
+    final userProfileModel = UserProfileModel(
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      email: email,
+      username: username,
+      role: 'registered',
+      createdAt: DateTime.utc(2025, 1, 1),
+    );
+
+    test('should return Left(AuthFailure) without calling the remote data '
+        'source when no access token is cached', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => null);
+
+      final result = await authRepository.getCurrentUser();
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<AuthFailure>());
+      verifyNever(
+        () => remoteDataSource.getCurrentUser(
+          accessToken: any(named: 'accessToken'),
+        ),
+      );
+    });
+
+    test('should call IAuthRemoteDataSource.getCurrentUser with the cached '
+        'access token', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => 'cached-access-token');
+      when(
+        () => remoteDataSource.getCurrentUser(
+          accessToken: any(named: 'accessToken'),
+        ),
+      ).thenAnswer((_) async => userProfileModel);
+
+      await authRepository.getCurrentUser();
+
+      verify(
+        () =>
+            remoteDataSource.getCurrentUser(accessToken: 'cached-access-token'),
+      ).called(1);
+    });
+
+    test(
+      'should return Right(UserEntity) mapped from the profile on success',
+      () async {
+        when(
+          () => localDataSource.getAccessToken(),
+        ).thenAnswer((_) async => 'cached-access-token');
+        when(
+          () => remoteDataSource.getCurrentUser(
+            accessToken: any(named: 'accessToken'),
+          ),
+        ).thenAnswer((_) async => userProfileModel);
+
+        final result = await authRepository.getCurrentUser();
+
+        expect(result.isRight, isTrue);
+        expect(result.right, userProfileModel.toDomain());
+      },
+    );
+
+    test('should map a 401 ServerException to Left(AuthFailure) with a '
+        'fixed message', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => 'cached-access-token');
+      when(
+        () => remoteDataSource.getCurrentUser(
+          accessToken: any(named: 'accessToken'),
+        ),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 401,
+          message: 'some-backend-specific-diagnostic-text',
+        ),
+      );
+
+      final result = await authRepository.getCurrentUser();
+
+      expect(
+        result.left,
+        const Failure.auth(message: 'Invalid or expired session.'),
+      );
+    });
+
+    test(
+      'should map a non-401 ServerException to Left(ServerFailure)',
+      () async {
+        when(
+          () => localDataSource.getAccessToken(),
+        ).thenAnswer((_) async => 'cached-access-token');
+        when(
+          () => remoteDataSource.getCurrentUser(
+            accessToken: any(named: 'accessToken'),
+          ),
+        ).thenThrow(const ServerException(statusCode: 500, message: 'error'));
+
+        final result = await authRepository.getCurrentUser();
+
+        expect((result.left as ServerFailure).statusCode, 500);
+      },
+    );
+
+    test('should map NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => 'cached-access-token');
+      when(
+        () => remoteDataSource.getCurrentUser(
+          accessToken: any(named: 'accessToken'),
+        ),
+      ).thenThrow(const NetworkException());
+
+      final result = await authRepository.getCurrentUser();
+
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
+
+  group('AuthRepositoryImpl.refreshToken', () {
+    test('should return Left(AuthFailure) without calling the remote data '
+        'source when no refresh token is cached', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => null);
+
+      final result = await authRepository.refreshToken();
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<AuthFailure>());
+      verifyNever(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      );
+    });
+
+    test('should call IAuthRemoteDataSource.refreshToken with the cached '
+        'refresh token', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'cached-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenAnswer((_) async => userModel);
+      when(
+        () => localDataSource.saveTokens(
+          accessToken: any(named: 'accessToken'),
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await authRepository.refreshToken();
+
+      verify(
+        () =>
+            remoteDataSource.refreshToken(refreshToken: 'cached-refresh-token'),
+      ).called(1);
+    });
+
+    test('should persist the newly rotated tokens on success', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'cached-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenAnswer((_) async => userModel);
+      when(
+        () => localDataSource.saveTokens(
+          accessToken: any(named: 'accessToken'),
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await authRepository.refreshToken();
+
+      verify(
+        () => localDataSource.saveTokens(
+          accessToken: userModel.accessToken,
+          refreshToken: userModel.refreshToken,
+        ),
+      ).called(1);
+    });
+
+    test(
+      'should return Right(UserEntity) mapped from the rotated tokens',
+      () async {
+        when(
+          () => localDataSource.getRefreshToken(),
+        ).thenAnswer((_) async => 'cached-refresh-token');
+        when(
+          () => remoteDataSource.refreshToken(
+            refreshToken: any(named: 'refreshToken'),
+          ),
+        ).thenAnswer((_) async => userModel);
+        when(
+          () => localDataSource.saveTokens(
+            accessToken: any(named: 'accessToken'),
+            refreshToken: any(named: 'refreshToken'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final result = await authRepository.refreshToken();
+
+        expect(result.isRight, isTrue);
+        expect(result.right, userModel.toDomain());
+      },
+    );
+
+    test('should map a 401 ServerException to Left(AuthFailure) with a '
+        'fixed message (covers rotation/replay)', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'stale-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenThrow(
+        const ServerException(statusCode: 401, message: 'irrelevant'),
+      );
+
+      final result = await authRepository.refreshToken();
+
+      expect(
+        result.left,
+        const Failure.auth(message: 'Invalid or expired refresh token.'),
+      );
+    });
+
+    test('should map NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'cached-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenThrow(const NetworkException());
+
+      final result = await authRepository.refreshToken();
+
+      expect(result.left, isA<NetworkFailure>());
+    });
+
+    test('should map a CacheException thrown while saving the rotated '
+        'tokens to Left(CacheFailure)', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'cached-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenAnswer((_) async => userModel);
+      when(
+        () => localDataSource.saveTokens(
+          accessToken: any(named: 'accessToken'),
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenThrow(const CacheException(message: 'Secure storage unavailable'));
+
+      final result = await authRepository.refreshToken();
+
       expect(
         result.left,
         const Failure.cache(message: 'Secure storage unavailable'),
