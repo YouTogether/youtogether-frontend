@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.10.0...v0.11.0) (2026-07-12)
+
+
+### Features
+
+* **auth:** [F-A03-T2] token lifecycle ([#54](https://github.com/YouTogether/youtogether-frontend/issues/54)) ([de709c8](https://github.com/YouTogether/youtogether-frontend/commit/de709c880bbf01d4d7293285a8b10ab74b6250e4))
+
 ## [0.10.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.9.0...v0.10.0) (2026-07-12)
 
 
