@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../models/user_model.dart';
+import '../models/user_profile_model.dart';
 import 'i_auth_remote_data_source.dart';
 
 /// Dio-based implementation of [IAuthRemoteDataSource].
@@ -63,6 +64,34 @@ class AuthRemoteDataSourceImpl implements IAuthRemoteDataSource {
       // belongs to AuthRepositoryImpl.login, not to this data source —
       // keeping this class's exception mapping identical across every
       // method it exposes.
+      throw _mapDioException(exception);
+    }
+  }
+
+  @override
+  Future<UserProfileModel> getCurrentUser({required String accessToken}) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/auth/me',
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      return UserProfileModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
+  @override
+  Future<UserModel> refreshToken({required String refreshToken}) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
+
+      return UserModel.fromJson(response.data!);
+    } on DioException catch (exception) {
       throw _mapDioException(exception);
     }
   }
