@@ -59,6 +59,10 @@ dependencies:
   # BLoC / Cubit state management for the presentation layer.
   flutter_bloc: ^9.1.1
 
+  # Encrypted local storage for session tokens (Keychain on iOS, AES-256
+  # EncryptedSharedPreferences on Android).
+  flutter_secure_storage: ^10.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
