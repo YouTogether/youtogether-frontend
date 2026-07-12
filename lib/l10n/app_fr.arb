@@ -12,5 +12,16 @@
   "registerErrorServer": "Cette adresse e-mail est peut-être déjà enregistrée, ou le serveur a rejeté la demande. Veuillez vérifier vos informations et réessayer.",
   "registerErrorNetwork": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
   "registerErrorCache": "Votre compte a été créé, mais nous n'avons pas pu enregistrer votre session sur cet appareil. Veuillez vous connecter manuellement.",
-  "registerErrorGeneric": "Une erreur est survenue. Veuillez réessayer."
+  "registerErrorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+
+  "loginPageTitle": "Se connecter",
+  "loginEmailLabel": "E-mail",
+  "loginPasswordLabel": "Mot de passe",
+  "loginSubmitButton": "Se connecter",
+  "loginRegisterLinkLabel": "Vous n'avez pas de compte ? S'inscrire",
+  "loginErrorAuth": "E-mail ou mot de passe invalide.",
+  "loginErrorServer": "Le serveur a rejeté la demande. Veuillez réessayer.",
+  "loginErrorNetwork": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
+  "loginErrorCache": "Vous êtes connecté, mais nous n'avons pas pu enregistrer votre session sur cet appareil. Veuillez réessayer.",
+  "loginErrorGeneric": "Une erreur est survenue. Veuillez réessayer."
 }
