@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.9.0...v0.10.0) (2026-07-12)
+
+
+### Features
+
+* **auth:** [F-A02-T3] login cubit page ([#52](https://github.com/YouTogether/youtogether-frontend/issues/52)) ([fcffec6](https://github.com/YouTogether/youtogether-frontend/commit/fcffec6bf4dbac19638dba4e9b48c2b0594c0a13))
+
 ## [0.9.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.8.0...v0.9.0) (2026-07-07)
 
 
