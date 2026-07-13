@@ -766,4 +766,114 @@ void main() {
       );
     });
   });
+
+  group('AuthRepositoryImpl.logout', () {
+    test('should call IAuthRemoteDataSource.logout with the cached access '
+        'token when one is present', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => 'cached-access-token');
+      when(
+        () => remoteDataSource.logout(accessToken: any(named: 'accessToken')),
+      ).thenAnswer((_) async {});
+      when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
+
+      await authRepository.logout();
+
+      verify(
+        () => remoteDataSource.logout(accessToken: 'cached-access-token'),
+      ).called(1);
+    });
+
+    test('should skip the remote call when no access token is cached, but '
+        'still clear local tokens', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => null);
+      when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
+
+      final result = await authRepository.logout();
+
+      verifyNever(
+        () => remoteDataSource.logout(accessToken: any(named: 'accessToken')),
+      );
+      verify(() => localDataSource.clearTokens()).called(1);
+      expect(result.isRight, isTrue);
+    });
+
+    test(
+      'should clear local tokens and return Right(null) on remote success',
+      () async {
+        when(
+          () => localDataSource.getAccessToken(),
+        ).thenAnswer((_) async => 'cached-access-token');
+        when(
+          () => remoteDataSource.logout(accessToken: any(named: 'accessToken')),
+        ).thenAnswer((_) async {});
+        when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
+
+        final result = await authRepository.logout();
+
+        verify(() => localDataSource.clearTokens()).called(1);
+        expect(result.isRight, isTrue);
+      },
+    );
+
+    test('should still clear local tokens and return Right(null) when the '
+        'remote call fails with a ServerException', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => 'cached-access-token');
+      when(
+        () => remoteDataSource.logout(accessToken: any(named: 'accessToken')),
+      ).thenThrow(
+        const ServerException(statusCode: 401, message: 'irrelevant'),
+      );
+      when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
+
+      final result = await authRepository.logout();
+
+      verify(() => localDataSource.clearTokens()).called(1);
+      expect(result.isRight, isTrue);
+    });
+
+    test('should still clear local tokens and return Right(null) when the '
+        'remote call fails with a NetworkException', () async {
+      when(
+        () => localDataSource.getAccessToken(),
+      ).thenAnswer((_) async => 'cached-access-token');
+      when(
+        () => remoteDataSource.logout(accessToken: any(named: 'accessToken')),
+      ).thenThrow(const NetworkException());
+      when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
+
+      final result = await authRepository.logout();
+
+      verify(() => localDataSource.clearTokens()).called(1);
+      expect(result.isRight, isTrue);
+    });
+
+    test(
+      'should return Left(CacheFailure) when clearing local tokens fails',
+      () async {
+        when(
+          () => localDataSource.getAccessToken(),
+        ).thenAnswer((_) async => 'cached-access-token');
+        when(
+          () => remoteDataSource.logout(accessToken: any(named: 'accessToken')),
+        ).thenAnswer((_) async {});
+        when(() => localDataSource.clearTokens()).thenThrow(
+          const CacheException(message: 'Secure storage unavailable'),
+        );
+
+        final result = await authRepository.logout();
+
+        expect(result.isLeft, isTrue);
+        expect(
+          result.left,
+          const Failure.cache(message: 'Secure storage unavailable'),
+        );
+      },
+    );
+  });
 }
