@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.11.0...v0.12.0) (2026-07-13)
+
+
+### Features
+
+* **auth:** [F-A03-T3] AuthBloc for global session state ([#56](https://github.com/YouTogether/youtogether-frontend/issues/56)) ([8dae282](https://github.com/YouTogether/youtogether-frontend/commit/8dae28271fc7e0c9b8d35de6873f6470d6504425))
+
 ## [0.11.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.10.0...v0.11.0) (2026-07-12)
 
 
