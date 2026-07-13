@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.12.0...v0.13.0) (2026-07-13)
+
+
+### Features
+
+* **auth:** [F-A04-T2] logout data layer ([#58](https://github.com/YouTogether/youtogether-frontend/issues/58)) ([898df0f](https://github.com/YouTogether/youtogether-frontend/commit/898df0f586c53ad2249666e19ab3312d78582c23))
+
 ## [0.12.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.11.0...v0.12.0) (2026-07-13)
 
 
