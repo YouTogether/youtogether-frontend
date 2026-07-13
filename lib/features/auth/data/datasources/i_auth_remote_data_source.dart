@@ -73,4 +73,18 @@ abstract class IAuthRemoteDataSource {
   ///   401 on this endpoint).
   /// @throws `NetworkException` if the request never reaches the server.
   Future<UserModel> refreshToken({required String refreshToken});
+
+  /// Sends `POST /auth/logout` with the given access token attached as
+  /// a Bearer credential, invalidating the refresh token server-side.
+  ///
+  /// Callers are expected to treat any exception this method throws as
+  /// non-fatal to the overall logout operation — see
+  /// `AuthRepositoryImpl.logout` for the rationale (local token clearing
+  /// is unconditional and must not depend on this call succeeding).
+  ///
+  /// @throws `ServerException` if the token is already invalid/expired.
+  ///   In practice this is harmless to the caller: the server-side
+  ///   session this call would have invalidated is already unusable.
+  /// @throws `NetworkException` if the request never reaches the server.
+  Future<void> logout({required String accessToken});
 }
