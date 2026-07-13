@@ -6,6 +6,7 @@ import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/core/usecases/usecase.dart';
 import 'package:youtogether/features/auth/domain/entities/user_entity.dart';
 import 'package:youtogether/features/auth/domain/usecases/get_current_user_usecase.dart';
+import 'package:youtogether/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:youtogether/features/auth/domain/usecases/refresh_token_usecase.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_event.dart';
@@ -15,9 +16,12 @@ class MockGetCurrentUserUseCase extends Mock implements GetCurrentUserUseCase {}
 
 class MockRefreshTokenUseCase extends Mock implements RefreshTokenUseCase {}
 
+class MockLogoutUseCase extends Mock implements LogoutUseCase {}
+
 void main() {
   late MockGetCurrentUserUseCase getCurrentUserUseCase;
   late MockRefreshTokenUseCase refreshTokenUseCase;
+  late MockLogoutUseCase logoutUseCase;
 
   final mockUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -30,11 +34,13 @@ void main() {
   setUp(() {
     getCurrentUserUseCase = MockGetCurrentUserUseCase();
     refreshTokenUseCase = MockRefreshTokenUseCase();
+    logoutUseCase = MockLogoutUseCase();
   });
 
   AuthBloc buildBloc() => AuthBloc(
     getCurrentUserUseCase: getCurrentUserUseCase,
     refreshTokenUseCase: refreshTokenUseCase,
+    logoutUseCase: logoutUseCase,
   );
 
   group('AuthBloc', () {
@@ -157,6 +163,74 @@ void main() {
         act: (bloc) => bloc.add(const AuthEvent.checkStatusRequested()),
         verify: (_) {
           verify(() => refreshTokenUseCase(const NoParams())).called(1);
+        },
+      );
+    });
+
+    group('logoutRequested', () {
+      blocTest<AuthBloc, AuthState>(
+        'emits [loading, unauthenticated] on successful logout',
+        setUp: () {
+          when(
+            () => logoutUseCase(const NoParams()),
+          ).thenAnswer((_) async => const Right(null));
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const AuthEvent.logoutRequested()),
+        expect: () => [
+          const AuthState.loading(),
+          const AuthState.unauthenticated(),
+        ],
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'emits [loading, failure] — not unauthenticated — when '
+        'LogoutUseCase fails (e.g. local tokens could not actually be '
+        'cleared)',
+        setUp: () {
+          when(() => logoutUseCase(const NoParams())).thenAnswer(
+            (_) async => const Left(
+              Failure.cache(message: 'Secure storage unavailable'),
+            ),
+          );
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const AuthEvent.logoutRequested()),
+        expect: () => [
+          const AuthState.loading(),
+          const AuthState.failure(
+            Failure.cache(message: 'Secure storage unavailable'),
+          ),
+        ],
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'calls LogoutUseCase exactly once per logoutRequested',
+        setUp: () {
+          when(
+            () => logoutUseCase(const NoParams()),
+          ).thenAnswer((_) async => const Right(null));
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const AuthEvent.logoutRequested()),
+        verify: (_) {
+          verify(() => logoutUseCase(const NoParams())).called(1);
+        },
+      );
+
+      blocTest<AuthBloc, AuthState>(
+        'does not call GetCurrentUserUseCase or RefreshTokenUseCase '
+        'during logout',
+        setUp: () {
+          when(
+            () => logoutUseCase(const NoParams()),
+          ).thenAnswer((_) async => const Right(null));
+        },
+        build: buildBloc,
+        act: (bloc) => bloc.add(const AuthEvent.logoutRequested()),
+        verify: (_) {
+          verifyNever(() => getCurrentUserUseCase(const NoParams()));
+          verifyNever(() => refreshTokenUseCase(const NoParams()));
         },
       );
     });
