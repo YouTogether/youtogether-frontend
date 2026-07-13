@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/usecases/usecase.dart';
 import '../../domain/usecases/get_current_user_usecase.dart';
+import '../../domain/usecases/logout_usecase.dart';
 import '../../domain/usecases/refresh_token_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -13,27 +14,31 @@ import 'auth_state.dart';
 /// source of truth for whether a session currently exists — consumed by
 /// route guards and the app shell, not tied to any one screen.
 ///
-/// One handler wired:
-/// `AuthEvent.checkStatusRequested`, dispatched once on application cold
-/// start to silently restore a previous session. See `AuthEvent` for
-/// which other variants remain unhandled and why.
+/// Two handlers are wired so far:
+/// - `AuthEvent.checkStatusRequested` — restores a previous
+///   session silently on cold start.
+/// - `AuthEvent.logoutRequested` — terminates the session on
+///   user request.
+///
+/// See `AuthEvent` for which other variants remain unhandled and why.
 ///
 /// ## Scope boundary
-/// The full feature (F-A03) also calls for an `App` widget that
-/// dispatches `checkStatusRequested` on initialisation, and a
-/// `GoRouterRefreshStream` that re-evaluates route guards on every
-/// [AuthState] emission. Neither exists yet: this codebase has no
-/// routing package (`go_router` or otherwise) and no application shell
-/// at all — every screen built so far (`RegisterPage`, `LoginPage`) is
-/// wired through plain constructor callbacks precisely because nothing
-/// above them exists yet. Building a full app shell and router
-/// speculatively, without its own ticket, would be scope creep well
-/// beyond "wire AuthBloc". This class is fully ready to be dispatched
-/// from wherever that shell eventually lives; the callbacks already
-/// exposed by `RegisterPage.onRegistrationSucceeded` and
-/// `LoginPage.onLoginSucceeded` are the natural call sites for
-/// `context.read<AuthBloc>().add(const AuthEvent.checkStatusRequested())`
-/// once it exists.
+/// The full F-A03 feature also calls for an `App` widget that dispatches
+/// `checkStatusRequested` on initialisation, and a `GoRouterRefreshStream`
+/// that re-evaluates route guards on every [AuthState] emission. The full
+/// F-A04 feature calls for a `ProfilePage` whose logout button dispatches
+/// `logoutRequested`. None of this exists yet: this codebase has no
+/// routing package (`go_router` or otherwise), no application shell, and
+/// no `ProfilePage` (a separate, unbuilt feature — F-A05, which adds the
+/// user's username, email, role badge, avatar, and member-since date;
+/// building it here to satisfy this ticket's UI-facing acceptance
+/// criteria would be scope creep well beyond "wire AuthBloc"). Every
+/// screen built so far (`RegisterPage`, `LoginPage`) is wired through
+/// plain constructor callbacks precisely because nothing above them
+/// exists yet. This class is fully ready to be dispatched from wherever
+/// that shell and that page eventually live —
+/// `context.read<AuthBloc>().add(const AuthEvent.logoutRequested())` is
+/// the call `ProfilePage`'s logout button makes once it exists.
 ///
 /// ## checkStatusRequested behaviour
 /// 1. Emit [AuthState.loading].
@@ -64,18 +69,38 @@ import 'auth_state.dart';
 /// - No cached token at all → both steps fail purely locally, with no
 ///   network round-trip, before immediately emitting
 ///   [AuthState.unauthenticated].
+///
+/// ## logoutRequested behaviour
+/// 1. Emit [AuthState.loading].
+/// 2. Call `LogoutUseCase`.
+/// 3. On success, emit [AuthState.unauthenticated].
+/// 4. On failure, emit [AuthState.failure] with the received `Failure`
+///    — a deliberate departure from this ticket's literal Definition of
+///    Done ("Calls LogoutUseCase, then emits AuthUnauthenticated"),
+///    which describes only the success path. `LogoutUseCase` /
+///    `AuthRepositoryImpl.logout` can still fail with a
+///    [Failure.cache] if the device's own secure storage cannot
+///    actually be cleared — in that case the user's tokens are *not*
+///    gone, and silently claiming [AuthState.unauthenticated] would be
+///    actively misleading about the true session state. This is the
+///    first real consumer of [AuthState.failure], reserved for exactly
+///    this kind of case since F-A03-T3.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({
     required GetCurrentUserUseCase getCurrentUserUseCase,
     required RefreshTokenUseCase refreshTokenUseCase,
+    required LogoutUseCase logoutUseCase,
   }) : _getCurrentUserUseCase = getCurrentUserUseCase,
        _refreshTokenUseCase = refreshTokenUseCase,
+       _logoutUseCase = logoutUseCase,
        super(const AuthState.initial()) {
     on<AuthCheckStatusRequested>(_onCheckStatusRequested);
+    on<AuthLogoutRequested>(_onLogoutRequested);
   }
 
   final GetCurrentUserUseCase _getCurrentUserUseCase;
   final RefreshTokenUseCase _refreshTokenUseCase;
+  final LogoutUseCase _logoutUseCase;
 
   Future<void> _onCheckStatusRequested(
     AuthCheckStatusRequested event,
@@ -95,6 +120,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     refreshResult.fold(
       (failure) => emit(const AuthState.unauthenticated()),
       (user) => emit(AuthState.authenticated(user)),
+    );
+  }
+
+  Future<void> _onLogoutRequested(
+    AuthLogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthState.loading());
+
+    final result = await _logoutUseCase(const NoParams());
+
+    result.fold(
+      (failure) => emit(AuthState.failure(failure)),
+      (_) => emit(const AuthState.unauthenticated()),
     );
   }
 }
