@@ -23,5 +23,11 @@
   "loginErrorServer": "Le serveur a rejeté la demande. Veuillez réessayer.",
   "loginErrorNetwork": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
   "loginErrorCache": "Vous êtes connecté, mais nous n'avons pas pu enregistrer votre session sur cet appareil. Veuillez réessayer.",
-  "loginErrorGeneric": "Une erreur est survenue. Veuillez réessayer."
+  "loginErrorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+
+  "profilePageTitle": "Profil",
+  "profileMemberSince": "Membre depuis {date}",
+  "profileRoleRegistered": "Inscrit",
+  "profileRoleGuest": "Invité",
+  "profileLogoutButton": "Se déconnecter"
 }
