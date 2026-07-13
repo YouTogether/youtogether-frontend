@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.13.0...v0.14.0) (2026-07-13)
+
+
+### Features
+
+* **auth:** [F-A04-T3] wire AuthBloc.logoutRequested ([#60](https://github.com/YouTogether/youtogether-frontend/issues/60)) ([d890ed0](https://github.com/YouTogether/youtogether-frontend/commit/d890ed0c3caac828e25901587c11fda1e57ee5f3))
+
 ## [0.13.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.12.0...v0.13.0) (2026-07-13)
 
 
