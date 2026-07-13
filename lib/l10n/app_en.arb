@@ -104,5 +104,35 @@
   "loginErrorGeneric": "Something went wrong. Please try again.",
   "@loginErrorGeneric": {
     "description": "Fallback SnackBar message for any other Failure subtype (NotFoundFailure, FirebaseFailure) that login() is not expected to produce in practice, but which the exhaustive switch must still handle."
+  },
+
+  "profilePageTitle": "Profile",
+  "@profilePageTitle": {
+    "description": "AppBar title on the profile screen (F-A05-T1)."
+  },
+
+  "profileMemberSince": "Member since {date}",
+  "@profileMemberSince": {
+    "description": "Displays the account creation date on the profile screen.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+
+  "profileRoleRegistered": "Registered",
+  "@profileRoleRegistered": {
+    "description": "Role badge label for UserRole.registered."
+  },
+
+  "profileRoleGuest": "Guest",
+  "@profileRoleGuest": {
+    "description": "Role badge label for UserRole.guest."
+  },
+
+  "profileLogoutButton": "Log out",
+  "@profileLogoutButton": {
+    "description": "Logout button label on the profile screen."
   }
 }
