@@ -681,6 +681,7 @@ void main() {
       ).thenThrow(
         const ServerException(statusCode: 401, message: 'irrelevant'),
       );
+      when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
 
       final result = await authRepository.refreshToken();
 
@@ -688,6 +689,41 @@ void main() {
         result.left,
         const Failure.auth(message: 'Invalid or expired refresh token.'),
       );
+    });
+
+    test('should clear local tokens when the refresh token is rejected with '
+        '401', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'stale-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenThrow(
+        const ServerException(statusCode: 401, message: 'irrelevant'),
+      );
+      when(() => localDataSource.clearTokens()).thenAnswer((_) async {});
+
+      await authRepository.refreshToken();
+
+      verify(() => localDataSource.clearTokens()).called(1);
+    });
+
+    test('should NOT clear local tokens on a non-401 failure (server error, '
+        'network error)', () async {
+      when(
+        () => localDataSource.getRefreshToken(),
+      ).thenAnswer((_) async => 'cached-refresh-token');
+      when(
+        () => remoteDataSource.refreshToken(
+          refreshToken: any(named: 'refreshToken'),
+        ),
+      ).thenThrow(const NetworkException());
+
+      await authRepository.refreshToken();
+
+      verifyNever(() => localDataSource.clearTokens());
     });
 
     test('should map NetworkException to Left(NetworkFailure)', () async {

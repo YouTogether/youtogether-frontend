@@ -70,4 +70,14 @@ class AuthLocalDataSourceImpl implements IAuthLocalDataSource {
     final accessToken = await getAccessToken();
     return accessToken != null && accessToken.isNotEmpty;
   }
+
+  @override
+  Future<void> clearTokens() async {
+    try {
+      await _secureStorage.delete(key: accessTokenKey);
+      await _secureStorage.delete(key: refreshTokenKey);
+    } catch (error) {
+      throw CacheException(message: 'Failed to clear session tokens: $error');
+    }
+  }
 }
