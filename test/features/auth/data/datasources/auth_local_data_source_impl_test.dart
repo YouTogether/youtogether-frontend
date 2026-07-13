@@ -163,4 +163,36 @@ void main() {
       expect(await dataSource.hasValidToken(), isFalse);
     });
   });
+
+  group('clearTokens', () {
+    test('should delete both cached tokens', () async {
+      when(
+        () => secureStorage.delete(key: any(named: 'key')),
+      ).thenAnswer((_) async {});
+
+      await dataSource.clearTokens();
+
+      verify(
+        () => secureStorage.delete(key: AuthLocalDataSourceImpl.accessTokenKey),
+      ).called(1);
+      verify(
+        () =>
+            secureStorage.delete(key: AuthLocalDataSourceImpl.refreshTokenKey),
+      ).called(1);
+    });
+
+    test(
+      'should throw CacheException when the underlying delete fails',
+      () async {
+        when(
+          () => secureStorage.delete(key: any(named: 'key')),
+        ).thenThrow(Exception('keystore unavailable'));
+
+        await expectLater(
+          () => dataSource.clearTokens(),
+          throwsA(isA<CacheException>()),
+        );
+      },
+    );
+  });
 }

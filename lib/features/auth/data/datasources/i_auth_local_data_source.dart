@@ -7,13 +7,17 @@
 ///
 /// This interface grows incrementally, one method (or group) per task,
 /// mirroring how `IAuthRepository` was built:
-/// - `saveTokens()`
-/// - `getAccessToken()`, `getRefreshToken()`, `hasValidToken()` - session restoration needs to read the cached tokens
-/// - `clearTokens()` - logout
+/// - `saveTokens()` — added by F-A01-T2
+/// - `getAccessToken()`, `getRefreshToken()`, `hasValidToken()` -
+///   session restoration needs to read the cached tokens
+/// - `clearTokens()` - `AuthRepositoryImpl.refreshToken()` needs it to clear a
+///   session once both the access and refresh tokens are confirmed dead
+///   (see that method's own doc comment), which is a full ticket earlier
+///   than the originally planned logout-only consumer.
 ///
-/// @see AuthRepositoryImpl.register — primary consumer of [saveTokens]
-/// @see AuthRepositoryImpl.getCurrentUser — primary consumer of [getAccessToken]
-/// @see AuthRepositoryImpl.refreshToken — primary consumer of [getRefreshToken]
+/// @see AuthRepositoryImpl.register - primary consumer of [saveTokens]
+/// @see AuthRepositoryImpl.getCurrentUser - primary consumer of [getAccessToken]
+/// @see AuthRepositoryImpl.refreshToken - primary consumer of [getRefreshToken]
 abstract class IAuthLocalDataSource {
   /// Persists both tokens to secure storage, overwriting any existing
   /// tokens.
@@ -54,8 +58,17 @@ abstract class IAuthLocalDataSource {
   /// validity check is always the server's response to the next
   /// authenticated request (`GET /auth/me` via
   /// `AuthRepositoryImpl.getCurrentUser`), not this method. Intended for
-  /// callers (`AuthBloc`) that need a fast, synchronous-feeling
-  /// decision on whether attempting session restoration is worthwhile at
-  /// all, before making any network call.
+  /// callers (`AuthBloc`) that need a fast, synchronous-feeling decision
+  /// on whether attempting session restoration is worthwhile at all,
+  /// before making any network call.
   Future<bool> hasValidToken();
+
+  /// Removes both cached tokens.
+  ///
+  /// Idempotent: clearing an already-empty cache succeeds silently - no
+  /// existence check is required or performed.
+  ///
+  /// @throws `CacheException` if the underlying secure storage delete
+  ///   fails.
+  Future<void> clearTokens();
 }

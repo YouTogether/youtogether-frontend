@@ -195,7 +195,14 @@ class AuthRepositoryImpl implements IAuthRepository {
   /// A 401 response (invalid, expired, or already-rotated/replayed
   /// token — see backend `InvalidRefreshTokenFailure`) is mapped to
   /// [Failure.auth] with a fixed literal message, for the same reason
-  /// documented on [login].
+  /// documented on [login]. Additionally — and unlike every other
+  /// failure path in this class — the cached tokens are cleared via
+  /// [IAuthLocalDataSource.clearTokens] before returning: this method is
+  /// only ever reached as `AuthBloc`'s fallback after
+  /// [getCurrentUser] has already failed, so a 401 here confirms neither
+  /// cached token is usable. Keeping them cached would serve no purpose
+  /// and would cause every subsequent cold start to repeat the same two
+  /// doomed network calls until the user logs in again.
   @override
   Future<Either<Failure, UserEntity>> refreshToken() async {
     final cachedRefreshToken = await _localDataSource.getRefreshToken();
@@ -216,6 +223,7 @@ class AuthRepositoryImpl implements IAuthRepository {
       return Right(userModel.toDomain());
     } on ServerException catch (exception) {
       if (exception.statusCode == 401) {
+        await _localDataSource.clearTokens();
         return const Left(
           Failure.auth(message: 'Invalid or expired refresh token.'),
         );
