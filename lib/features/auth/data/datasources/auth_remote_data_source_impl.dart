@@ -96,6 +96,18 @@ class AuthRemoteDataSourceImpl implements IAuthRemoteDataSource {
     }
   }
 
+  @override
+  Future<void> logout({required String accessToken}) async {
+    try {
+      await _dio.post<void>(
+        '/auth/logout',
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
   /// Maps a [DioException] to the typed exception hierarchy consumed by
   /// [AuthRepositoryImpl].
   ///

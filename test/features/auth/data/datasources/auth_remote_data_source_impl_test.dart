@@ -556,4 +556,76 @@ void main() {
       },
     );
   });
+
+  group('AuthRemoteDataSourceImpl.logout', () {
+    test('should POST to /auth/logout with the access token as a Bearer '
+        'header', () async {
+      when(
+        () => dio.post<void>(any(), options: any(named: 'options')),
+      ).thenAnswer(
+        (_) async =>
+            Response<void>(statusCode: 200, requestOptions: requestOptions),
+      );
+
+      await dataSource.logout(accessToken: 'my-access-token');
+
+      final captured = verify(
+        () => dio.post<void>(
+          '/auth/logout',
+          options: captureAny(named: 'options'),
+        ),
+      ).captured;
+      final options = captured.single as Options;
+      expect(options.headers?['Authorization'], 'Bearer my-access-token');
+    });
+
+    test(
+      'should throw ServerException with the real status code on failure',
+      () async {
+        when(
+          () => dio.post<void>(any(), options: any(named: 'options')),
+        ).thenThrow(
+          DioException(
+            requestOptions: requestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {'statusCode': 401, 'message': 'Invalid token.'},
+              statusCode: 401,
+              requestOptions: requestOptions,
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.logout(accessToken: 'invalid-token'),
+          throwsA(
+            isA<ServerException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              401,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(
+          () => dio.post<void>(any(), options: any(named: 'options')),
+        ).thenThrow(
+          DioException(
+            requestOptions: requestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.logout(accessToken: 'my-access-token'),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }

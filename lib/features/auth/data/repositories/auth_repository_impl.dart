@@ -13,10 +13,7 @@ import '../datasources/i_auth_remote_data_source.dart';
 /// five methods: register, login, getCurrentUser,
 /// refreshToken, logout, before any concrete implementation existed.
 /// [register], [login], [getCurrentUser], and
-/// [refreshToken] are now implemented; only [logout]
-/// remains a temporary stub that throws [UnimplementedError], replaced
-/// by real logic. No test exercises that stub — there is no
-/// behaviour yet to verify.
+/// [refreshToken] are now implemented; only [logout].
 ///
 /// [register] orchestrates:
 /// 1. Delegate the network call to [IAuthRemoteDataSource.register].
@@ -241,9 +238,41 @@ class AuthRepositoryImpl implements IAuthRepository {
     }
   }
 
+  /// Terminates the session on both server and device.
+  ///
+  /// Reads the cached access token and, if present, attempts
+  /// `POST /auth/logout` to invalidate the refresh token server-side.
+  /// Any exception from that call ([ServerException] or
+  /// [NetworkException]) is deliberately swallowed, not mapped to a
+  /// [Failure] — per `IAuthRepository.logout`'s own contract, local
+  /// token clearing is unconditional and must never be blocked by a
+  /// server round-trip that failed or a device with no connectivity.
+  ///
+  /// Clearing the local tokens via [IAuthLocalDataSource.clearTokens] is
+  /// the one step in this method that is NOT defensively swallowed: if
+  /// the device's own secure storage cannot be cleared, the user is not
+  /// actually logged out, which is a genuine failure worth surfacing as
+  /// [Failure.cache].
   @override
-  Future<Either<Failure, void>> logout() {
-    // TODO implement later
-    throw UnimplementedError('AuthRepositoryImpl.logout is implemented later.');
+  Future<Either<Failure, void>> logout() async {
+    final accessToken = await _localDataSource.getAccessToken();
+
+    if (accessToken != null) {
+      try {
+        await _remoteDataSource.logout(accessToken: accessToken);
+      } on ServerException {
+        // Swallowed: the server-side session is already unusable to the
+        // caller either way (see doc comment above).
+      } on NetworkException {
+        // Swallowed: no connectivity must never prevent a local logout.
+      }
+    }
+
+    try {
+      await _localDataSource.clearTokens();
+      return const Right(null);
+    } on CacheException catch (exception) {
+      return Left(Failure.cache(message: exception.message));
+    }
   }
 }
