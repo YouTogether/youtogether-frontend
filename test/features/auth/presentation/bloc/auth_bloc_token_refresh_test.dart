@@ -27,7 +27,7 @@ class MockLogoutUseCase extends Mock implements LogoutUseCase {}
 /// verifies the Bloc's own reaction in isolation, mirroring
 /// `auth_bloc_test.dart`'s existing structure for `checkStatusRequested`.
 ///
-/// @competency C2.2.2 — Unit test harness, TDD cycle.
+/// @competency Unit test harness, TDD cycle.
 void main() {
   late MockGetCurrentUserUseCase getCurrentUserUseCase;
   late MockRefreshTokenUseCase refreshTokenUseCase;

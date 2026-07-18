@@ -11,7 +11,7 @@ import 'package:youtogether/core/router/go_router_refresh_stream.dart';
 /// automatically on every [AuthState] emission — not just on
 /// user-initiated navigation.
 ///
-/// @competency C2.2.2 — Unit test harness, TDD cycle.
+/// @competency Unit test harness, TDD cycle.
 void main() {
   group('GoRouterRefreshStream', () {
     test('cancels its stream subscription on dispose (no leak)', () async {
