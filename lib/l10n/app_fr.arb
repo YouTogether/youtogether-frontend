@@ -29,5 +29,17 @@
   "profileMemberSince": "Membre depuis {date}",
   "profileRoleRegistered": "Inscrit",
   "profileRoleGuest": "Invité",
-  "profileLogoutButton": "Se déconnecter"
+  "profileLogoutButton": "Se déconnecter",
+
+  "homeWelcomeMessage": "Bienvenue, {displayName} !",
+  "@homeWelcomeMessage": {
+    "description": "Message de bienvenue affiché sur la page d'accueil.",
+    "placeholders": {
+      "displayName": {
+        "type": "String",
+        "example": "Alice"
+      }
+    }
+  },
+  "logoutButtonLabel": "Se déconnecter"
 }

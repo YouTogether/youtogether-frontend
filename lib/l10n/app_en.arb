@@ -134,5 +134,20 @@
   "profileLogoutButton": "Log out",
   "@profileLogoutButton": {
     "description": "Logout button label on the profile screen."
+  },
+
+  "homeWelcomeMessage": "Welcome, {displayName}!",
+  "@homeWelcomeMessage": {
+    "description": "Welcome message displayed on the home screen.",
+    "placeholders": {
+      "displayName": {
+        "type": "String",
+        "example": "Alice"
+      }
+    }
+  },
+  "logoutButtonLabel": "Log out",
+  "@placeholderHomeLogoutButton": {
+    "description": "Logout button label on the home placeholder screen."
   }
 }
