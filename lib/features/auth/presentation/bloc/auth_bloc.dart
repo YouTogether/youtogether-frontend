@@ -14,31 +14,24 @@ import 'auth_state.dart';
 /// source of truth for whether a session currently exists — consumed by
 /// route guards and the app shell, not tied to any one screen.
 ///
-/// Two handlers are wired so far:
+/// Three handlers are wired:
 /// - `AuthEvent.checkStatusRequested` — restores a previous
 ///   session silently on cold start.
 /// - `AuthEvent.logoutRequested` — terminates the session on
 ///   user request.
+/// - `AuthEvent.tokenRefreshRequested` — dispatched internally by
+///   [AuthInterceptor] on an intercepted 401 (F-INF-T1, closing gap 6 of
+///   ADR-001). See that handler's own doc comment for why it does not
+///   emit [AuthState.loading].
 ///
 /// See `AuthEvent` for which other variants remain unhandled and why.
 ///
-/// ## Scope boundary
-/// The full F-A03 feature also calls for an `App` widget that dispatches
+/// ## Scope boundary (historical — F-A03-T3)
+/// The full F-A03 feature also called for an `App` widget dispatching
 /// `checkStatusRequested` on initialisation, and a `GoRouterRefreshStream`
-/// that re-evaluates route guards on every [AuthState] emission. The full
-/// F-A04 feature calls for a `ProfilePage` whose logout button dispatches
-/// `logoutRequested`. None of this exists yet: this codebase has no
-/// routing package (`go_router` or otherwise), no application shell, and
-/// no `ProfilePage` (a separate, unbuilt feature — F-A05, which adds the
-/// user's username, email, role badge, avatar, and member-since date;
-/// building it here to satisfy this ticket's UI-facing acceptance
-/// criteria would be scope creep well beyond "wire AuthBloc"). Every
-/// screen built so far (`RegisterPage`, `LoginPage`) is wired through
-/// plain constructor callbacks precisely because nothing above them
-/// exists yet. This class is fully ready to be dispatched from wherever
-/// that shell and that page eventually live —
-/// `context.read<AuthBloc>().add(const AuthEvent.logoutRequested())` is
-/// the call `ProfilePage`'s logout button makes once it exists.
+/// re-evaluating route guards on every [AuthState] emission. Both now
+/// exist (`lib/app.dart`, `lib/core/router/go_router_refresh_stream.dart`,
+/// built by F-INF-T1).
 ///
 /// ## checkStatusRequested behaviour
 /// 1. Emit [AuthState.loading].
@@ -55,36 +48,16 @@ import 'auth_state.dart';
 ///    kind — no refresh token cached, or the server rejected it too —
 ///    emits [AuthState.unauthenticated].
 ///
-/// This sequencing, combined with `AuthRepositoryImpl`'s own local
-/// short-circuiting (a missing cached token never reaches the
-/// network at all), satisfies every acceptance path without this class
-/// needing to special-case "no token" itself:
-/// - Valid cached access token → step 2 succeeds directly.
-/// - Expired access token, valid refresh token → step 2 fails, step 3
-///   succeeds.
-/// - Both expired/invalid → step 2 fails, step 3 fails; the repository
-///   layer clears the now-useless cached tokens itself (see
-///   `AuthRepositoryImpl.refreshToken`'s 401 handling) before this
-///   handler emits [AuthState.unauthenticated].
-/// - No cached token at all → both steps fail purely locally, with no
-///   network round-trip, before immediately emitting
-///   [AuthState.unauthenticated].
-///
 /// ## logoutRequested behaviour
-/// 1. Emit [AuthState.loading].
-/// 2. Call `LogoutUseCase`.
-/// 3. On success, emit [AuthState.unauthenticated].
-/// 4. On failure, emit [AuthState.failure] with the received `Failure`
-///    — a deliberate departure from this ticket's literal Definition of
-///    Done ("Calls LogoutUseCase, then emits AuthUnauthenticated"),
-///    which describes only the success path. `LogoutUseCase` /
-///    `AuthRepositoryImpl.logout` can still fail with a
-///    [Failure.cache] if the device's own secure storage cannot
-///    actually be cleared — in that case the user's tokens are *not*
-///    gone, and silently claiming [AuthState.unauthenticated] would be
-///    actively misleading about the true session state. This is the
-///    first real consumer of [AuthState.failure], reserved for exactly
-///    this kind of case since F-A03-T3.
+/// Emits [AuthState.loading], calls `LogoutUseCase`, then emits
+/// [AuthState.unauthenticated] on success or [AuthState.failure] if
+/// `LogoutUseCase` / `AuthRepositoryImpl.logout` can still fail with a
+/// [Failure.cache] if the device's own secure storage cannot
+/// actually be cleared — in that case the user's tokens are *not*
+/// gone, and silently claiming [AuthState.unauthenticated] would be
+/// actively misleading about the true session state. This is the
+/// first real consumer of [AuthState.failure], reserved for exactly
+/// this kind of case since F-A03-T3.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({
     required GetCurrentUserUseCase getCurrentUserUseCase,
@@ -96,6 +69,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        super(const AuthState.initial()) {
     on<AuthCheckStatusRequested>(_onCheckStatusRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
+    on<AuthTokenRefreshRequested>(_onTokenRefreshRequested);
   }
 
   final GetCurrentUserUseCase _getCurrentUserUseCase;
@@ -134,6 +108,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold(
       (failure) => emit(AuthState.failure(failure)),
       (_) => emit(const AuthState.unauthenticated()),
+    );
+  }
+
+  /// Handles a 401 intercepted by [AuthInterceptor].
+  ///
+  /// Deliberately does **not** emit [AuthState.loading] first, unlike
+  /// [_onCheckStatusRequested]: this refresh happens silently in the
+  /// background, potentially while the user is mid-interaction on any
+  /// screen that watches this Bloc's global state (a profile menu, a
+  /// route guard). Emitting `loading` here would flash a session-wide
+  /// loading indicator for a request the user never initiated and may
+  /// not even be aware of — `checkStatusRequested`'s cold-start loading
+  /// state is acceptable because the whole app is already showing a
+  /// splash at that point; this handler has no equivalent justification.
+  ///
+  /// [AuthInterceptor] awaits the next terminal state emitted here
+  /// (`authenticated`, `unauthenticated`, or `failure`) via
+  /// `authBloc.stream.firstWhere(...)` to decide whether to retry the
+  /// original request — see that class for the full collaboration.
+  Future<void> _onTokenRefreshRequested(
+    AuthTokenRefreshRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    final result = await _refreshTokenUseCase(const NoParams());
+
+    result.fold(
+      (failure) => emit(const AuthState.unauthenticated()),
+      (user) => emit(AuthState.authenticated(user)),
     );
   }
 }
