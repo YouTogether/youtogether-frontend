@@ -19,5 +19,4 @@ output-class: AppLocalizations
 # convention of excluding all generated code (*.freezed.dart, *.g.dart).
 output-dir: lib/l10n/generated
 
-synthetic-package: false
 nullable-getter: false

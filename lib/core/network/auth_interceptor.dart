@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../features/auth/data/datasources/i_auth_local_data_source.dart';
-import '../../../features/auth/domain/entities/user_entity.dart';
-import '../../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../../features/auth/presentation/bloc/auth_event.dart';
-import '../../../features/auth/presentation/bloc/auth_state.dart';
+import '../../features/auth/data/datasources/i_auth_local_data_source.dart';
+import '../../features/auth/domain/entities/user_entity.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
+import '../../features/auth/presentation/bloc/auth_state.dart';
 
 /// Dio interceptor attaching the cached access token to every outgoing
 /// request, and silently refreshing the session on an intercepted 401.

@@ -66,9 +66,7 @@ final GetIt sl = GetIt.instance;
 Future<void> initDependencies({required String apiBaseUrl}) async {
   // --- External packages ---
 
-  const secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
-  );
+  const secureStorage = FlutterSecureStorage(aOptions: AndroidOptions());
   sl.registerSingleton<FlutterSecureStorage>(secureStorage);
 
   final dio = Dio(
