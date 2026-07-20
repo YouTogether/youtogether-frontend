@@ -70,4 +70,18 @@ abstract class IRoomRepository {
   ///
   /// @see DeleteRoomUseCase
   Future<Either<Failure, void>> deleteRoom({required String roomId});
+
+  /// Creates an active membership for the caller in the given room, and
+  /// returns the room with its refreshed active member count.
+  ///
+  /// No user id parameter: the joining user is derived server-side from
+  /// the authenticated request, exactly like `createRoom()`'s owner.
+  ///
+  /// - `Left(NotFoundFailure)` — the room does not exist or is
+  ///   soft-deleted (404).
+  /// - `Left(ServerFailure(statusCode: 409))` — the caller already
+  ///   holds an active membership in this room.
+  ///
+  /// @see JoinRoomUseCase
+  Future<Either<Failure, RoomEntity>> joinRoom({required String roomId});
 }
