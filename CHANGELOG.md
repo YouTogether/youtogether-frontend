@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.16.0...v0.17.0) (2026-07-20)
+
+
+### Features
+
+* **infra:** [F-INF-T1] profile route ([#66](https://github.com/YouTogether/youtogether-frontend/issues/66)) ([49eee86](https://github.com/YouTogether/youtogether-frontend/commit/49eee862b9c3b5adeffea339a04e0833d19728fc))
+
 ## [0.16.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.15.0...v0.16.0) (2026-07-20)
 
 
