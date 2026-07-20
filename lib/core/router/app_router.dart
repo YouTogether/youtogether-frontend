@@ -1,3 +1,4 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/domain/usecases/login_usecase.dart';
@@ -7,8 +8,11 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
+import '../../features/room/presentation/bloc/room_bloc.dart';
+import '../../features/room/presentation/bloc/room_event.dart';
+import '../../features/room/presentation/pages/home_page.dart';
 import 'go_router_refresh_stream.dart';
-import 'placeholder_home_page.dart';
 
 /// Route paths, centralised to avoid string-literal drift between the
 /// route table and any `context.go(...)` call site.
@@ -86,6 +90,14 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// "whichever ticket wires the application's route table" both pages
 /// were written in anticipation of.
 ///
+/// [getPublicRoomsUseCase] is threaded through to construct a fresh
+/// [RoomBloc] directly in the `/` route's builder, immediately
+/// dispatching [RoomEvent.fetchPublicRooms] — mirroring how `App`
+/// dispatches `AuthEvent.checkStatusRequested` once on `AuthBloc`, but
+/// scoped to this one route instead of the whole app (see `RoomBloc`'s
+/// own doc for why). This replaces `PlaceholderHomePage` wholesale,
+/// exactly as that file's own doc comment anticipated (F-R01-T3).
+///
 /// `RegisterPage.onNavigateToLogin`, `LoginPage.onNavigateToRegister`,
 /// and both pages' `on*Succeeded` callbacks are wired to `context.go(...)`
 /// here — `checkStatusRequested`/`AuthBloc` re-evaluation of the guard
@@ -101,6 +113,7 @@ GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
   required LoginUseCase loginUseCase,
+  required GetPublicRoomsUseCase getPublicRoomsUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -110,7 +123,12 @@ GoRouter buildAppRouter({
     routes: [
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const PlaceholderHomePage(),
+        builder: (context, state) => BlocProvider(
+          create: (_) =>
+              RoomBloc(getPublicRoomsUseCase: getPublicRoomsUseCase)
+                ..add(const RoomEvent.fetchPublicRooms()),
+          child: const HomePage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.login,
