@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.18.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.17.0...v0.18.0) (2026-07-20)
+
+
+### Features
+
+* **room:** [F-R01-T1] room domain listing ([#68](https://github.com/YouTogether/youtogether-frontend/issues/68)) ([0e6f525](https://github.com/YouTogether/youtogether-frontend/commit/0e6f5252a2882272e4ce96c71afe1a9d0a49b5bc))
+* **room:** [F-R02-T1] addroom usecase ([#70](https://github.com/YouTogether/youtogether-frontend/issues/70)) ([a712255](https://github.com/YouTogether/youtogether-frontend/commit/a7122558feb5d522950f66117b02e70c80363977))
+* **room:** [F-R03-T1] update room usecase ([#72](https://github.com/YouTogether/youtogether-frontend/issues/72)) ([abe2259](https://github.com/YouTogether/youtogether-frontend/commit/abe22598415ece7b1f560c4e353a279be608d0d0))
+
 ## [0.17.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.16.0...v0.17.0) (2026-07-20)
 
 
