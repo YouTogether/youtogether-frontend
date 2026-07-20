@@ -1,29 +1,21 @@
-import 'package:either_dart/either.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/core/router/app_router.dart';
-import 'package:youtogether/core/usecases/usecase.dart';
 import 'package:youtogether/features/auth/domain/entities/user_entity.dart';
-import 'package:youtogether/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:youtogether/features/auth/domain/usecases/login_usecase.dart';
-import 'package:youtogether/features/auth/domain/usecases/logout_usecase.dart';
-import 'package:youtogether/features/auth/domain/usecases/refresh_token_usecase.dart';
 import 'package:youtogether/features/auth/domain/usecases/register_usecase.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_event.dart';
+import 'package:youtogether/features/auth/presentation/bloc/auth_state.dart';
 import 'package:youtogether/features/auth/presentation/pages/login_page.dart';
 import 'package:youtogether/features/auth/presentation/pages/profile_page.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
-class MockGetCurrentUserUseCase extends Mock implements GetCurrentUserUseCase {}
-
-class MockRefreshTokenUseCase extends Mock implements RefreshTokenUseCase {}
-
-class MockLogoutUseCase extends Mock implements LogoutUseCase {}
+class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 
 class MockRegisterUseCase extends Mock implements RegisterUseCase {}
 
@@ -38,17 +30,35 @@ class MockLoginUseCase extends Mock implements LoginUseCase {}
 /// `resolveRedirect` itself already handles `/profile` correctly as a
 /// generic protected route — see `app_router_test.dart` — so these
 /// tests exist specifically to verify the *route table*, not the guard
-/// logic a second time.
+/// logic a second time, and *not* `AuthBloc.checkStatusRequested`'s own
+/// business logic (covered by `auth_bloc_test.dart`).
+///
+/// ## Why `MockAuthBloc`/`whenListen`, not a real `AuthBloc`
+/// An earlier version of this file built a real `AuthBloc` from mocked
+/// use cases, dispatched `AuthEvent.checkStatusRequested()`, and awaited
+/// `authBloc.stream.firstWhere(...)` before pumping — reasoning that
+/// this would avoid racing `ProfilePage`'s indeterminate
+/// `CircularProgressIndicator` fallback (which animates forever and
+/// hangs `pumpAndSettle()` if still on screen when called). It did avoid
+/// that specific race, but introduced a worse one: a bare `await` on a
+/// `Future` that never resolves has no timeout in Dart, so any mismatch
+/// between the mocked use case's stubbed call signature and the
+/// handler's actual invocation — or any additional use case the handler
+/// also happens to call — left the test hanging indefinitely with no
+/// diagnostic at all, rather than the previous version's at least
+/// terminated (if unhelpful) `pumpAndSettle` timeout.
+///
+/// Driving `AuthBloc.state`/`.stream` directly via `bloc_test`'s
+/// `MockBloc` and `whenListen` removes this entire class of failure:
+/// the state is asserted synchronously, with no real event processing,
+/// no asynchronous use case resolution, and nothing to race.
 ///
 /// @competency Unit/widget test harness, TDD cycle.
 /// @competency Route protection as part of the secure prototype.
 void main() {
-  late MockGetCurrentUserUseCase getCurrentUserUseCase;
-  late MockRefreshTokenUseCase refreshTokenUseCase;
-  late MockLogoutUseCase logoutUseCase;
+  late MockAuthBloc authBloc;
   late MockRegisterUseCase registerUseCase;
   late MockLoginUseCase loginUseCase;
-  late AuthBloc authBloc;
 
   final user = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -59,20 +69,9 @@ void main() {
   );
 
   setUp(() {
-    getCurrentUserUseCase = MockGetCurrentUserUseCase();
-    refreshTokenUseCase = MockRefreshTokenUseCase();
-    logoutUseCase = MockLogoutUseCase();
+    authBloc = MockAuthBloc();
     registerUseCase = MockRegisterUseCase();
     loginUseCase = MockLoginUseCase();
-    authBloc = AuthBloc(
-      getCurrentUserUseCase: getCurrentUserUseCase,
-      refreshTokenUseCase: refreshTokenUseCase,
-      logoutUseCase: logoutUseCase,
-    );
-  });
-
-  tearDown(() {
-    authBloc.close();
   });
 
   Future<GoRouter> pumpRouterAt(WidgetTester tester, String location) async {
@@ -83,7 +82,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      BlocProvider.value(
+      BlocProvider<AuthBloc>.value(
         value: authBloc,
         child: MaterialApp.router(
           routerConfig: router,
@@ -104,11 +103,12 @@ void main() {
     testWidgets(
       'renders ProfilePage when navigating to /profile while authenticated',
       (tester) async {
-        when(
-          () => getCurrentUserUseCase(const NoParams()),
-        ).thenAnswer((_) async => Right(user));
+        whenListen(
+          authBloc,
+          const Stream<AuthState>.empty(),
+          initialState: AuthState.authenticated(user),
+        );
 
-        authBloc.add(const AuthEvent.checkStatusRequested());
         await pumpRouterAt(tester, AppRoutes.profile);
 
         expect(find.byType(ProfilePage), findsOneWidget);
@@ -118,14 +118,12 @@ void main() {
     testWidgets('redirects away from /profile to /login when unauthenticated', (
       tester,
     ) async {
-      when(() => getCurrentUserUseCase(const NoParams())).thenAnswer(
-        (_) async => const Left(Failure.auth(message: 'no session')),
-      );
-      when(() => refreshTokenUseCase(const NoParams())).thenAnswer(
-        (_) async => const Left(Failure.auth(message: 'no refresh token')),
+      whenListen(
+        authBloc,
+        const Stream<AuthState>.empty(),
+        initialState: const AuthState.unauthenticated(),
       );
 
-      authBloc.add(const AuthEvent.checkStatusRequested());
       await pumpRouterAt(tester, AppRoutes.profile);
 
       expect(find.byType(ProfilePage), findsNothing);
