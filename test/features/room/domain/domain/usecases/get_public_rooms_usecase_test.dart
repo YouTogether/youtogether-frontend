@@ -9,7 +9,7 @@ import 'package:youtogether/features/room/domain/usecases/get_public_rooms_useca
 
 class MockIRoomRepository extends Mock implements IRoomRepository {}
 
-/// Unit tests for [GetPublicRoomsUseCase] (F-R01-T1 — domain layer).
+/// Unit tests for [GetPublicRoomsUseCase].
 ///
 /// The use case is a thin orchestrator; these tests verify delegation to
 /// [IRoomRepository.getPublicRooms], mirroring

@@ -7,7 +7,7 @@ import 'package:youtogether/features/room/domain/usecases/delete_room_usecase.da
 
 class MockIRoomRepository extends Mock implements IRoomRepository {}
 
-/// Unit tests for [DeleteRoomUseCase] (F-R04-T1 — domain layer).
+/// Unit tests for [DeleteRoomUseCase].
 ///
 /// The use case is a thin orchestrator; these tests verify delegation to
 /// [IRoomRepository.deleteRoom], mirroring
