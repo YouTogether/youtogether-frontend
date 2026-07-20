@@ -61,4 +61,13 @@ abstract class IRoomRepository {
     String? name,
     String? description,
   });
+
+  /// Soft-deletes a room. Only the owner may succeed — a non-owner
+  /// request surfaces as `Left(AuthFailure)` (403), a non-existent or
+  /// already-deleted room as `Left(NotFoundFailure)` (404). Room
+  /// memberships are preserved server-side for audit purposes; this
+  /// method's caller has no need to know that detail.
+  ///
+  /// @see DeleteRoomUseCase
+  Future<Either<Failure, void>> deleteRoom({required String roomId});
 }
