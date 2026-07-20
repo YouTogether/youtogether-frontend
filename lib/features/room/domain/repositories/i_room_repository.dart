@@ -17,6 +17,7 @@ import '../entities/room_entity.dart';
 /// @see RoomRepositoryImpl — data layer implementation
 /// @see GetPublicRoomsUseCase — primary consumer of getPublicRooms()
 /// @see CreateRoomUseCase — primary consumer of createRoom()
+/// @see UpdateRoomUseCase — primary consumer of updateRoom()
 abstract class IRoomRepository {
   /// Returns every active, public room, each annotated with its current
   /// active member count.
@@ -38,5 +39,26 @@ abstract class IRoomRepository {
     required String name,
     required String? description,
     required bool isPublic,
+  });
+
+  /// Updates a room's name and/or description.
+  ///
+  /// `name`/`description` left `null` mean "leave unchanged" — see
+  /// `UpdateRoomParams`'s own documentation of that convention.
+  /// Ownership is not this method's concern: by the time it is called,
+  /// the edit action was only reachable because the caller already
+  /// owns the room (server-side `OwnershipGuard` is the actual
+  /// enforcement; the client-side hidden edit button is defence in
+  /// depth, not the source of truth).
+  ///
+  /// A non-owner request that somehow still reaches this method
+  /// surfaces as `Left(AuthFailure)` (403), per this feature's
+  /// acceptance criteria.
+  ///
+  /// @see UpdateRoomUseCase
+  Future<Either<Failure, RoomEntity>> updateRoom({
+    required String roomId,
+    String? name,
+    String? description,
   });
 }
