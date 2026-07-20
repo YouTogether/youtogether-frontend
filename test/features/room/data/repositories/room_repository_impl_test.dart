@@ -14,7 +14,7 @@ class MockIRoomRemoteDataSource extends Mock implements IRoomRemoteDataSource {}
 /// Mirrors `auth_repository_impl_test.dart`: a mocked remote data
 /// source, verifying the exception-to-[Failure] mapping.
 ///
-/// The other five [IRoomRepository] methods on this class are
+/// The other four [IRoomRepository] methods on this class are
 /// intentionally stubbed with [UnimplementedError] at this stage — see
 /// [RoomRepositoryImpl]'s own class doc — and are therefore not
 /// exercised here; each will get its own test coverage when its
@@ -77,6 +77,97 @@ void main() {
       ).thenThrow(const NetworkException());
 
       final result = await roomRepository.getPublicRooms();
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
+
+  group('RoomRepositoryImpl.createRoom', () {
+    test('should return Right(RoomEntity) on success', () async {
+      when(
+        () => remoteDataSource.createRoom(
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+          isPublic: any(named: 'isPublic'),
+        ),
+      ).thenAnswer((_) async => roomModels.first);
+
+      final result = await roomRepository.createRoom(
+        name: 'Friday Movie Night',
+        description: 'Weekly watch party',
+        isPublic: true,
+      );
+
+      expect(result.isRight, isTrue);
+      expect(result.right.name, 'Friday Movie Night');
+    });
+
+    test(
+      'should delegate to the remote data source with the given fields',
+      () async {
+        when(
+          () => remoteDataSource.createRoom(
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+            isPublic: any(named: 'isPublic'),
+          ),
+        ).thenAnswer((_) async => roomModels.first);
+
+        await roomRepository.createRoom(
+          name: 'Friday Movie Night',
+          description: 'Weekly watch party',
+          isPublic: true,
+        );
+
+        verify(
+          () => remoteDataSource.createRoom(
+            name: 'Friday Movie Night',
+            description: 'Weekly watch party',
+            isPublic: true,
+          ),
+        ).called(1);
+      },
+    );
+
+    test('should map a ServerException to Left(ServerFailure)', () async {
+      when(
+        () => remoteDataSource.createRoom(
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+          isPublic: any(named: 'isPublic'),
+        ),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 400,
+          message: 'name must not exceed 100 characters',
+        ),
+      );
+
+      final result = await roomRepository.createRoom(
+        name: 'Friday Movie Night',
+        description: null,
+        isPublic: true,
+      );
+
+      expect(result.isLeft, isTrue);
+      expect((result.left as ServerFailure).statusCode, 400);
+    });
+
+    test('should map a NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.createRoom(
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+          isPublic: any(named: 'isPublic'),
+        ),
+      ).thenThrow(const NetworkException());
+
+      final result = await roomRepository.createRoom(
+        name: 'Friday Movie Night',
+        description: null,
+        isPublic: true,
+      );
 
       expect(result.isLeft, isTrue);
       expect(result.left, isA<NetworkFailure>());
