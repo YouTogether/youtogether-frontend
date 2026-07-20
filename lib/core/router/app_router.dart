@@ -5,6 +5,7 @@ import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import 'go_router_refresh_stream.dart';
 import 'placeholder_home_page.dart';
@@ -15,6 +16,7 @@ abstract final class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String profile = '/profile';
 }
 
 /// Pure route-guard decision function, extracted from
@@ -34,13 +36,20 @@ abstract final class AppRoutes {
 /// - Authenticated, on `/login` or `/register`: redirect to
 ///   [AppRoutes.home] (an already-authenticated user has no reason to
 ///   see the auth forms).
-/// - Authenticated, elsewhere: no redirect.
+/// - Authenticated, elsewhere (including [AppRoutes.profile]): no
+///   redirect.
 /// - Unauthenticated or failed (`AuthState.unauthenticated` /
 ///   `AuthState.failure` — both mean "no valid session" from the
 ///   router's perspective, see `AuthState.failure`'s own doc comment),
-///   on a protected route: redirect to [AppRoutes.login].
+///   on a protected route (including [AppRoutes.profile]): redirect to
+///   [AppRoutes.login].
 /// - Unauthenticated or failed, already on `/login` or `/register`: no
 ///   redirect.
+///
+/// [AppRoutes.profile] needs no dedicated branch here: it falls out of
+/// the existing "any route that isn't `/login`/`/register`" cases
+/// exactly like [AppRoutes.home] does — only the route table itself
+/// (see [buildAppRouter]) needed to grow, not this decision function.
 String? resolveRedirect(AuthState authState, String matchedLocation) {
   final isAuthRoute =
       matchedLocation == AppRoutes.login ||
@@ -61,6 +70,15 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// makes the router re-evaluate `redirect` on every subsequent
 /// [AuthState] emission — not just on user-initiated navigation. This
 /// closes gaps 3 and 4 of `ADR-001-authentication-infrastructure-deferral.md`.
+///
+/// [AppRoutes.profile] renders [ProfilePage] directly: unlike
+/// [LoginPage]/[RegisterPage], it takes no constructor dependencies (it
+/// reads the ambient `AuthBloc` via `BlocProvider`/`BlocBuilder`
+/// instead), so no further wiring is needed here beyond the route
+/// itself. This route was the one piece of gap 3's remediation still
+/// missing when F-INF-T1's completeness was audited at the start of
+/// Sprint 2 — `ProfilePage` had been fully built and unit-tested since
+/// Sprint 1 (`F-A05-T1`) but was never actually reachable until now.
 ///
 /// [registerUseCase] / [loginUseCase] are threaded through to
 /// `RegisterPage`/`LoginPage` exactly as their own constructors already
@@ -109,6 +127,10 @@ GoRouter buildAppRouter({
           onRegistrationSucceeded: () => context.go(AppRoutes.home),
           onNavigateToLogin: () => context.go(AppRoutes.login),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfilePage(),
       ),
     ],
   );

@@ -14,18 +14,25 @@ import '../bloc/auth_state.dart';
 /// single source of truth for the authenticated user (see `AuthBloc`
 /// class doc).
 ///
-/// ## Route guard — scope boundary
-/// This page as a route protected by
-/// `GoRouter`'s redirect callback (unauthenticated access redirects to
-/// `/`). No routing package exists anywhere in this codebase yet (see
-/// the identical scope boundary already documented on `AuthBloc` for)
-/// — there is nothing to guard a route *with*. As
-/// defence in depth for whenever a router does exist, and to keep this
-/// widget safe to test and render in isolation regardless, [build]
-/// itself never assumes the state is [AuthAuthenticated]: any other
-/// state renders a neutral loading placeholder instead of profile data,
-/// so this page cannot be made to display or leak user information for
-/// a state that is not actually authenticated.
+/// ## Route guard
+/// This page is registered as `AppRoutes.profile` ('/profile') in
+/// `AppRouter`, protected by `GoRouter`'s `redirect` callback exactly
+/// like every other non-auth route: `resolveRedirect` treats any route
+/// that isn't `/login`/`/register` as protected, so unauthenticated
+/// access to `/profile` redirects to `/login` with no dedicated branch
+/// needed for this page specifically (see `resolveRedirect`'s own doc
+/// comment). This route was the one piece of
+/// `ADR-001-authentication-infrastructure-deferral`'s gap 3 remediation
+/// still missing when F-INF-T1's completeness was audited at the start
+/// of Sprint 2 — this page itself was built and fully unit-tested back
+/// but was not reachable until the route was added.
+///
+/// As defence in depth regardless of the guard, and to keep this widget
+/// safe to test and render in isolation, [build] itself never assumes
+/// the state is [AuthAuthenticated]: any other state renders a neutral
+/// loading placeholder instead of profile data, so this page cannot be
+/// made to display or leak user information for a state that is not
+/// actually authenticated.
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
