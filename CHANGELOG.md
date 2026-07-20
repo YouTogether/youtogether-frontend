@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.15.0...v0.16.0) (2026-07-20)
+
+
+### Features
+
+* **infra:** [F-INF-T1] application shell ([#64](https://github.com/YouTogether/youtogether-frontend/issues/64)) ([c49d5cf](https://github.com/YouTogether/youtogether-frontend/commit/c49d5cf1137b5632ddf19822e99e51808e618a8d))
+
 ## [0.15.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.14.0...v0.15.0) (2026-07-13)
 
 
