@@ -18,6 +18,9 @@ import '../entities/room_entity.dart';
 /// @see GetPublicRoomsUseCase — primary consumer of getPublicRooms()
 /// @see CreateRoomUseCase — primary consumer of createRoom()
 /// @see UpdateRoomUseCase — primary consumer of updateRoom()
+/// @see DeleteRoomUseCase — primary consumer of deleteRoom()
+/// @see JoinRoomUseCase — primary consumer of joinRoom()
+/// @see LeaveRoomUseCase — primary consumer of leaveRoom()
 abstract class IRoomRepository {
   /// Returns every active, public room, each annotated with its current
   /// active member count.
@@ -84,4 +87,18 @@ abstract class IRoomRepository {
   ///
   /// @see JoinRoomUseCase
   Future<Either<Failure, RoomEntity>> joinRoom({required String roomId});
+
+  /// Ends the caller's active membership in the given room.
+  ///
+  /// No user id parameter, for the same reason as `joinRoom()`: the
+  /// leaving user is derived server-side from the authenticated
+  /// request.
+  ///
+  /// - `Left(AuthFailure)` — the caller is the room's owner; an owner
+  ///   must delete the room (`deleteRoom()`) rather than leave it.
+  /// - `Left(NotFoundFailure)` — the caller holds no active membership
+  ///   in this room.
+  ///
+  /// @see LeaveRoomUseCase
+  Future<Either<Failure, void>> leaveRoom({required String roomId});
 }
