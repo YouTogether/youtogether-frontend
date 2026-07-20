@@ -49,21 +49,21 @@ Interface contracts for all layers are defined in the [Interface Contracts docum
 
 ## Bounded Contexts
 
-| Context | Scope |
-|---|---|
-| **Authentication** | Account registration, login, session persistence, token refresh, logout |
-| **Room** | Room creation, listing, membership, ownership enforcement |
+| Context                   | Scope                                                                       |
+|---------------------------|-----------------------------------------------------------------------------|
+| **Authentication**        | Account registration, login, session persistence, token refresh, logout     |
+| **Room**                  | Room creation, listing, membership, ownership enforcement                   |
 | **Video Synchronisation** | YouTube IFrame player, Firebase real-time playback state, presence tracking |
 
 ---
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|---|---|---|
+| Tool        | Version              | Notes                                                              |
+|-------------|----------------------|--------------------------------------------------------------------|
 | Flutter SDK | 3.x (stable channel) | [Installation guide](https://docs.flutter.dev/get-started/install) |
-| Dart SDK | Bundled with Flutter | — |
-| lefthook | Latest | Git hooks manager — see [Git Hooks](#git-hooks) |
+| Dart SDK    | Bundled with Flutter | —                                                                  |
+| lefthook    | Latest               | Git hooks manager — see [Git Hooks](#git-hooks)                    |
 
 To verify your Flutter installation:
 
@@ -86,8 +86,8 @@ flutter pub get
 # Install git hooks
 lefthook install
 
-# Run the application (web target)
-flutter run -d chrome
+# Run the application (web target, requires Google chrome browser)
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000/api/v1 --web-port=5000
 ```
 
 Environment variables are loaded from a `.env` file at the project root. 
@@ -126,10 +126,10 @@ This command must be run once after each fresh clone. It is not automatic.
 
 ### Active Hooks
 
-| Hook | Trigger | Behaviour |
-|---|---|---|
+| Hook         | Trigger      | Behaviour                                                                   |
+|--------------|--------------|-----------------------------------------------------------------------------|
 | `commit-msg` | Every commit | Validates the commit message against the Conventional Commits specification |
-| `pre-push` | Every push | Validates the branch name against the project naming convention |
+| `pre-push`   | Every push   | Validates the branch name against the project naming convention             |
 
 ### Commit Message Convention
 
@@ -218,11 +218,11 @@ Tests are written before production code following the TDD red-green-refactor cy
 
 The CI pipeline runs on every push to `main` and on every pull request targeting `main`. It is defined in `.github/workflows/ci.yml`.
 
-| Job | Description | Blocks merge |
-|---|---|---|
-| `analyze` | `dart format` check + `flutter analyze` | Yes |
-| `test` | Full test suite with coverage artefact | Yes |
-| `build-web` | Flutter web release build (main branch only) | No |
+| Job         | Description                                  | Blocks merge |
+|-------------|----------------------------------------------|--------------|
+| `analyze`   | `dart format` check + `flutter analyze`      | Yes          |
+| `test`      | Full test suite with coverage artefact       | Yes          |
+| `build-web` | Flutter web release build (main branch only) | No           |
 
 All jobs in the `analyze` and `test` stages must pass before a pull request is eligible for merge.
 This is enforced by the branch protection ruleset on `main`.
@@ -251,12 +251,12 @@ All work items (features, bugs, tasks) must be tracked as GitHub Issues before a
 
 ### Available Templates
 
-| Template | Use for |
-|---|---|
-| **Epic** | A high-level feature area grouping multiple related issues |
-| **Feature** | A user story or use case to implement |
-| **Task** | A technical sub-task of a feature |
-| **Bug Report** | A defect or regression |
+| Template       | Use for                                                    |
+|----------------|------------------------------------------------------------|
+| **Epic**       | A high-level feature area grouping multiple related issues |
+| **Feature**    | A user story or use case to implement                      |
+| **Task**       | A technical sub-task of a feature                          |
+| **Bug Report** | A defect or regression                                     |
 
 To create an issue, navigate to the **Issues** tab and click **New issue**. Select the appropriate template. All mandatory fields must be completed before the issue is submitted.
 
@@ -285,20 +285,20 @@ Labels are used to categorise issues by type and bounded context. Priority and R
 
 **Type labels:**
 
-| Label | Usage |
-|---|---|
-| `epic` | High-level feature grouping |
-| `feature` | User story or use case |
-| `task` | Technical sub-task |
-| `bug` | Defect or regression |
-| `test` | Test-only issue |
-| `docs` | Documentation |
-| `infra` | Infrastructure or tooling |
+| Label     | Usage                       |
+|-----------|-----------------------------|
+| `epic`    | High-level feature grouping |
+| `feature` | User story or use case      |
+| `task`    | Technical sub-task          |
+| `bug`     | Defect or regression        |
+| `test`    | Test-only issue             |
+| `docs`    | Documentation               |
+| `infra`   | Infrastructure or tooling   |
 
 **Bounded context labels:**
 
-| Label | Usage |
-|---|---|
-| `auth` | Authentication bounded context |
-| `room` | Room bounded context |
+| Label        | Usage                                 |
+|--------------|---------------------------------------|
+| `auth`       | Authentication bounded context        |
+| `room`       | Room bounded context                  |
 | `video-sync` | Video Synchronisation bounded context |
