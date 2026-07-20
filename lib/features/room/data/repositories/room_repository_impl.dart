@@ -60,10 +60,25 @@ class RoomRepositoryImpl implements IRoomRepository {
     required String name,
     required String? description,
     required bool isPublic,
-  }) {
-    throw UnimplementedError(
-      'RoomRepositoryImpl.createRoom will be implemented later.',
-    );
+  }) async {
+    try {
+      final model = await _remoteDataSource.createRoom(
+        name: name,
+        description: description,
+        isPublic: isPublic,
+      );
+
+      return Right(model.toDomain());
+    } on ServerException catch (exception) {
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    }
   }
 
   @override

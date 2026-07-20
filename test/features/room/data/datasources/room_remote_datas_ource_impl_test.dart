@@ -124,4 +124,164 @@ void main() {
       );
     });
   });
+
+  group('RoomRemoteDataSourceImpl.createRoom', () {
+    final createRequestOptions = RequestOptions(path: '/rooms');
+
+    Map<String, dynamic> buildCreateSuccessBody() => {
+      'id': '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f',
+      'name': 'Friday Movie Night',
+      'description': 'Weekly watch party',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 1,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-01T00:00:00.000Z',
+    };
+
+    test('should POST to /rooms with the correct request body', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => Response(
+          data: buildCreateSuccessBody(),
+          statusCode: 201,
+          requestOptions: createRequestOptions,
+        ),
+      );
+
+      await dataSource.createRoom(
+        name: 'Friday Movie Night',
+        description: 'Weekly watch party',
+        isPublic: true,
+      );
+
+      verify(
+        () => dio.post<Map<String, dynamic>>(
+          '/rooms',
+          data: {
+            'name': 'Friday Movie Night',
+            'description': 'Weekly watch party',
+            'isPublic': true,
+          },
+        ),
+      ).called(1);
+    });
+
+    test(
+      'should send a null description unchanged in the request body',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildCreateSuccessBody(),
+            statusCode: 201,
+            requestOptions: createRequestOptions,
+          ),
+        );
+
+        await dataSource.createRoom(
+          name: 'Friday Movie Night',
+          description: null,
+          isPublic: true,
+        );
+
+        verify(
+          () => dio.post<Map<String, dynamic>>(
+            '/rooms',
+            data: {
+              'name': 'Friday Movie Night',
+              'description': null,
+              'isPublic': true,
+            },
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'should return a RoomModel parsed from the response body on 201',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildCreateSuccessBody(),
+            statusCode: 201,
+            requestOptions: createRequestOptions,
+          ),
+        );
+
+        final result = await dataSource.createRoom(
+          name: 'Friday Movie Night',
+          description: 'Weekly watch party',
+          isPublic: true,
+        );
+
+        expect(result.name, 'Friday Movie Night');
+        expect(result.memberCount, 1);
+      },
+    );
+
+    test(
+      'should throw ServerException with statusCode 400 on invalid input',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: createRequestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {
+                'statusCode': 400,
+                'message': ['name must not exceed 100 characters'],
+              },
+              statusCode: 400,
+              requestOptions: createRequestOptions,
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.createRoom(
+            name: List.filled(101, 'a').join(),
+            description: null,
+            isPublic: true,
+          ),
+          throwsA(
+            isA<ServerException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              400,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: createRequestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.createRoom(
+            name: 'Friday Movie Night',
+            description: null,
+            isPublic: true,
+          ),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }

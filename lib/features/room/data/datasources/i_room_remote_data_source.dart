@@ -18,4 +18,15 @@ abstract class IRoomRemoteDataSource {
   /// backend), not via a client-supplied flag. No request body or
   /// parameter is needed here.
   Future<List<RoomModel>> getPublicRooms();
+
+  /// Creates a new room via `POST /rooms`.
+  ///
+  /// `description` is sent as-is, including `null` — the backend's
+  /// `CreateRoomDto.description` is `@IsOptional()`, so a `null` JSON
+  /// value is accepted identically to an omitted field.
+  Future<RoomModel> createRoom({
+    required String name,
+    required String? description,
+    required bool isPublic,
+  });
 }
