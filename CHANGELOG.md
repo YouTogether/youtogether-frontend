@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.18.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.17.0...v0.18.0) (2026-07-20)
+
+
+### Features
+
+* **room:** [F-R01-T1] room domain listing ([#68](https://github.com/YouTogether/youtogether-frontend/issues/68)) ([0e6f525](https://github.com/YouTogether/youtogether-frontend/commit/0e6f5252a2882272e4ce96c71afe1a9d0a49b5bc))
+* **room:** [F-R02-T1] addroom usecase ([#70](https://github.com/YouTogether/youtogether-frontend/issues/70)) ([a712255](https://github.com/YouTogether/youtogether-frontend/commit/a7122558feb5d522950f66117b02e70c80363977))
+* **room:** [F-R03-T1] update room usecase ([#72](https://github.com/YouTogether/youtogether-frontend/issues/72)) ([abe2259](https://github.com/YouTogether/youtogether-frontend/commit/abe22598415ece7b1f560c4e353a279be608d0d0))
+* **room:** [F-R04-T1] delete room usecase ([#74](https://github.com/YouTogether/youtogether-frontend/issues/74)) ([bed9ff8](https://github.com/YouTogether/youtogether-frontend/commit/bed9ff8e56b656eda0e916038b71040f44ad835a))
+* **room:** [F-R05-T1] join room usecase ([#76](https://github.com/YouTogether/youtogether-frontend/issues/76)) ([023c631](https://github.com/YouTogether/youtogether-frontend/commit/023c631997e7f5f3b38b65434ee0b38e31c9edba))
+* **room:** [F-R06-T1] leave room usecase ([#78](https://github.com/YouTogether/youtogether-frontend/issues/78)) ([8f098e3](https://github.com/YouTogether/youtogether-frontend/commit/8f098e353d3be609190dcf2cd7e5446f7dab024a))
+
 ## [0.17.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.16.0...v0.17.0) (2026-07-20)
 
 
