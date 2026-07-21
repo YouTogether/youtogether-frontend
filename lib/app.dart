@@ -11,6 +11,7 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/room/domain/usecases/create_room_usecase.dart';
 import 'features/room/domain/usecases/get_public_rooms_usecase.dart';
+import 'features/room/domain/usecases/get_room_by_id_usecase.dart';
 
 /// Application root widget.
 ///
@@ -51,6 +52,7 @@ class _AppState extends State<App> {
       loginUseCase: sl<LoginUseCase>(),
       getPublicRoomsUseCase: sl<GetPublicRoomsUseCase>(),
       createRoomUseCase: sl<CreateRoomUseCase>(),
+      getRoomByIdUseCase: sl<GetRoomByIdUseCase>(),
     );
   }
 
