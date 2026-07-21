@@ -8,8 +8,7 @@ import 'package:youtogether/features/room/data/repositories/room_repository_impl
 
 class MockIRoomRemoteDataSource extends Mock implements IRoomRemoteDataSource {}
 
-/// Unit tests for [RoomRepositoryImpl.getPublicRooms]
-/// (F-R01-T2 — data layer).
+/// Unit tests for [RoomRepositoryImpl.getPublicRooms].
 ///
 /// Mirrors `auth_repository_impl_test.dart`: a mocked remote data
 /// source, verifying the exception-to-[Failure] mapping.
@@ -18,8 +17,10 @@ class MockIRoomRemoteDataSource extends Mock implements IRoomRemoteDataSource {}
 /// intentionally stubbed with [UnimplementedError] at this stage — see
 /// [RoomRepositoryImpl]'s own class doc — and are therefore not
 /// exercised here; each will get its own test coverage when its
-/// corresponding task (F-R02-T2 through F-R06-T2) implements it for
-/// real.
+/// corresponding task implements it for
+/// real. `getRoomById` (this suite's own subject) was never stubbed —
+/// it was added and implemented directly in the same task, since it
+/// did not exist on `IRoomRepository` before this backlog-gap fix.
 ///
 /// @competency Unit test harness, TDD cycle.
 void main() {
@@ -312,6 +313,54 @@ void main() {
         roomId: updatedRoom.id,
         name: 'New Name',
       );
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
+
+  group('RoomRepositoryImpl.getRoomById', () {
+    final room = RoomModel.fromJson({
+      'id': '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f',
+      'name': 'Friday Movie Night',
+      'description': 'Weekly watch party',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 2,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-01T00:00:00.000Z',
+    });
+
+    test('should return Right(RoomEntity) on success', () async {
+      when(
+        () => remoteDataSource.getRoomById(roomId: any(named: 'roomId')),
+      ).thenAnswer((_) async => room);
+
+      final result = await roomRepository.getRoomById(roomId: room.id);
+
+      expect(result.isRight, isTrue);
+      expect(result.right.name, 'Friday Movie Night');
+    });
+
+    test('should map a 404 ServerException to Left(NotFoundFailure)', () async {
+      when(
+        () => remoteDataSource.getRoomById(roomId: any(named: 'roomId')),
+      ).thenThrow(
+        const ServerException(statusCode: 404, message: 'Room not found.'),
+      );
+
+      final result = await roomRepository.getRoomById(roomId: 'unknown-id');
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NotFoundFailure>());
+    });
+
+    test('should map a NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.getRoomById(roomId: any(named: 'roomId')),
+      ).thenThrow(const NetworkException());
+
+      final result = await roomRepository.getRoomById(roomId: room.id);
 
       expect(result.isLeft, isTrue);
       expect(result.left, isA<NetworkFailure>());
