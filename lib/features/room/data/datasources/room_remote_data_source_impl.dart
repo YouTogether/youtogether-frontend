@@ -17,8 +17,12 @@ import 'i_room_remote_data_source.dart';
 ///
 /// Grows one method per task, mirroring [IRoomRemoteDataSource] itself:
 /// - `getPublicRooms()`
-/// - `createRoom()`, `updateRoom()`, `deleteRoom()`, `joinRoom()`,
-///   `leaveRoom()`
+/// - `createRoom()`,
+/// - `updateRoom()`,
+/// - `getRoomById()`
+/// - `deleteRoom()`,
+/// - `joinRoom()`,
+/// - `leaveRoom()`
 class RoomRemoteDataSourceImpl implements IRoomRemoteDataSource {
   const RoomRemoteDataSourceImpl(this._dio);
 
@@ -72,6 +76,17 @@ class RoomRemoteDataSourceImpl implements IRoomRemoteDataSource {
         // `null` into a non-nullable column.
         data: {'name': ?name, 'description': ?description},
       );
+
+      return RoomModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
+  @override
+  Future<RoomModel> getRoomById({required String roomId}) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/rooms/$roomId');
 
       return RoomModel.fromJson(response.data!);
     } on DioException catch (exception) {

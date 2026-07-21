@@ -45,4 +45,11 @@ abstract class IRoomRemoteDataSource {
     String? name,
     String? description,
   });
+
+  /// Fetches a single room's details via `GET /rooms/:id`.
+  ///
+  /// No authentication required — mirrors the backend controller's own
+  /// documentation of that route. Throws [ServerException] with
+  /// `statusCode: 404` for a non-existent or soft-deleted room.
+  Future<RoomModel> getRoomById({required String roomId});
 }
