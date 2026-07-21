@@ -136,24 +136,24 @@
     "description": "Logout button label on the profile screen."
   },
 
-  "homeEmptyStateMessage": "No public rooms available right now.",
+  "homeEmptyStateMessage": "No public rooms available right now. Be the first to create one!",
   "@homeEmptyStateMessage": {
-    "description": "Shown on HomePage (F-R01-T3) when RoomState.loaded carries an empty room list. Deliberately does not suggest \"create one\" — guests and unauthenticated visitors can see this state too, and cannot create rooms."
+    "description": "Displayed on HomePage when RoomState.loaded(rooms) has an empty list (F-R01-T3)."
   },
 
-  "homeErrorMessage": "We couldn't load the rooms. Please try again.",
+  "homeErrorMessage": "We couldn't load the room list. Please try again.",
   "@homeErrorMessage": {
-    "description": "Shown on HomePage (F-R01-T3) for RoomState.failure, regardless of the underlying Failure subtype — mirrors the other pages' convention of never rendering a raw Failure.message, alongside a retry action (homeRetryButtonLabel)."
+    "description": "Displayed on HomePage for RoomState.failure(any Failure subtype). Deliberately generic per the Failure internationalisation convention — never renders the raw Failure.message."
   },
 
   "homeRetryButtonLabel": "Retry",
   "@homeRetryButtonLabel": {
-    "description": "Retry button label in HomePage's error state (F-R01-T3); dispatches RoomEvent.fetchPublicRooms() again."
+    "description": "Retry button label shown alongside homeErrorMessage on HomePage."
   },
 
   "homeRoomCardMemberCount": "{count, plural, =0{No members} =1{1 member} other{{count} members}}",
   "@homeRoomCardMemberCount": {
-    "description": "Member count shown on each RoomCard in the HomePage listing (F-R01-T3).",
+    "description": "Member count shown on RoomCard (HomePage) and RoomDetailPage.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -199,16 +199,31 @@
 
   "createRoomAuthErrorMessage": "You must be signed in to create a room.",
   "@createRoomAuthErrorMessage": {
-    "description": "SnackBar message for CreateRoomState.failure(AuthFailure). Not expected in practice while the create button stays hidden for guests/unauthenticated visitors and while /rooms/create carries no role-specific server-side check beyond JwtAuthGuard — see the guest-access gap noted in the Sprint 2 planning document — but the exhaustive switch must still handle it."
+    "description": "SnackBar message for CreateRoomState.failure(AuthFailure)."
   },
 
   "createRoomNotFoundErrorMessage": "Something went wrong. Please try again.",
   "@createRoomNotFoundErrorMessage": {
-    "description": "SnackBar message for CreateRoomState.failure(NotFoundFailure) — not expected to occur for room creation in practice, but the exhaustive switch must still handle it."
+    "description": "SnackBar message for CreateRoomState.failure(NotFoundFailure) — not expected in practice for a creation request, but the exhaustive switch must still handle it."
   },
 
   "createRoomGenericErrorMessage": "Something went wrong. Please try again.",
   "@createRoomGenericErrorMessage": {
-    "description": "Fallback SnackBar message for any other Failure subtype (CacheFailure, FirebaseFailure) that createRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
+    "description": "Fallback SnackBar message for any other Failure subtype (ValidationFailure reaching the SnackBar branch, CacheFailure, FirebaseFailure) that createRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
+  },
+
+  "roomDetailOwnerBadgeLabel": "Owner",
+  "@roomDetailOwnerBadgeLabel": {
+    "description": "Badge label shown on RoomDetailPage when the current authenticated user owns the room."
+  },
+
+  "roomDetailErrorMessage": "We couldn't load this room. Please try again.",
+  "@roomDetailErrorMessage": {
+    "description": "Displayed on RoomDetailPage for RoomDetailState.failure(any Failure subtype), including a non-existent or deleted room (NotFoundFailure). Deliberately generic — never renders the raw Failure.message."
+  },
+
+  "roomDetailRetryButtonLabel": "Retry",
+  "@roomDetailRetryButtonLabel": {
+    "description": "Retry button label shown alongside roomDetailErrorMessage on RoomDetailPage."
   }
 }
