@@ -14,7 +14,7 @@ class MockIRoomRemoteDataSource extends Mock implements IRoomRemoteDataSource {}
 /// Mirrors `auth_repository_impl_test.dart`: a mocked remote data
 /// source, verifying the exception-to-[Failure] mapping.
 ///
-/// The other four [IRoomRepository] methods on this class are
+/// The other three [IRoomRepository] methods on this class are
 /// intentionally stubbed with [UnimplementedError] at this stage — see
 /// [RoomRepositoryImpl]'s own class doc — and are therefore not
 /// exercised here; each will get its own test coverage when its
@@ -167,6 +167,150 @@ void main() {
         name: 'Friday Movie Night',
         description: null,
         isPublic: true,
+      );
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
+
+  group('RoomRepositoryImpl.updateRoom', () {
+    final updatedRoom = RoomModel.fromJson({
+      'id': '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f',
+      'name': 'Renamed Movie Night',
+      'description': 'Updated description',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 2,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-05T00:00:00.000Z',
+    });
+
+    test('should return Right(RoomEntity) on success', () async {
+      when(
+        () => remoteDataSource.updateRoom(
+          roomId: any(named: 'roomId'),
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+        ),
+      ).thenAnswer((_) async => updatedRoom);
+
+      final result = await roomRepository.updateRoom(
+        roomId: updatedRoom.id,
+        name: 'Renamed Movie Night',
+      );
+
+      expect(result.isRight, isTrue);
+      expect(result.right.name, 'Renamed Movie Night');
+    });
+
+    test(
+      'should delegate to the remote data source with the given fields',
+      () async {
+        when(
+          () => remoteDataSource.updateRoom(
+            roomId: any(named: 'roomId'),
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+          ),
+        ).thenAnswer((_) async => updatedRoom);
+
+        await roomRepository.updateRoom(
+          roomId: updatedRoom.id,
+          description: 'Updated description',
+        );
+
+        verify(
+          () => remoteDataSource.updateRoom(
+            roomId: updatedRoom.id,
+            name: null,
+            description: 'Updated description',
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'should map a 403 ServerException to Left(AuthFailure) (non-owner)',
+      () async {
+        when(
+          () => remoteDataSource.updateRoom(
+            roomId: any(named: 'roomId'),
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+          ),
+        ).thenThrow(
+          const ServerException(
+            statusCode: 403,
+            message: 'Only the owner of this room may perform this action.',
+          ),
+        );
+
+        final result = await roomRepository.updateRoom(
+          roomId: updatedRoom.id,
+          name: 'Hijacked Name',
+        );
+
+        expect(result.isLeft, isTrue);
+        expect(result.left, isA<AuthFailure>());
+      },
+    );
+
+    test('should map a 404 ServerException to Left(NotFoundFailure)', () async {
+      when(
+        () => remoteDataSource.updateRoom(
+          roomId: any(named: 'roomId'),
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+        ),
+      ).thenThrow(
+        const ServerException(statusCode: 404, message: 'Room not found.'),
+      );
+
+      final result = await roomRepository.updateRoom(
+        roomId: 'unknown-id',
+        name: 'Does Not Matter',
+      );
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NotFoundFailure>());
+    });
+
+    test(
+      'should map any other ServerException to the generic Left(ServerFailure)',
+      () async {
+        when(
+          () => remoteDataSource.updateRoom(
+            roomId: any(named: 'roomId'),
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+          ),
+        ).thenThrow(
+          const ServerException(statusCode: 400, message: 'name too long'),
+        );
+
+        final result = await roomRepository.updateRoom(
+          roomId: updatedRoom.id,
+          name: 'a'.padRight(101, 'a'),
+        );
+
+        expect(result.isLeft, isTrue);
+        expect((result.left as ServerFailure).statusCode, 400);
+      },
+    );
+
+    test('should map a NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.updateRoom(
+          roomId: any(named: 'roomId'),
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+        ),
+      ).thenThrow(const NetworkException());
+
+      final result = await roomRepository.updateRoom(
+        roomId: updatedRoom.id,
+        name: 'New Name',
       );
 
       expect(result.isLeft, isTrue);
