@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'l10n/generated/app_localizations.dart';
 import 'core/di/injection_container.dart';
 import 'core/router/app_router.dart';
 import 'features/auth/domain/usecases/login_usecase.dart';
 import 'features/auth/domain/usecases/register_usecase.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
-import 'l10n/generated/app_localizations.dart';
+import 'features/room/domain/usecases/get_public_rooms_usecase.dart';
 
 /// Application root widget.
 ///
@@ -47,6 +48,7 @@ class _AppState extends State<App> {
       authBloc: _authBloc,
       registerUseCase: sl<RegisterUseCase>(),
       loginUseCase: sl<LoginUseCase>(),
+      getPublicRoomsUseCase: sl<GetPublicRoomsUseCase>(),
     );
   }
 

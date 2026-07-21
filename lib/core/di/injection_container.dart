@@ -15,6 +15,11 @@ import '../../features/auth/domain/usecases/refresh_token_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../network/auth_interceptor.dart';
+import '../../features/room/data/datasources/i_room_remote_data_source.dart';
+import '../../features/room/data/datasources/room_remote_data_source_impl.dart';
+import '../../features/room/data/repositories/room_repository_impl.dart';
+import '../../features/room/domain/repositories/i_room_repository.dart';
+import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 
 /// Application-wide service locator.
 ///
@@ -137,4 +142,24 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
     dio: dio,
   );
   dio.interceptors.add(authInterceptor);
+
+  // --- Room bounded context ---
+  //
+  // Reuses the same `Dio` singleton constructed above — already carrying
+  // the `AuthInterceptor`, so every Room request gets its Authorization
+  // header attached automatically, with no manual token threading (the
+  // problem gap 5 of ADR-001 solved for Authentication applies here for
+  // free). `RoomBloc` itself is deliberately NOT registered here — see
+  // its own class doc for why it is scoped to the `/` route instead of
+  // being an app-wide singleton like `AuthBloc`.
+
+  sl.registerLazySingleton<IRoomRemoteDataSource>(
+    () => RoomRemoteDataSourceImpl(sl()),
+  );
+
+  sl.registerLazySingleton<IRoomRepository>(
+    () => RoomRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  sl.registerLazySingleton(() => GetPublicRoomsUseCase(sl()));
 }

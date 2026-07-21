@@ -1,3 +1,4 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/domain/usecases/login_usecase.dart';
@@ -7,8 +8,11 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
+import '../../features/room/presentation/bloc/room_bloc.dart';
+import '../../features/room/presentation/bloc/room_event.dart';
+import '../../features/room/presentation/pages/home_page.dart';
 import 'go_router_refresh_stream.dart';
-import 'placeholder_home_page.dart';
 
 /// Route paths, centralised to avoid string-literal drift between the
 /// route table and any `context.go(...)` call site.
@@ -33,33 +37,42 @@ abstract final class AppRoutes {
 ///   start has not resolved yet; redirecting to `/login` here would
 ///   flash the login screen for a fraction of a second even for a user
 ///   with a perfectly valid cached session, on every cold start.
+/// - [AppRoutes.home] is a **public** route, reachable by any visitor
+///   regardless of [AuthState] — per F-R01's own acceptance criteria
+///   ("As any user, authenticated or guest, I want to see a list of
+///   public rooms"). It is never redirected away from for being
+///   unauthenticated, unlike every other non-auth-form route.
 /// - Authenticated, on `/login` or `/register`: redirect to
 ///   [AppRoutes.home] (an already-authenticated user has no reason to
-///   see the auth forms).
+///   see the auth forms). Authenticated on [AppRoutes.home] itself: no
+///   redirect — an authenticated user can view the room listing too.
 /// - Authenticated, elsewhere (including [AppRoutes.profile]): no
 ///   redirect.
 /// - Unauthenticated or failed (`AuthState.unauthenticated` /
 ///   `AuthState.failure` — both mean "no valid session" from the
-///   router's perspective, see `AuthState.failure`'s own doc comment),
-///   on a protected route (including [AppRoutes.profile]): redirect to
-///   [AppRoutes.login].
-/// - Unauthenticated or failed, already on `/login` or `/register`: no
-///   redirect.
+///   router's perspective, see `AuthState.failure`'s own doc comment):
+///   redirected to [AppRoutes.login] only when on a genuinely protected
+///   route (currently just [AppRoutes.profile]) — never from
+///   [AppRoutes.home], [AppRoutes.login], or [AppRoutes.register].
 ///
 /// [AppRoutes.profile] needs no dedicated branch here: it falls out of
-/// the existing "any route that isn't `/login`/`/register`" cases
-/// exactly like [AppRoutes.home] does — only the route table itself
-/// (see [buildAppRouter]) needed to grow, not this decision function.
+/// the "anything that isn't home/login/register" case below. Any
+/// future protected route added to [buildAppRouter] similarly needs no
+/// change here, only an addition to the route table itself — but a
+/// future *public* route (mirroring [AppRoutes.home]) would need an
+/// explicit addition to `isPublicRoute` below, exactly as this fix
+/// added `AppRoutes.home` to it.
 String? resolveRedirect(AuthState authState, String matchedLocation) {
-  final isAuthRoute =
+  final isAuthFormRoute =
       matchedLocation == AppRoutes.login ||
       matchedLocation == AppRoutes.register;
+  final isPublicRoute = isAuthFormRoute || matchedLocation == AppRoutes.home;
 
   return switch (authState) {
     AuthInitial() || AuthLoading() => null,
-    AuthAuthenticated() => isAuthRoute ? AppRoutes.home : null,
+    AuthAuthenticated() => isAuthFormRoute ? AppRoutes.home : null,
     AuthUnauthenticated() ||
-    AuthOperationFailure() => isAuthRoute ? null : AppRoutes.login,
+    AuthOperationFailure() => isPublicRoute ? null : AppRoutes.login,
   };
 }
 
@@ -76,15 +89,23 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// reads the ambient `AuthBloc` via `BlocProvider`/`BlocBuilder`
 /// instead), so no further wiring is needed here beyond the route
 /// itself. This route was the one piece of gap 3's remediation still
-/// missing when F-INF-T1's completeness was audited at the start of
-/// Sprint 2 — `ProfilePage` had been fully built and unit-tested since
-/// Sprint 1 (`F-A05-T1`) but was never actually reachable until now.
+/// missing when F-INF-T1's completeness was audited —
+/// `ProfilePage` had been fully built and unit-tested
+/// but was never actually reachable until now.
 ///
 /// [registerUseCase] / [loginUseCase] are threaded through to
 /// `RegisterPage`/`LoginPage` exactly as their own constructors already
 /// require (see those classes' doc comments) — this router is the
 /// "whichever ticket wires the application's route table" both pages
 /// were written in anticipation of.
+///
+/// [getPublicRoomsUseCase] is threaded through to construct a fresh
+/// [RoomBloc] directly in the `/` route's builder, immediately
+/// dispatching [RoomEvent.fetchPublicRooms] — mirroring how `App`
+/// dispatches `AuthEvent.checkStatusRequested` once on `AuthBloc`, but
+/// scoped to this one route instead of the whole app (see `RoomBloc`'s
+/// own doc for why). This replaces `PlaceholderHomePage` wholesale,
+/// exactly as that file's own doc comment anticipated (F-R01-T3).
 ///
 /// `RegisterPage.onNavigateToLogin`, `LoginPage.onNavigateToRegister`,
 /// and both pages' `on*Succeeded` callbacks are wired to `context.go(...)`
@@ -101,6 +122,7 @@ GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
   required LoginUseCase loginUseCase,
+  required GetPublicRoomsUseCase getPublicRoomsUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -110,7 +132,12 @@ GoRouter buildAppRouter({
     routes: [
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const PlaceholderHomePage(),
+        builder: (context, state) => BlocProvider(
+          create: (_) =>
+              RoomBloc(getPublicRoomsUseCase: getPublicRoomsUseCase)
+                ..add(const RoomEvent.fetchPublicRooms()),
+          child: const HomePage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.login,

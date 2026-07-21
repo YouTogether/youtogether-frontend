@@ -44,14 +44,29 @@ void main() {
       expect(resolveRedirect(AuthState.authenticated(user), '/register'), '/');
     });
 
-    test('does not redirect when already on a protected route', () {
+    test('does not redirect when already on the home route', () {
       expect(resolveRedirect(AuthState.authenticated(user), '/'), isNull);
+    });
+
+    test('does not redirect when already on a protected route', () {
+      expect(
+        resolveRedirect(AuthState.authenticated(user), '/profile'),
+        isNull,
+      );
     });
   });
 
   group('resolveRedirect — unauthenticated', () {
-    test('redirects to /login from a protected route', () {
-      expect(resolveRedirect(const AuthState.unauthenticated(), '/'), '/login');
+    test('does not redirect from the home route: it is public, viewable by '
+        'any visitor (F-R01 acceptance criteria)', () {
+      expect(resolveRedirect(const AuthState.unauthenticated(), '/'), isNull);
+    });
+
+    test('redirects to /login from a protected route (e.g. /profile)', () {
+      expect(
+        resolveRedirect(const AuthState.unauthenticated(), '/profile'),
+        '/login',
+      );
     });
 
     test('does not redirect when already on /login', () {
@@ -70,12 +85,23 @@ void main() {
   });
 
   group('resolveRedirect — failure', () {
+    test('does not redirect from the home route: it is public even when the '
+        'session check itself failed', () {
+      expect(
+        resolveRedirect(
+          const AuthState.failure(Failure.cache(message: 'irrelevant')),
+          '/',
+        ),
+        isNull,
+      );
+    });
+
     test('treats AuthState.failure the same as unauthenticated: redirects '
         'to /login from a protected route', () {
       expect(
         resolveRedirect(
           const AuthState.failure(Failure.cache(message: 'irrelevant')),
-          '/',
+          '/profile',
         ),
         '/login',
       );
