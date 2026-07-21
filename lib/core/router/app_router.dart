@@ -8,9 +8,11 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/room/domain/usecases/create_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/presentation/bloc/room_bloc.dart';
 import '../../features/room/presentation/bloc/room_event.dart';
+import '../../features/room/presentation/pages/create_room_page.dart';
 import '../../features/room/presentation/pages/home_page.dart';
 import 'go_router_refresh_stream.dart';
 
@@ -21,6 +23,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String profile = '/profile';
+  static const String createRoom = '/rooms/create';
 }
 
 /// Pure route-guard decision function, extracted from
@@ -107,6 +110,14 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// own doc for why). This replaces `PlaceholderHomePage` wholesale,
 /// exactly as that file's own doc comment anticipated (F-R01-T3).
 ///
+/// [createRoomUseCase] is threaded through to `CreateRoomPage`
+/// (`AppRoutes.createRoom`), mirroring [registerUseCase]/[loginUseCase].
+/// Its `onRoomCreated` callback navigates home
+/// (`context.go(AppRoutes.home)`) — see `CreateRoomPage`'s own doc for
+/// why this is the pragmatic choice pending a `RoomDetailPage` that
+/// does not exist yet, and why it also satisfies "refresh the room
+/// list" for free.
+///
 /// `RegisterPage.onNavigateToLogin`, `LoginPage.onNavigateToRegister`,
 /// and both pages' `on*Succeeded` callbacks are wired to `context.go(...)`
 /// here — `checkStatusRequested`/`AuthBloc` re-evaluation of the guard
@@ -123,6 +134,7 @@ GoRouter buildAppRouter({
   required RegisterUseCase registerUseCase,
   required LoginUseCase loginUseCase,
   required GetPublicRoomsUseCase getPublicRoomsUseCase,
+  required CreateRoomUseCase createRoomUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -158,6 +170,13 @@ GoRouter buildAppRouter({
       GoRoute(
         path: AppRoutes.profile,
         builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.createRoom,
+        builder: (context, state) => CreateRoomPage(
+          createRoomUseCase: createRoomUseCase,
+          onRoomCreated: (room) => context.go(AppRoutes.home),
+        ),
       ),
     ],
   );
