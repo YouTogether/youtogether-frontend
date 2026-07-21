@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
-import '../../../room/presentation/cubit/room_detail_cubit.dart';
-import '../../../room/presentation/cubit/room_detail_state.dart';
+import '../cubit/room_detail_cubit.dart';
+import '../cubit/room_detail_state.dart';
 
 /// Room detail screen content, driven by the [RoomDetailCubit] and
 /// [AuthBloc] provided by ancestor `BlocProvider`s (normally
@@ -37,63 +39,67 @@ class RoomDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    return Scaffold(
-      body: BlocBuilder<RoomDetailCubit, RoomDetailState>(
-        builder: (context, state) {
-          return switch (state) {
+    return BlocBuilder<RoomDetailCubit, RoomDetailState>(
+      builder: (context, state) {
+        return Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              key: const Key('roomDetailBackButton'),
+              icon: const Icon(Icons.arrow_back),
+              tooltip: l10n.roomDetailBackButtonTooltip,
+              onPressed: () => context.go(AppRoutes.home),
+            ),
+            title: Text(
+              state is RoomDetailLoaded ? state.room.name : l10n.appTitle,
+            ),
+          ),
+          body: switch (state) {
             RoomDetailInitial() || RoomDetailLoading() => const Center(
               child: CircularProgressIndicator(
                 key: Key('roomDetailLoadingIndicator'),
               ),
             ),
-            RoomDetailLoaded(:final room) => CustomScrollView(
-              slivers: [
-                SliverAppBar(title: Text(room.name), floating: true),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        BlocBuilder<AuthBloc, AuthState>(
-                          builder: (context, authState) {
-                            final isOwner = switch (authState) {
-                              AuthAuthenticated(:final user) =>
-                                user.id == room.ownerId,
-                              AuthInitial() ||
-                              AuthLoading() ||
-                              AuthUnauthenticated() ||
-                              AuthOperationFailure() => false,
-                            };
+            RoomDetailLoaded(:final room) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final isOwner = switch (authState) {
+                        AuthAuthenticated(:final user) =>
+                          user.id == room.ownerId,
+                        AuthInitial() ||
+                        AuthLoading() ||
+                        AuthUnauthenticated() ||
+                        AuthOperationFailure() => false,
+                      };
 
-                            if (!isOwner) {
-                              return const SizedBox.shrink();
-                            }
+                      if (!isOwner) {
+                        return const SizedBox.shrink();
+                      }
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Chip(
-                                key: const Key('roomDetailOwnerBadge'),
-                                label: Text(l10n.roomDetailOwnerBadgeLabel),
-                              ),
-                            );
-                          },
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Chip(
+                          key: const Key('roomDetailOwnerBadge'),
+                          label: Text(l10n.roomDetailOwnerBadgeLabel),
                         ),
-                        if (room.description != null)
-                          Text(
-                            room.description!,
-                            key: const Key('roomDetailDescription'),
-                          ),
-                        const SizedBox(height: 12),
-                        Text(
-                          l10n.homeRoomCardMemberCount(room.memberCount),
-                          key: const Key('roomDetailMemberCount'),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                ),
-              ],
+                  if (room.description != null)
+                    Text(
+                      room.description!,
+                      key: const Key('roomDetailDescription'),
+                    ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.homeRoomCardMemberCount(room.memberCount),
+                    key: const Key('roomDetailMemberCount'),
+                  ),
+                ],
+              ),
             ),
             RoomDetailFailure() => Center(
               child: Column(
@@ -113,9 +119,9 @@ class RoomDetailView extends StatelessWidget {
                 ],
               ),
             ),
-          };
-        },
-      ),
+          },
+        );
+      },
     );
   }
 }

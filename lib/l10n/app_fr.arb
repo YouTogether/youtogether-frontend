@@ -56,5 +56,6 @@
 
   "roomDetailOwnerBadgeLabel": "Propriétaire",
   "roomDetailErrorMessage": "Impossible de charger cette room. Veuillez réessayer.",
-  "roomDetailRetryButtonLabel": "Réessayer"
+  "roomDetailRetryButtonLabel": "Réessayer",
+  "roomDetailBackButtonTooltip": "Retour à la liste des rooms"
 }

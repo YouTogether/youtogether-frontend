@@ -225,5 +225,10 @@
   "roomDetailRetryButtonLabel": "Retry",
   "@roomDetailRetryButtonLabel": {
     "description": "Retry button label shown alongside roomDetailErrorMessage on RoomDetailPage."
-  }
+  },
+
+  "roomDetailBackButtonTooltip": "Back to room list",
+    "@roomDetailBackButtonTooltip": {
+      "description": "Tooltip/semantic label for the back button on RoomDetailPage's AppBar, present in every state (loading, loaded, failure)."
+    }
 }
