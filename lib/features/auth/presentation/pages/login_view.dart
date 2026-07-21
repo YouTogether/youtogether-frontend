@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../cubit/login_cubit.dart';
 import '../cubit/login_state.dart';
@@ -82,7 +84,14 @@ class _LoginViewState extends State<LoginView> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.loginPageTitle)),
+      appBar: AppBar(
+        title: Text(l10n.loginPageTitle),
+        leading: IconButton(
+          key: const Key('loginBackToHomeButton'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.home),
+        ),
+      ),
       body: BlocListener<LoginCubit, LoginState>(
         listener: (context, state) => switch (state) {
           LoginSuccess() => widget.onLoginSucceeded(),
