@@ -160,5 +160,55 @@
         "example": "3"
       }
     }
+  },
+
+  "createRoomPageTitle": "Create a room",
+  "@createRoomPageTitle": {
+    "description": "AppBar title on the room creation screen (F-R02-T3)."
+  },
+
+  "createRoomNameFieldLabel": "Room name",
+  "@createRoomNameFieldLabel": {
+    "description": "Label for the name field on the room creation form."
+  },
+
+  "createRoomDescriptionFieldLabel": "Description (optional)",
+  "@createRoomDescriptionFieldLabel": {
+    "description": "Label for the optional description field on the room creation form."
+  },
+
+  "createRoomIsPublicLabel": "Public room",
+  "@createRoomIsPublicLabel": {
+    "description": "Label for the isPublic switch on the room creation form. Defaults to true."
+  },
+
+  "createRoomSubmitButtonLabel": "Create room",
+  "@createRoomSubmitButtonLabel": {
+    "description": "Submit button label on the room creation form."
+  },
+
+  "createRoomNetworkErrorMessage": "No internet connection. Please check your network and try again.",
+  "@createRoomNetworkErrorMessage": {
+    "description": "SnackBar message for CreateRoomState.failure(NetworkFailure)."
+  },
+
+  "createRoomServerErrorMessage": "The server rejected the request. Please try again.",
+  "@createRoomServerErrorMessage": {
+    "description": "SnackBar message for CreateRoomState.failure(ServerFailure) — never renders the raw ServerFailure.message."
+  },
+
+  "createRoomAuthErrorMessage": "You must be signed in to create a room.",
+  "@createRoomAuthErrorMessage": {
+    "description": "SnackBar message for CreateRoomState.failure(AuthFailure). Not expected in practice while the create button stays hidden for guests/unauthenticated visitors and while /rooms/create carries no role-specific server-side check beyond JwtAuthGuard — see the guest-access gap noted in the Sprint 2 planning document — but the exhaustive switch must still handle it."
+  },
+
+  "createRoomNotFoundErrorMessage": "Something went wrong. Please try again.",
+  "@createRoomNotFoundErrorMessage": {
+    "description": "SnackBar message for CreateRoomState.failure(NotFoundFailure) — not expected to occur for room creation in practice, but the exhaustive switch must still handle it."
+  },
+
+  "createRoomGenericErrorMessage": "Something went wrong. Please try again.",
+  "@createRoomGenericErrorMessage": {
+    "description": "Fallback SnackBar message for any other Failure subtype (CacheFailure, FirebaseFailure) that createRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
   }
 }
