@@ -2,8 +2,10 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/core/router/app_router.dart';
 import 'package:youtogether/features/auth/domain/entities/user_entity.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_event.dart';
@@ -74,10 +76,23 @@ void main() {
         BlocProvider<AuthBloc>.value(value: authBloc),
         BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
+        routerConfig: GoRouter(
+          initialLocation: AppRoutes.roomDetail(room.id),
+          routes: [
+            GoRoute(
+              path: AppRoutes.home,
+              builder: (context, state) =>
+                  const SizedBox.shrink(key: Key('homeRouteReached')),
+            ),
+            GoRoute(
+              path: AppRoutes.roomDetailPattern,
+              builder: (context, state) => RoomDetailView(roomId: room.id),
+            ),
+          ],
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: RoomDetailView(roomId: room.id),
       ),
     );
   }
@@ -172,6 +187,46 @@ void main() {
       await tester.pump();
 
       verify(() => roomDetailCubit.fetchRoom(room.id)).called(1);
+    });
+  });
+
+  group('RoomDetailView — back navigation', () {
+    testWidgets(
+      'renders a back button that navigates to HomePage, in every state',
+      (tester) async {
+        await tester.pumpWidget(
+          wrap(RoomDetailState.loaded(room), const AuthState.unauthenticated()),
+        );
+
+        expect(find.byKey(const Key('roomDetailBackButton')), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('roomDetailBackButton')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('homeRouteReached')), findsOneWidget);
+      },
+    );
+
+    testWidgets('shows the back button while loading', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const RoomDetailState.loading(),
+          const AuthState.unauthenticated(),
+        ),
+      );
+
+      expect(find.byKey(const Key('roomDetailBackButton')), findsOneWidget);
+    });
+
+    testWidgets('shows the back button on failure', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const RoomDetailState.failure(Failure.notFound()),
+          const AuthState.unauthenticated(),
+        ),
+      );
+
+      expect(find.byKey(const Key('roomDetailBackButton')), findsOneWidget);
     });
   });
 }
