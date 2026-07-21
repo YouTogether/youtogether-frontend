@@ -10,8 +10,7 @@ import 'package:youtogether/features/room/presentation/cubit/room_detail_state.d
 
 class MockGetRoomByIdUseCase extends Mock implements GetRoomByIdUseCase {}
 
-/// Unit tests for [RoomDetailCubit] (`RoomDetailPage` prerequisite,
-/// `sprint-2-room-planning.md` §5).
+/// Unit tests for [RoomDetailCubit].
 ///
 /// @competency Unit test harness, TDD cycle.
 /// @competency Test scenarios R-DET-01, R-DET-02, R-DET-03.
