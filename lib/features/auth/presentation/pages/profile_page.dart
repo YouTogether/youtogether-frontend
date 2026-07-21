@@ -23,8 +23,8 @@ import '../bloc/auth_state.dart';
 /// needed for this page specifically (see `resolveRedirect`'s own doc
 /// comment). This route was the one piece of
 /// `ADR-001-authentication-infrastructure-deferral`'s gap 3 remediation
-/// still missing when F-INF-T1's completeness was audited at the start
-/// of Sprint 2 — this page itself was built and fully unit-tested back
+/// still missing when F-INF-T1's completeness was audited
+/// — this page itself was built and fully unit-tested back
 /// but was not reachable until the route was added.
 ///
 /// As defence in depth regardless of the guard, and to keep this widget

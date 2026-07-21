@@ -80,9 +80,9 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// reads the ambient `AuthBloc` via `BlocProvider`/`BlocBuilder`
 /// instead), so no further wiring is needed here beyond the route
 /// itself. This route was the one piece of gap 3's remediation still
-/// missing when F-INF-T1's completeness was audited at the start of
-/// Sprint 2 — `ProfilePage` had been fully built and unit-tested since
-/// Sprint 1 (`F-A05-T1`) but was never actually reachable until now.
+/// missing when F-INF-T1's completeness was audited —
+/// `ProfilePage` had been fully built and unit-tested
+/// but was never actually reachable until now.
 ///
 /// [registerUseCase] / [loginUseCase] are threaded through to
 /// `RegisterPage`/`LoginPage` exactly as their own constructors already

@@ -31,15 +31,8 @@
   "profileRoleGuest": "Invité",
   "profileLogoutButton": "Se déconnecter",
 
-  "homeWelcomeMessage": "Bienvenue, {displayName} !",
-  "@homeWelcomeMessage": {
-    "description": "Message de bienvenue affiché sur la page d'accueil.",
-    "placeholders": {
-      "displayName": {
-        "type": "String",
-        "example": "Alice"
-      }
-    }
-  },
-  "logoutButtonLabel": "Se déconnecter"
+  "homeEmptyStateMessage": "Aucune room publique disponible pour le moment.",
+  "homeErrorMessage": "Impossible de charger les rooms. Veuillez réessayer.",
+  "homeRetryButtonLabel": "Réessayer",
+  "homeRoomCardMemberCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}"
 }

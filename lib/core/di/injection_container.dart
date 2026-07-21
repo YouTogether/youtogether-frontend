@@ -143,7 +143,7 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   );
   dio.interceptors.add(authInterceptor);
 
-  // --- Room bounded context (Sprint 2) ---
+  // --- Room bounded context ---
   //
   // Reuses the same `Dio` singleton constructed above — already carrying
   // the `AuthInterceptor`, so every Room request gets its Authorization

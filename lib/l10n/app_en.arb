@@ -136,18 +136,29 @@
     "description": "Logout button label on the profile screen."
   },
 
-  "homeWelcomeMessage": "Welcome, {displayName}!",
-  "@homeWelcomeMessage": {
-    "description": "Welcome message displayed on the home screen.",
+  "homeEmptyStateMessage": "No public rooms available right now.",
+  "@homeEmptyStateMessage": {
+    "description": "Shown on HomePage (F-R01-T3) when RoomState.loaded carries an empty room list. Deliberately does not suggest \"create one\" — guests and unauthenticated visitors can see this state too, and cannot create rooms."
+  },
+
+  "homeErrorMessage": "We couldn't load the rooms. Please try again.",
+  "@homeErrorMessage": {
+    "description": "Shown on HomePage (F-R01-T3) for RoomState.failure, regardless of the underlying Failure subtype — mirrors the other pages' convention of never rendering a raw Failure.message, alongside a retry action (homeRetryButtonLabel)."
+  },
+
+  "homeRetryButtonLabel": "Retry",
+  "@homeRetryButtonLabel": {
+    "description": "Retry button label in HomePage's error state (F-R01-T3); dispatches RoomEvent.fetchPublicRooms() again."
+  },
+
+  "homeRoomCardMemberCount": "{count, plural, =0{No members} =1{1 member} other{{count} members}}",
+  "@homeRoomCardMemberCount": {
+    "description": "Member count shown on each RoomCard in the HomePage listing (F-R01-T3).",
     "placeholders": {
-      "displayName": {
-        "type": "String",
-        "example": "Alice"
+      "count": {
+        "type": "int",
+        "example": "3"
       }
     }
-  },
-  "logoutButtonLabel": "Log out",
-  "@placeholderHomeLogoutButton": {
-    "description": "Logout button label on the home placeholder screen."
   }
 }

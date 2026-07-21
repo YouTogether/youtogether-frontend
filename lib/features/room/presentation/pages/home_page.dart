@@ -123,6 +123,14 @@ class _RoomListView extends StatelessWidget {
       },
       child: ListView.builder(
         key: const Key('homeRoomList'),
+        // RefreshIndicator only responds to an overscroll gesture at
+        // the top of the scrollable. With default physics, a list
+        // whose content is shorter than the viewport (as in tests with
+        // few rooms, or simply a nearly-empty listing in production)
+        // has nothing to overscroll, so pull-to-refresh would silently
+        // do nothing. AlwaysScrollableScrollPhysics keeps the gesture
+        // working regardless of content length.
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: rooms.length,
         itemBuilder: (context, index) => RoomCard(room: rooms[index]),
       ),

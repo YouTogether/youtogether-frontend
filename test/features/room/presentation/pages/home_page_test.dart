@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -28,6 +30,14 @@ class MockRoomBloc extends MockBloc<RoomEvent, RoomState> implements RoomBloc {}
 void main() {
   late MockAuthBloc authBloc;
   late MockRoomBloc roomBloc;
+
+  setUpAll(() {
+    // mocktail requires a registered fallback value for any type used
+    // with `any()`/`captureAny()` — `roomBloc.add(any())` below needs
+    // one for RoomEvent. This instance is never actually inspected or
+    // invoked, only passed around by mocktail's matcher machinery.
+    registerFallbackValue(const RoomEvent.fetchPublicRooms());
+  });
 
   final registeredUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -134,20 +144,46 @@ void main() {
     testWidgets('dispatches RoomEvent.refreshRooms() on pull-to-refresh', (
       tester,
     ) async {
+      final controller = StreamController<RoomState>();
+      addTearDown(controller.close);
+
+      final homePage = wrap(
+        RoomState.loaded(rooms),
+        const AuthState.unauthenticated(),
+      );
+      // wrap() stubs roomBloc.stream to a Stream.empty(); override it
+      // here with a controller-backed stream so this test's later
+      // await on RoomBloc.stream.firstWhere(...) (inside HomePage's
+      // onRefresh) can actually resolve instead of erroring out on an
+      // already-closed empty stream.
+      whenListen(
+        roomBloc,
+        controller.stream,
+        initialState: RoomState.loaded(rooms),
+      );
       when(() => roomBloc.add(any())).thenReturn(null);
 
-      await tester.pumpWidget(
-        wrap(RoomState.loaded(rooms), const AuthState.unauthenticated()),
-      );
+      await tester.pumpWidget(homePage);
 
       await tester.fling(
         find.byKey(const Key('homeRoomList')),
         const Offset(0, 300),
         1000,
       );
+      // A single bare pump() only processes the drag/release gesture
+      // itself. RefreshIndicator's "armed" indicator animation runs on
+      // its own AnimationController and only invokes onRefresh once
+      // that animation completes — advancing the test clock is
+      // required for that to actually happen.
       await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       verify(() => roomBloc.add(const RoomEvent.refreshRooms())).called(1);
+
+      // Resolve the pending onRefresh await (RoomBloc.stream.firstWhere)
+      // so RefreshIndicator can settle cleanly before the test ends.
+      controller.add(RoomState.loaded(rooms));
+      await tester.pumpAndSettle();
     });
   });
 

@@ -1,10 +1,12 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:either_dart/either.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:youtogether/core/router/app_router.dart';
+import 'package:youtogether/core/usecases/usecase.dart';
 import 'package:youtogether/features/auth/domain/entities/user_entity.dart';
 import 'package:youtogether/features/auth/domain/usecases/login_usecase.dart';
 import 'package:youtogether/features/auth/domain/usecases/register_usecase.dart';
@@ -27,7 +29,7 @@ class MockGetPublicRoomsUseCase extends Mock implements GetPublicRoomsUseCase {}
 /// Widget tests verifying that `/profile` is actually wired into the
 /// route table built by [buildAppRouter] (closing the remaining part of
 /// ADR-001 gap 3, discovered when F-INF-T1's completeness was audited:
-/// `ProfilePage` existed and was fully unit-tested since Sprint 1, but
+/// `ProfilePage` existed and was fully unit-tested, but
 /// no `GoRoute` ever pointed to it).
 ///
 /// `resolveRedirect` itself already handles `/profile` correctly as a
@@ -77,6 +79,17 @@ void main() {
     registerUseCase = MockRegisterUseCase();
     loginUseCase = MockLoginUseCase();
     getPublicRoomsUseCase = MockGetPublicRoomsUseCase();
+
+    // buildAppRouter always sets initialLocation to AppRoutes.home, so
+    // the '/' route (and the RoomBloc it constructs, which immediately
+    // dispatches RoomEvent.fetchPublicRooms) is built at least once
+    // during the very first pump, regardless of which location a given
+    // test subsequently navigates to via router.go(...). Without this
+    // stub, that incidental call throws (mocktail returns null for an
+    // unstubbed method, which isn't a valid Future<Either<...>>).
+    when(
+      () => getPublicRoomsUseCase(const NoParams()),
+    ).thenAnswer((_) async => const Right([]));
   });
 
   Future<GoRouter> pumpRouterAt(WidgetTester tester, String location) async {
