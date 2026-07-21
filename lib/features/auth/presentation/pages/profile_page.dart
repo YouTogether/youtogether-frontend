@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/user_entity.dart';
 import '../bloc/auth_bloc.dart';
@@ -41,7 +43,14 @@ class ProfilePage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profilePageTitle)),
+      appBar: AppBar(
+        title: Text(l10n.profilePageTitle),
+        leading: IconButton(
+          key: const Key('profileBackToHomeButton'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.home),
+        ),
+      ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           return switch (state) {
