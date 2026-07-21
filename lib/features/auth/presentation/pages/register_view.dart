@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../cubit/register_cubit.dart';
 import '../cubit/register_state.dart';
@@ -99,7 +101,14 @@ class _RegisterViewState extends State<RegisterView> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.registerPageTitle)),
+      appBar: AppBar(
+        title: Text(l10n.profilePageTitle),
+        leading: IconButton(
+          key: const Key('profileBackToHomeButton'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.home),
+        ),
+      ),
       body: BlocListener<RegisterCubit, RegisterState>(
         listener: (context, state) => switch (state) {
           RegisterSuccess() => widget.onRegistrationSucceeded(),
