@@ -37,33 +37,42 @@ abstract final class AppRoutes {
 ///   start has not resolved yet; redirecting to `/login` here would
 ///   flash the login screen for a fraction of a second even for a user
 ///   with a perfectly valid cached session, on every cold start.
+/// - [AppRoutes.home] is a **public** route, reachable by any visitor
+///   regardless of [AuthState] — per F-R01's own acceptance criteria
+///   ("As any user, authenticated or guest, I want to see a list of
+///   public rooms"). It is never redirected away from for being
+///   unauthenticated, unlike every other non-auth-form route.
 /// - Authenticated, on `/login` or `/register`: redirect to
 ///   [AppRoutes.home] (an already-authenticated user has no reason to
-///   see the auth forms).
+///   see the auth forms). Authenticated on [AppRoutes.home] itself: no
+///   redirect — an authenticated user can view the room listing too.
 /// - Authenticated, elsewhere (including [AppRoutes.profile]): no
 ///   redirect.
 /// - Unauthenticated or failed (`AuthState.unauthenticated` /
 ///   `AuthState.failure` — both mean "no valid session" from the
-///   router's perspective, see `AuthState.failure`'s own doc comment),
-///   on a protected route (including [AppRoutes.profile]): redirect to
-///   [AppRoutes.login].
-/// - Unauthenticated or failed, already on `/login` or `/register`: no
-///   redirect.
+///   router's perspective, see `AuthState.failure`'s own doc comment):
+///   redirected to [AppRoutes.login] only when on a genuinely protected
+///   route (currently just [AppRoutes.profile]) — never from
+///   [AppRoutes.home], [AppRoutes.login], or [AppRoutes.register].
 ///
 /// [AppRoutes.profile] needs no dedicated branch here: it falls out of
-/// the existing "any route that isn't `/login`/`/register`" cases
-/// exactly like [AppRoutes.home] does — only the route table itself
-/// (see [buildAppRouter]) needed to grow, not this decision function.
+/// the "anything that isn't home/login/register" case below. Any
+/// future protected route added to [buildAppRouter] similarly needs no
+/// change here, only an addition to the route table itself — but a
+/// future *public* route (mirroring [AppRoutes.home]) would need an
+/// explicit addition to `isPublicRoute` below, exactly as this fix
+/// added `AppRoutes.home` to it.
 String? resolveRedirect(AuthState authState, String matchedLocation) {
-  final isAuthRoute =
+  final isAuthFormRoute =
       matchedLocation == AppRoutes.login ||
       matchedLocation == AppRoutes.register;
+  final isPublicRoute = isAuthFormRoute || matchedLocation == AppRoutes.home;
 
   return switch (authState) {
     AuthInitial() || AuthLoading() => null,
-    AuthAuthenticated() => isAuthRoute ? AppRoutes.home : null,
+    AuthAuthenticated() => isAuthFormRoute ? AppRoutes.home : null,
     AuthUnauthenticated() ||
-    AuthOperationFailure() => isAuthRoute ? null : AppRoutes.login,
+    AuthOperationFailure() => isPublicRoute ? null : AppRoutes.login,
   };
 }
 
