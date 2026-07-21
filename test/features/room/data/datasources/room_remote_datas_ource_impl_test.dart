@@ -473,4 +473,91 @@ void main() {
       },
     );
   });
+
+  group('RoomRemoteDataSourceImpl.getRoomById', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+    final detailRequestOptions = RequestOptions(path: '/rooms/$roomId');
+
+    Map<String, dynamic> buildDetailSuccessBody() => {
+      'id': roomId,
+      'name': 'Friday Movie Night',
+      'description': 'Weekly watch party',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 2,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-01T00:00:00.000Z',
+    };
+
+    test('should GET /rooms/:id with the correct room id', () async {
+      when(() => dio.get<Map<String, dynamic>>(any())).thenAnswer(
+        (_) async => Response(
+          data: buildDetailSuccessBody(),
+          statusCode: 200,
+          requestOptions: detailRequestOptions,
+        ),
+      );
+
+      await dataSource.getRoomById(roomId: roomId);
+
+      verify(() => dio.get<Map<String, dynamic>>('/rooms/$roomId')).called(1);
+    });
+
+    test(
+      'should return a RoomModel parsed from the response body on 200',
+      () async {
+        when(() => dio.get<Map<String, dynamic>>(any())).thenAnswer(
+          (_) async => Response(
+            data: buildDetailSuccessBody(),
+            statusCode: 200,
+            requestOptions: detailRequestOptions,
+          ),
+        );
+
+        final result = await dataSource.getRoomById(roomId: roomId);
+
+        expect(result.name, 'Friday Movie Night');
+        expect(result.memberCount, 2);
+      },
+    );
+
+    test('should throw ServerException with statusCode 404 for a missing or '
+        'deleted room', () async {
+      when(() => dio.get<Map<String, dynamic>>(any())).thenThrow(
+        DioException(
+          requestOptions: detailRequestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 404, 'message': 'Room not found.'},
+            statusCode: 404,
+            requestOptions: detailRequestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.getRoomById(roomId: roomId),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 404),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(() => dio.get<Map<String, dynamic>>(any())).thenThrow(
+          DioException(
+            requestOptions: detailRequestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.getRoomById(roomId: roomId),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }
