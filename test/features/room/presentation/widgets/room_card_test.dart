@@ -75,4 +75,22 @@ void main() {
 
     expect(find.textContaining('5'), findsOneWidget);
   });
+
+  testWidgets('invokes onTap when tapped', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: RoomCard(room: buildRoom(), onTap: () => tapped = true),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(RoomCard));
+    await tester.pump();
+
+    expect(tapped, isTrue);
+  });
 }
