@@ -11,10 +11,12 @@ import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/room/domain/usecases/create_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
+import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
 import '../../features/room/presentation/bloc/room_bloc.dart';
 import '../../features/room/presentation/bloc/room_event.dart';
 import '../../features/room/presentation/pages/create_room_page.dart';
 import '../../features/room/presentation/pages/home_page.dart';
+import '../../features/room/presentation/pages/room_detail_page.dart';
 import 'go_router_refresh_stream.dart';
 
 /// Route paths, centralised to avoid string-literal drift between the
@@ -25,6 +27,17 @@ abstract final class AppRoutes {
   static const String register = '/register';
   static const String profile = '/profile';
   static const String createRoom = '/rooms/create';
+
+  /// Path pattern registered with `GoRouter` for the room detail route.
+  /// Declared **before** [createRoom] in `buildAppRouter`'s route list —
+  /// `/rooms/create` would otherwise also satisfy this pattern with
+  /// `id: 'create'`, and `GoRouter` resolves sibling routes in
+  /// declaration order.
+  static const String roomDetailPattern = '/rooms/:id';
+
+  /// Builds a concrete room detail path for navigation, e.g.
+  /// `context.go(AppRoutes.roomDetail(room.id))`.
+  static String roomDetail(String roomId) => '/rooms/$roomId';
 }
 
 /// Pure route-guard decision function, extracted from
@@ -113,11 +126,17 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 ///
 /// [createRoomUseCase] is threaded through to `CreateRoomPage`
 /// (`AppRoutes.createRoom`), mirroring [registerUseCase]/[loginUseCase].
-/// Its `onRoomCreated` callback navigates home
-/// (`context.go(AppRoutes.home)`) — see `CreateRoomPage`'s own doc for
-/// why this is the pragmatic choice pending a `RoomDetailPage` that
-/// does not exist yet, and why it also satisfies "refresh the room
-/// list" for free.
+/// Its `onRoomCreated` callback now navigates to the room detail view
+/// (`context.go(AppRoutes.roomDetail(room.id))`), closing the gap
+/// `CreateRoomPage`'s own doc comment previously documented as pending
+/// a `RoomDetailPage` that did not exist yet.
+///
+/// [getRoomByIdUseCase] is threaded through to `RoomDetailPage`
+/// (`AppRoutes.roomDetailPattern`, `/rooms/:id`), constructing a fresh
+/// `RoomDetailCubit` per visit — mirroring [getPublicRoomsUseCase]'s own
+/// wiring for `RoomBloc`. Declared **after** [AppRoutes.createRoom] in
+/// the route list below, since `/rooms/create` would otherwise also
+/// match `/rooms/:id` with `id: 'create'`.
 ///
 /// `RegisterPage.onNavigateToLogin`, `LoginPage.onNavigateToRegister`,
 /// and both pages' `on*Succeeded` callbacks are wired to `context.go(...)`
@@ -138,6 +157,7 @@ GoRouter buildAppRouter({
   required LoginUseCase loginUseCase,
   required GetPublicRoomsUseCase getPublicRoomsUseCase,
   required CreateRoomUseCase createRoomUseCase,
+  required GetRoomByIdUseCase getRoomByIdUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -184,7 +204,14 @@ GoRouter buildAppRouter({
         path: AppRoutes.createRoom,
         builder: (context, state) => CreateRoomPage(
           createRoomUseCase: createRoomUseCase,
-          onRoomCreated: (room) => context.go(AppRoutes.home),
+          onRoomCreated: (room) => context.go(AppRoutes.roomDetail(room.id)),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.roomDetailPattern,
+        builder: (context, state) => RoomDetailPage(
+          roomId: state.pathParameters['id']!,
+          getRoomByIdUseCase: getRoomByIdUseCase,
         ),
       ),
     ],
