@@ -17,6 +17,7 @@ import '../entities/room_entity.dart';
 /// @see RoomRepositoryImpl — data layer implementation
 /// @see GetPublicRoomsUseCase — primary consumer of getPublicRooms()
 /// @see CreateRoomUseCase — primary consumer of createRoom()
+/// @see GetRoomByIdUseCase — primary consumer of getRoomById()
 /// @see UpdateRoomUseCase — primary consumer of updateRoom()
 /// @see DeleteRoomUseCase — primary consumer of deleteRoom()
 /// @see JoinRoomUseCase — primary consumer of joinRoom()
@@ -43,6 +44,20 @@ abstract class IRoomRepository {
     required String? description,
     required bool isPublic,
   });
+
+  /// Retrieves a single room's details, with its current active member
+  /// count.
+  ///
+  /// No authentication is required by the backend endpoint
+  /// (`GET /rooms/:id`) — a guest or unauthenticated visitor can preview
+  /// a room's page before joining, mirroring the backend controller's
+  /// own documentation of that same route.
+  ///
+  /// - `Left(NotFoundFailure)` — the room does not exist or is
+  ///   soft-deleted (404).
+  ///
+  /// @see GetRoomByIdUseCase
+  Future<Either<Failure, RoomEntity>> getRoomById({required String roomId});
 
   /// Updates a room's name and/or description.
   ///

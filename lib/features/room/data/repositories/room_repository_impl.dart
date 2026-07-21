@@ -21,8 +21,8 @@ import '../datasources/i_room_remote_data_source.dart';
 /// unlike the backend, where the repository interface and its
 /// implementation grew in lockstep, one method per task. Dart requires
 /// every abstract method of an implemented interface to have a body to
-/// compile at all, so this class must already declare all six methods
-/// today even though only [getPublicRooms] is in scope.
+/// compile at all, so this class already declared all six methods from
+/// well ahead of the tasks that implement each one for real.
 ///
 /// [deleteRoom], [joinRoom], and [leaveRoom] still throw
 /// [UnimplementedError] for now, each annotated with the task that will
@@ -80,6 +80,14 @@ class RoomRepositoryImpl implements IRoomRepository {
     } on NetworkException {
       return const Left(Failure.network());
     }
+  }
+
+  @override
+  Future<Either<Failure, RoomEntity>> getRoomById({required String roomId}) {
+    throw UnimplementedError(
+      'RoomRepositoryImpl.getRoomById will be implemented by the '
+      'RoomDetailPage prerequisite data-layer task.',
+    );
   }
 
   @override
