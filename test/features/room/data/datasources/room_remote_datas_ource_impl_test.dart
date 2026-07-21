@@ -284,4 +284,193 @@ void main() {
       },
     );
   });
+
+  group('RoomRemoteDataSourceImpl.updateRoom', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+    final updateRequestOptions = RequestOptions(path: '/rooms/$roomId');
+
+    Map<String, dynamic> buildUpdateSuccessBody() => {
+      'id': roomId,
+      'name': 'Renamed Movie Night',
+      'description': 'Updated description',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 2,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-05T00:00:00.000Z',
+    };
+
+    test(
+      'should PATCH /rooms/:id with both fields when both are provided',
+      () async {
+        when(
+          () =>
+              dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildUpdateSuccessBody(),
+            statusCode: 200,
+            requestOptions: updateRequestOptions,
+          ),
+        );
+
+        await dataSource.updateRoom(
+          roomId: roomId,
+          name: 'Renamed Movie Night',
+          description: 'Updated description',
+        );
+
+        verify(
+          () => dio.patch<Map<String, dynamic>>(
+            '/rooms/$roomId',
+            data: {
+              'name': 'Renamed Movie Night',
+              'description': 'Updated description',
+            },
+          ),
+        ).called(1);
+      },
+    );
+
+    test('should omit a null field from the request body entirely (partial '
+        'update — a null key would mean "clear it" server-side, not "leave '
+        'unchanged")', () async {
+      when(
+        () => dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => Response(
+          data: buildUpdateSuccessBody(),
+          statusCode: 200,
+          requestOptions: updateRequestOptions,
+        ),
+      );
+
+      await dataSource.updateRoom(
+        roomId: roomId,
+        description: 'Only description changes',
+      );
+
+      final capturedData =
+          verify(
+                () => dio.patch<Map<String, dynamic>>(
+                  '/rooms/$roomId',
+                  data: captureAny(named: 'data'),
+                ),
+              ).captured.single
+              as Map<String, dynamic>;
+
+      expect(capturedData.containsKey('name'), isFalse);
+      expect(capturedData['description'], 'Only description changes');
+    });
+
+    test(
+      'should return a RoomModel parsed from the response body on 200',
+      () async {
+        when(
+          () =>
+              dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenAnswer(
+          (_) async => Response(
+            data: buildUpdateSuccessBody(),
+            statusCode: 200,
+            requestOptions: updateRequestOptions,
+          ),
+        );
+
+        final result = await dataSource.updateRoom(
+          roomId: roomId,
+          name: 'Renamed Movie Night',
+        );
+
+        expect(result.name, 'Renamed Movie Night');
+        expect(result.memberCount, 2);
+      },
+    );
+
+    test(
+      'should throw ServerException with statusCode 403 for a non-owner',
+      () async {
+        when(
+          () =>
+              dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: updateRequestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {
+                'statusCode': 403,
+                'message':
+                    'Only the owner of this room may perform this action.',
+              },
+              statusCode: 403,
+              requestOptions: updateRequestOptions,
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.updateRoom(roomId: roomId, name: 'Hijacked Name'),
+          throwsA(
+            isA<ServerException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              403,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'should throw ServerException with statusCode 404 for a missing room',
+      () async {
+        when(
+          () =>
+              dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: updateRequestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {'statusCode': 404, 'message': 'Room not found.'},
+              statusCode: 404,
+              requestOptions: updateRequestOptions,
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.updateRoom(roomId: roomId, name: 'Does Not Matter'),
+          throwsA(
+            isA<ServerException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              404,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(
+          () =>
+              dio.patch<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: updateRequestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.updateRoom(roomId: roomId, name: 'New Name'),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }

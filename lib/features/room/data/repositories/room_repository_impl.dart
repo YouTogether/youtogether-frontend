@@ -24,11 +24,12 @@ import '../datasources/i_room_remote_data_source.dart';
 /// compile at all, so this class must already declare all six methods
 /// today even though only [getPublicRooms] is in scope.
 ///
-/// [createRoom], [updateRoom], [deleteRoom], [joinRoom], and [leaveRoom]
-/// therefore throw [UnimplementedError] for now, each annotated with
-/// the task that will replace it with a real implementation.
-/// This is a deliberate, visible placeholder — not a silently swallowed
-/// gap — and is called out explicitly here rather than discovered later.
+/// [deleteRoom], [joinRoom], and [leaveRoom] still throw
+/// [UnimplementedError] for now, each annotated with the task that will
+/// replace it; [createRoom] and [updateRoom] are now fully implemented.
+/// This is a deliberate, visible placeholder for the remaining methods
+/// — not a silently swallowed gap — and is called out explicitly here
+/// rather than discovered later.
 ///
 /// @see IRoomRepository — the domain port being implemented
 class RoomRepositoryImpl implements IRoomRepository {
@@ -86,10 +87,35 @@ class RoomRepositoryImpl implements IRoomRepository {
     required String roomId,
     String? name,
     String? description,
-  }) {
-    throw UnimplementedError(
-      'RoomRepositoryImpl.updateRoom will be implemented later.',
-    );
+  }) async {
+    try {
+      final model = await _remoteDataSource.updateRoom(
+        roomId: roomId,
+        name: name,
+        description: description,
+      );
+
+      return Right(model.toDomain());
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 403) {
+        return const Left(
+          Failure.auth(
+            message: 'Only the owner of this room may perform this action.',
+          ),
+        );
+      }
+      if (exception.statusCode == 404) {
+        return const Left(Failure.notFound());
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    }
   }
 
   @override

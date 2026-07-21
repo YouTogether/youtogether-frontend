@@ -55,6 +55,30 @@ class RoomRemoteDataSourceImpl implements IRoomRemoteDataSource {
     }
   }
 
+  @override
+  Future<RoomModel> updateRoom({
+    required String roomId,
+    String? name,
+    String? description,
+  }) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/rooms/$roomId',
+        // Only the provided fields are included in the body — a `null`
+        // parameter here means "leave unchanged" and must be omitted
+        // entirely, never sent as JSON `null`. See this method's own
+        // doc comment on `IRoomRemoteDataSource` for why sending
+        // `"name": null` would actually cause the backend to write
+        // `null` into a non-nullable column.
+        data: {'name': ?name, 'description': ?description},
+      );
+
+      return RoomModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
   /// Maps a [DioException] to the typed exception hierarchy consumed by
   /// [RoomRepositoryImpl].
   ///

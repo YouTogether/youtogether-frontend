@@ -3,10 +3,11 @@ import '../models/room_model.dart';
 /// Contract for the Room bounded context's remote (HTTP) data source.
 ///
 /// Mirrors `IAuthRemoteDataSource`: grows one method per task,
-/// implemented by `RoomRemoteDataSourceImpl`. `getPublicRooms()`
-/// is the only method defined so far; Further
-/// tasks will add `createRoom()`,
-/// `updateRoom()`, `deleteRoom()`, `joinRoom()`, and `leaveRoom()`.
+/// implemented by `RoomRemoteDataSourceImpl`. `getPublicRooms()`,
+/// `createRoom()`, and `updateRoom()`
+/// are defined so far; subsequent tasks
+/// will add `deleteRoom()`, `joinRoom()`,
+/// and `leaveRoom()`.
 ///
 /// @see RoomRemoteDataSourceImpl — the Dio-based implementation
 abstract class IRoomRemoteDataSource {
@@ -28,5 +29,20 @@ abstract class IRoomRemoteDataSource {
     required String name,
     required String? description,
     required bool isPublic,
+  });
+
+  /// Updates a room's name and/or description via `PATCH /rooms/:id`.
+  ///
+  /// Unlike [createRoom], a `null` field here must be **omitted from
+  /// the request body entirely**, not sent as JSON `null`: the backend's
+  /// `UpdateRoomParams` distinguishes an omitted (`undefined`) field
+  /// ("leave unchanged") from an explicit `null` — which the
+  /// implementation would apply as an actual write, and `rooms.name` is
+  /// a non-nullable column. See `RoomRemoteDataSourceImpl.updateRoom`'s
+  /// own doc for how this is enforced.
+  Future<RoomModel> updateRoom({
+    required String roomId,
+    String? name,
+    String? description,
   });
 }
