@@ -15,6 +15,7 @@ import 'package:youtogether/features/auth/presentation/bloc/auth_event.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_state.dart';
 import 'package:youtogether/features/auth/presentation/pages/login_page.dart';
 import 'package:youtogether/features/auth/presentation/pages/profile_page.dart';
+import 'package:youtogether/features/room/domain/usecases/create_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/get_public_rooms_usecase.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
@@ -25,6 +26,8 @@ class MockRegisterUseCase extends Mock implements RegisterUseCase {}
 class MockLoginUseCase extends Mock implements LoginUseCase {}
 
 class MockGetPublicRoomsUseCase extends Mock implements GetPublicRoomsUseCase {}
+
+class MockCreateRoomUseCase extends Mock implements CreateRoomUseCase {}
 
 /// Widget tests verifying that `/profile` is actually wired into the
 /// route table built by [buildAppRouter] (closing the remaining part of
@@ -65,6 +68,7 @@ void main() {
   late MockRegisterUseCase registerUseCase;
   late MockLoginUseCase loginUseCase;
   late MockGetPublicRoomsUseCase getPublicRoomsUseCase;
+  late MockCreateRoomUseCase createRoomUseCase;
 
   final user = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -79,6 +83,7 @@ void main() {
     registerUseCase = MockRegisterUseCase();
     loginUseCase = MockLoginUseCase();
     getPublicRoomsUseCase = MockGetPublicRoomsUseCase();
+    createRoomUseCase = MockCreateRoomUseCase();
 
     // buildAppRouter always sets initialLocation to AppRoutes.home, so
     // the '/' route (and the RoomBloc it constructs, which immediately
@@ -98,6 +103,7 @@ void main() {
       registerUseCase: registerUseCase,
       loginUseCase: loginUseCase,
       getPublicRoomsUseCase: getPublicRoomsUseCase,
+      createRoomUseCase: createRoomUseCase,
     );
 
     await tester.pumpWidget(
