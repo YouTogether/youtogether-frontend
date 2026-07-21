@@ -60,10 +60,7 @@ class HomePage extends StatelessWidget {
 
           return FloatingActionButton(
             key: const Key('homeCreateRoomButton'),
-            // TODO(F-R02-T3): navigate to the room creation form once
-            // it exists. The button is intentionally visible and
-            // owner-gated already — only its destination is pending.
-            onPressed: () {},
+            onPressed: () => context.go(AppRoutes.createRoom),
             child: const Icon(Icons.add),
           );
         },

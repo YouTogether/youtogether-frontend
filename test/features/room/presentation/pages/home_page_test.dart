@@ -93,6 +93,11 @@ void main() {
               path: '/profile',
               builder: (context, state) => const SizedBox.shrink(),
             ),
+            GoRoute(
+              path: '/rooms/create',
+              builder: (context, state) =>
+                  const SizedBox.shrink(key: Key('createRoomRouteReached')),
+            ),
           ],
         ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -248,6 +253,20 @@ void main() {
       );
 
       expect(find.byKey(const Key('homeCreateRoomButton')), findsOneWidget);
+    });
+
+    testWidgets('navigates to /rooms/create when tapped', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const RoomState.loaded([]),
+          AuthState.authenticated(registeredUser),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('homeCreateRoomButton')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('createRoomRouteReached')), findsOneWidget);
     });
   });
 }
