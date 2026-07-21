@@ -26,10 +26,11 @@ import '../datasources/i_room_remote_data_source.dart';
 ///
 /// [deleteRoom], [joinRoom], and [leaveRoom] still throw
 /// [UnimplementedError] for now, each annotated with the task that will
-/// replace it; [createRoom] and [updateRoom] are now fully implemented.
-/// This is a deliberate, visible placeholder for the remaining methods
-/// — not a silently swallowed gap — and is called out explicitly here
-/// rather than discovered later.
+/// replace it; [createRoom], [updateRoom], and [getRoomById]
+/// are now fully implemented. This is a deliberate, visible
+/// placeholder for the remaining methods — not a silently swallowed
+/// gap — and is called out explicitly here rather than discovered
+/// later.
 ///
 /// @see IRoomRepository — the domain port being implemented
 class RoomRepositoryImpl implements IRoomRepository {
@@ -83,11 +84,26 @@ class RoomRepositoryImpl implements IRoomRepository {
   }
 
   @override
-  Future<Either<Failure, RoomEntity>> getRoomById({required String roomId}) {
-    throw UnimplementedError(
-      'RoomRepositoryImpl.getRoomById will be implemented by the '
-      'RoomDetailPage prerequisite data-layer task.',
-    );
+  Future<Either<Failure, RoomEntity>> getRoomById({
+    required String roomId,
+  }) async {
+    try {
+      final model = await _remoteDataSource.getRoomById(roomId: roomId);
+
+      return Right(model.toDomain());
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 404) {
+        return const Left(Failure.notFound());
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    }
   }
 
   @override
