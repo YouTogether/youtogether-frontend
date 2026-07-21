@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
@@ -120,15 +121,17 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 ///
 /// `RegisterPage.onNavigateToLogin`, `LoginPage.onNavigateToRegister`,
 /// and both pages' `on*Succeeded` callbacks are wired to `context.go(...)`
-/// here — `checkStatusRequested`/`AuthBloc` re-evaluation of the guard
-/// after a successful login/register is handled implicitly by the
-/// `GoRouterRefreshStream`, once `LoginCubit`/`RegisterCubit` themselves
-/// eventually dispatch into `AuthBloc` (see `AuthEvent.loginRequested`'s
-/// own doc comment on that still-open architectural question) — for now,
-/// `context.go(AppRoutes.home)` after a successful login/register is a
-/// direct, explicit navigation, not solely reliant on the guard, since
-/// `LoginCubit`/`RegisterCubit` do not update `AuthBloc.state` themselves
-/// yet.
+/// here. `onLoginSucceeded`/`onRegistrationSucceeded` additionally
+/// dispatch `AuthEvent.checkStatusRequested()` on [authBloc] before
+/// navigating home — closing `ADR-001` gap 8: `LoginCubit`/
+/// `RegisterCubit` persist tokens via their use cases directly but never
+/// notified `AuthBloc` of the new session, so its state remained
+/// `AuthUnauthenticated` after a successful login/register until the
+/// next full app restart. Without this, `HomePage`'s create button and
+/// `/profile` stayed unreachable immediately after logging in, even
+/// though the session was valid. `GoRouterRefreshStream` then reacts to
+/// the resulting `AuthAuthenticated` emission the same way it does at
+/// cold start.
 GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
@@ -155,7 +158,10 @@ GoRouter buildAppRouter({
         path: AppRoutes.login,
         builder: (context, state) => LoginPage(
           loginUseCase: loginUseCase,
-          onLoginSucceeded: () => context.go(AppRoutes.home),
+          onLoginSucceeded: () {
+            authBloc.add(const AuthEvent.checkStatusRequested());
+            context.go(AppRoutes.home);
+          },
           onNavigateToRegister: () => context.go(AppRoutes.register),
         ),
       ),
@@ -163,7 +169,10 @@ GoRouter buildAppRouter({
         path: AppRoutes.register,
         builder: (context, state) => RegisterPage(
           registerUseCase: registerUseCase,
-          onRegistrationSucceeded: () => context.go(AppRoutes.home),
+          onRegistrationSucceeded: () {
+            authBloc.add(const AuthEvent.checkStatusRequested());
+            context.go(AppRoutes.home);
+          },
           onNavigateToLogin: () => context.go(AppRoutes.login),
         ),
       ),
