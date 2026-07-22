@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/core/router/app_router.dart';
 import 'package:youtogether/features/auth/domain/entities/user_entity.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_event.dart';
@@ -15,12 +16,17 @@ import 'package:youtogether/features/room/domain/entities/room_entity.dart';
 import 'package:youtogether/features/room/presentation/bloc/room_bloc.dart';
 import 'package:youtogether/features/room/presentation/bloc/room_event.dart';
 import 'package:youtogether/features/room/presentation/bloc/room_state.dart';
+import 'package:youtogether/features/room/presentation/cubit/join_room_cubit.dart';
+import 'package:youtogether/features/room/presentation/cubit/join_room_state.dart';
 import 'package:youtogether/features/room/presentation/pages/home_page.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 
 class MockRoomBloc extends MockBloc<RoomEvent, RoomState> implements RoomBloc {}
+
+class MockJoinRoomCubit extends MockCubit<JoinRoomState>
+    implements JoinRoomCubit {}
 
 /// Widget tests for [HomePage] (F-R01-T3 — presentation layer).
 ///
@@ -30,6 +36,7 @@ class MockRoomBloc extends MockBloc<RoomEvent, RoomState> implements RoomBloc {}
 void main() {
   late MockAuthBloc authBloc;
   late MockRoomBloc roomBloc;
+  late MockJoinRoomCubit joinRoomCubit;
 
   setUpAll(() {
     // mocktail requires a registered fallback value for any type used
@@ -65,9 +72,14 @@ void main() {
   setUp(() {
     authBloc = MockAuthBloc();
     roomBloc = MockRoomBloc();
+    joinRoomCubit = MockJoinRoomCubit();
   });
 
-  Widget wrap(RoomState roomState, AuthState authState) {
+  Widget wrap(
+    RoomState roomState,
+    AuthState authState, {
+    JoinRoomState joinRoomState = const JoinRoomState.initial(),
+  }) {
     whenListen(
       roomBloc,
       const Stream<RoomState>.empty(),
@@ -78,11 +90,17 @@ void main() {
       const Stream<AuthState>.empty(),
       initialState: authState,
     );
+    whenListen(
+      joinRoomCubit,
+      const Stream<JoinRoomState>.empty(),
+      initialState: joinRoomState,
+    );
 
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>.value(value: authBloc),
         BlocProvider<RoomBloc>.value(value: roomBloc),
+        BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(
@@ -97,6 +115,14 @@ void main() {
               path: '/rooms/create',
               builder: (context, state) =>
                   const SizedBox.shrink(key: Key('createRoomRouteReached')),
+            ),
+            GoRoute(
+              path: AppRoutes.roomDetailPattern,
+              builder: (context, state) => SizedBox.shrink(
+                key: Key(
+                  'roomDetailRouteReached_${state.pathParameters['id']}',
+                ),
+              ),
             ),
           ],
         ),
@@ -268,5 +294,148 @@ void main() {
 
       expect(find.byKey(const Key('createRoomRouteReached')), findsOneWidget);
     });
+  });
+
+  group('HomePage — join button visibility (F-R05-T3)', () {
+    testWidgets('hidden when unauthenticated', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomState.loaded(rooms), const AuthState.unauthenticated()),
+      );
+
+      expect(
+        find.byKey(Key('roomCardJoinButton_${rooms.first.id}')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('visible for a registered, authenticated user', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomState.loaded(rooms), AuthState.authenticated(registeredUser)),
+      );
+
+      expect(
+        find.byKey(Key('roomCardJoinButton_${rooms.first.id}')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('visible for a guest-role authenticated user', (tester) async {
+      // Unlike the create-room button, the backend places no
+      // role-based restriction on joining (only JwtAuthGuard) — see
+      // RoomController.join's own documentation.
+      await tester.pumpWidget(
+        wrap(RoomState.loaded(rooms), AuthState.authenticated(guestUser)),
+      );
+
+      expect(
+        find.byKey(Key('roomCardJoinButton_${rooms.first.id}')),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('HomePage — join action (F-R05-T3)', () {
+    testWidgets(
+      'calls JoinRoomCubit.joinRoom(roomId) when the join button is tapped',
+      (tester) async {
+        when(() => joinRoomCubit.joinRoom(any())).thenAnswer((_) async {});
+
+        await tester.pumpWidget(
+          wrap(
+            RoomState.loaded(rooms),
+            AuthState.authenticated(registeredUser),
+          ),
+        );
+
+        await tester.tap(
+          find.byKey(Key('roomCardJoinButton_${rooms.first.id}')),
+        );
+        await tester.pump();
+
+        verify(() => joinRoomCubit.joinRoom(rooms.first.id)).called(1);
+      },
+    );
+
+    testWidgets(
+      'shows a per-card loading indicator only for the room being joined',
+      (tester) async {
+        await tester.pumpWidget(
+          wrap(
+            RoomState.loaded(rooms),
+            AuthState.authenticated(registeredUser),
+            joinRoomState: JoinRoomState.loading(rooms.first.id),
+          ),
+        );
+
+        expect(
+          find.byKey(Key('roomCardJoinLoadingIndicator_${rooms.first.id}')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'navigates to the room detail view when JoinRoomState.success is '
+      'emitted',
+      (tester) async {
+        final controller = StreamController<JoinRoomState>();
+        addTearDown(controller.close);
+
+        whenListen(
+          roomBloc,
+          const Stream<RoomState>.empty(),
+          initialState: RoomState.loaded(rooms),
+        );
+        whenListen(
+          authBloc,
+          const Stream<AuthState>.empty(),
+          initialState: AuthState.authenticated(registeredUser),
+        );
+        whenListen(
+          joinRoomCubit,
+          controller.stream,
+          initialState: const JoinRoomState.initial(),
+        );
+
+        await tester.pumpWidget(
+          MultiBlocProvider(
+            providers: [
+              BlocProvider<AuthBloc>.value(value: authBloc),
+              BlocProvider<RoomBloc>.value(value: roomBloc),
+              BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
+            ],
+            child: MaterialApp.router(
+              routerConfig: GoRouter(
+                initialLocation: '/',
+                routes: [
+                  GoRoute(
+                    path: '/',
+                    builder: (context, state) => const HomePage(),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.roomDetailPattern,
+                    builder: (context, state) => SizedBox.shrink(
+                      key: Key(
+                        'roomDetailRouteReached_${state.pathParameters['id']}',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+            ),
+          ),
+        );
+
+        controller.add(JoinRoomState.success(rooms.first));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(Key('roomDetailRouteReached_${rooms.first.id}')),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }
