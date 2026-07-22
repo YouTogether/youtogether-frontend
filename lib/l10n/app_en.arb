@@ -321,14 +321,20 @@
   "@roomDetailJoinButtonTooltip": {
     "description": "Tooltip for the non-owner-only join icon button in RoomDetailPage's AppBar (F-R05-T3)."
   },
-
   "roomDetailJoinSuccessMessage": "You've joined this room.",
   "@roomDetailJoinSuccessMessage": {
     "description": "SnackBar confirmation shown on RoomDetailPage after a successful join — no navigation occurs here, since the viewer is already on the room they just joined."
   },
-
   "roomDetailJoinErrorMessage": "We couldn't join this room. Please try again.",
   "@roomDetailJoinErrorMessage": {
     "description": "SnackBar message shown on RoomDetailPage for JoinRoomState.failure(any Failure subtype). Deliberately generic — never renders the raw Failure.message."
+  },
+  "roomDetailLeaveButtonTooltip": "Leave room",
+  "@roomDetailLeaveButtonTooltip": {
+    "description": "Tooltip for the non-owner-only leave icon button in RoomDetailPage's AppBar (F-R06-T3)."
+  },
+  "roomDetailLeaveErrorMessage": "We couldn't leave this room. Please try again.",
+  "@roomDetailLeaveErrorMessage": {
+    "description": "SnackBar message for LeaveRoomState.failure(any Failure subtype), including a 403 fallback if the owner-cannot-leave invariant is somehow bypassed, or a 404 if the caller already has no active membership. Deliberately generic — never renders the raw Failure.message."
   }
 }
