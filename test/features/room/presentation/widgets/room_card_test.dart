@@ -93,4 +93,102 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  group('RoomCard — join button (F-R05-T3)', () {
+    Future<void> pumpWithJoin(
+      WidgetTester tester, {
+      VoidCallback? onJoin,
+      bool isJoining = false,
+    }) {
+      return tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: RoomCard(
+              room: buildRoom(),
+              onJoin: onJoin,
+              isJoining: isJoining,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('hidden when onJoin is null', (tester) async {
+      await pumpWithJoin(tester, onJoin: null);
+
+      expect(
+        find.byKey(
+          const Key('roomCardJoinButton_7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f'),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('visible and calls onJoin when tapped', (tester) async {
+      var joined = false;
+      await pumpWithJoin(tester, onJoin: () => joined = true);
+
+      final joinButtonFinder = find.byKey(
+        const Key('roomCardJoinButton_7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f'),
+      );
+      expect(joinButtonFinder, findsOneWidget);
+
+      await tester.tap(joinButtonFinder);
+      await tester.pump();
+
+      expect(joined, isTrue);
+    });
+
+    testWidgets('shows a per-card progress indicator instead of the button while '
+        'isJoining is true', (tester) async {
+      await pumpWithJoin(tester, onJoin: () {}, isJoining: true);
+
+      expect(
+        find.byKey(
+          const Key(
+            'roomCardJoinLoadingIndicator_7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key('roomCardJoinButton_7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f'),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('tapping the join button does not also trigger onTap', (
+      tester,
+    ) async {
+      var tapped = false;
+      var joined = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: RoomCard(
+              room: buildRoom(),
+              onTap: () => tapped = true,
+              onJoin: () => joined = true,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(
+          const Key('roomCardJoinButton_7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f'),
+        ),
+      );
+      await tester.pump();
+
+      expect(joined, isTrue);
+      expect(tapped, isFalse);
+    });
+  });
 }
