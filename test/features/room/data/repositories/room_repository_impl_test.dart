@@ -366,4 +366,75 @@ void main() {
       expect(result.left, isA<NetworkFailure>());
     });
   });
+
+  group('RoomRepositoryImpl.deleteRoom', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+
+    test('should return Right(null) on success (R-DEL-01)', () async {
+      when(
+        () => remoteDataSource.deleteRoom(roomId: any(named: 'roomId')),
+      ).thenAnswer((_) async {});
+
+      final result = await roomRepository.deleteRoom(roomId: roomId);
+
+      expect(result.isRight, isTrue);
+    });
+
+    test(
+      'should delegate to the remote data source with the given room id',
+      () async {
+        when(
+          () => remoteDataSource.deleteRoom(roomId: any(named: 'roomId')),
+        ).thenAnswer((_) async {});
+
+        await roomRepository.deleteRoom(roomId: roomId);
+
+        verify(() => remoteDataSource.deleteRoom(roomId: roomId)).called(1);
+      },
+    );
+
+    test('should map a 403 ServerException to Left(AuthFailure) (non-owner, '
+        'R-DEL-04)', () async {
+      when(
+        () => remoteDataSource.deleteRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 403,
+          message: 'Only the owner of this room may perform this action.',
+        ),
+      );
+
+      final result = await roomRepository.deleteRoom(roomId: roomId);
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<AuthFailure>());
+    });
+
+    test(
+      'should map a 404 ServerException to Left(NotFoundFailure) (R-DEL-05)',
+      () async {
+        when(
+          () => remoteDataSource.deleteRoom(roomId: any(named: 'roomId')),
+        ).thenThrow(
+          const ServerException(statusCode: 404, message: 'Room not found.'),
+        );
+
+        final result = await roomRepository.deleteRoom(roomId: 'unknown-id');
+
+        expect(result.isLeft, isTrue);
+        expect(result.left, isA<NotFoundFailure>());
+      },
+    );
+
+    test('should map a NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.deleteRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(const NetworkException());
+
+      final result = await roomRepository.deleteRoom(roomId: roomId);
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
 }
