@@ -158,6 +158,35 @@ void main() {
     });
   });
 
+  group('RoomDetailView — edit button visibility (F-R03-T3)', () {
+    testWidgets('visible when the viewer owns the room', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), AuthState.authenticated(ownerUser)),
+      );
+
+      expect(find.byKey(const Key('roomDetailEditButton')), findsOneWidget);
+    });
+
+    testWidgets('hidden for a non-owner viewer', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          RoomDetailState.loaded(room),
+          AuthState.authenticated(visitorUser),
+        ),
+      );
+
+      expect(find.byKey(const Key('roomDetailEditButton')), findsNothing);
+    });
+
+    testWidgets('hidden for an unauthenticated viewer', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), const AuthState.unauthenticated()),
+      );
+
+      expect(find.byKey(const Key('roomDetailEditButton')), findsNothing);
+    });
+  });
+
   group('RoomDetailView — error state', () {
     testWidgets('shows an error message and a retry button', (tester) async {
       await tester.pumpWidget(
