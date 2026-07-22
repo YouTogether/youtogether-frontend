@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +13,8 @@ import 'package:youtogether/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_event.dart';
 import 'package:youtogether/features/auth/presentation/bloc/auth_state.dart';
 import 'package:youtogether/features/room/domain/entities/room_entity.dart';
+import 'package:youtogether/features/room/presentation/cubit/delete_room_cubit.dart';
+import 'package:youtogether/features/room/presentation/cubit/delete_room_state.dart';
 import 'package:youtogether/features/room/presentation/cubit/room_detail_cubit.dart';
 import 'package:youtogether/features/room/presentation/cubit/room_detail_state.dart';
 import 'package:youtogether/features/room/presentation/pages/room_detail_view.dart';
@@ -18,6 +22,9 @@ import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockRoomDetailCubit extends MockCubit<RoomDetailState>
     implements RoomDetailCubit {}
+
+class MockDeleteRoomCubit extends MockCubit<DeleteRoomState>
+    implements DeleteRoomCubit {}
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 
@@ -28,6 +35,7 @@ class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 ///   viewers.
 void main() {
   late MockRoomDetailCubit roomDetailCubit;
+  late MockDeleteRoomCubit deleteRoomCubit;
   late MockAuthBloc authBloc;
 
   final ownerUser = UserEntity(
@@ -56,6 +64,7 @@ void main() {
 
   setUp(() {
     roomDetailCubit = MockRoomDetailCubit();
+    deleteRoomCubit = MockDeleteRoomCubit();
     authBloc = MockAuthBloc();
   });
 
@@ -70,11 +79,17 @@ void main() {
       const Stream<AuthState>.empty(),
       initialState: authState,
     );
+    whenListen(
+      deleteRoomCubit,
+      const Stream<DeleteRoomState>.empty(),
+      initialState: const DeleteRoomState.initial(),
+    );
 
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>.value(value: authBloc),
         BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
+        BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(
@@ -257,5 +272,147 @@ void main() {
 
       expect(find.byKey(const Key('roomDetailBackButton')), findsOneWidget);
     });
+  });
+
+  group('RoomDetailView — delete button visibility (F-R04-T3)', () {
+    testWidgets('visible when the viewer owns the room', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), AuthState.authenticated(ownerUser)),
+      );
+
+      expect(find.byKey(const Key('roomDetailDeleteButton')), findsOneWidget);
+    });
+
+    testWidgets('hidden for a non-owner viewer', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          RoomDetailState.loaded(room),
+          AuthState.authenticated(visitorUser),
+        ),
+      );
+
+      expect(find.byKey(const Key('roomDetailDeleteButton')), findsNothing);
+    });
+
+    testWidgets('hidden for an unauthenticated viewer', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), const AuthState.unauthenticated()),
+      );
+
+      expect(find.byKey(const Key('roomDetailDeleteButton')), findsNothing);
+    });
+  });
+
+  group('RoomDetailView — deletion confirmation dialog (F-R04-T3)', () {
+    testWidgets(
+      'shows a confirmation dialog when the delete button is tapped',
+      (tester) async {
+        await tester.pumpWidget(
+          wrap(
+            RoomDetailState.loaded(room),
+            AuthState.authenticated(ownerUser),
+          ),
+        );
+
+        await tester.tap(find.byKey(const Key('roomDetailDeleteButton')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AlertDialog), findsOneWidget);
+        verifyNever(() => deleteRoomCubit.deleteRoom(any()));
+      },
+    );
+
+    testWidgets('does not call DeleteRoomCubit.deleteRoom when cancelled', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), AuthState.authenticated(ownerUser)),
+      );
+
+      await tester.tap(find.byKey(const Key('roomDetailDeleteButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('roomDetailDeleteCancelButton')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      verifyNever(() => deleteRoomCubit.deleteRoom(any()));
+    });
+
+    testWidgets('calls DeleteRoomCubit.deleteRoom(roomId) when confirmed', (
+      tester,
+    ) async {
+      when(() => deleteRoomCubit.deleteRoom(any())).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), AuthState.authenticated(ownerUser)),
+      );
+
+      await tester.tap(find.byKey(const Key('roomDetailDeleteButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('roomDetailDeleteConfirmButton')));
+      await tester.pumpAndSettle();
+
+      verify(() => deleteRoomCubit.deleteRoom(room.id)).called(1);
+    });
+  });
+
+  group('RoomDetailView — deletion success navigates home (F-R04-T3)', () {
+    testWidgets(
+      'navigates to HomePage when DeleteRoomState.success is emitted',
+      (tester) async {
+        final controller = StreamController<DeleteRoomState>();
+        addTearDown(controller.close);
+
+        whenListen(
+          roomDetailCubit,
+          const Stream<RoomDetailState>.empty(),
+          initialState: RoomDetailState.loaded(room),
+        );
+        whenListen(
+          authBloc,
+          const Stream<AuthState>.empty(),
+          initialState: AuthState.authenticated(ownerUser),
+        );
+        whenListen(
+          deleteRoomCubit,
+          controller.stream,
+          initialState: const DeleteRoomState.initial(),
+        );
+
+        await tester.pumpWidget(
+          MultiBlocProvider(
+            providers: [
+              BlocProvider<AuthBloc>.value(value: authBloc),
+              BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
+              BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
+            ],
+            child: MaterialApp.router(
+              routerConfig: GoRouter(
+                initialLocation: AppRoutes.roomDetail(room.id),
+                routes: [
+                  GoRoute(
+                    path: AppRoutes.home,
+                    builder: (context, state) =>
+                        const SizedBox.shrink(key: Key('homeRouteReached')),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.roomDetailPattern,
+                    builder: (context, state) =>
+                        RoomDetailView(roomId: room.id),
+                  ),
+                ],
+              ),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+            ),
+          ),
+        );
+
+        controller.add(const DeleteRoomState.success());
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('homeRouteReached')), findsOneWidget);
+      },
+    );
   });
 }
