@@ -15,6 +15,7 @@ import '../../features/room/domain/usecases/delete_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
 import '../../features/room/domain/usecases/join_room_usecase.dart';
+import '../../features/room/domain/usecases/leave_room_usecase.dart';
 import '../../features/room/domain/usecases/update_room_usecase.dart';
 import '../../features/room/presentation/bloc/room_bloc.dart';
 import '../../features/room/presentation/bloc/room_event.dart';
@@ -181,6 +182,10 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// separately, a fresh `JoinRoomCubit` provided by `RoomDetailPage` for
 /// its own non-owner-only join button — per this ticket's requirement
 /// to support joining from both screens.
+///
+/// [leaveRoomUseCase] is threaded through to `RoomDetailPage` the same
+/// way, providing `LeaveRoomCubit` for its non-owner-only leave button
+/// (F-R06-T3).
 GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
@@ -191,6 +196,7 @@ GoRouter buildAppRouter({
   required UpdateRoomUseCase updateRoomUseCase,
   required DeleteRoomUseCase deleteRoomUseCase,
   required JoinRoomUseCase joinRoomUseCase,
+  required LeaveRoomUseCase leaveRoomUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -260,6 +266,7 @@ GoRouter buildAppRouter({
           getRoomByIdUseCase: getRoomByIdUseCase,
           deleteRoomUseCase: deleteRoomUseCase,
           joinRoomUseCase: joinRoomUseCase,
+          leaveRoomUseCase: leaveRoomUseCase,
         ),
       ),
     ],

@@ -14,6 +14,7 @@ import 'features/room/domain/usecases/delete_room_usecase.dart';
 import 'features/room/domain/usecases/get_public_rooms_usecase.dart';
 import 'features/room/domain/usecases/get_room_by_id_usecase.dart';
 import 'features/room/domain/usecases/join_room_usecase.dart';
+import 'features/room/domain/usecases/leave_room_usecase.dart';
 import 'features/room/domain/usecases/update_room_usecase.dart';
 
 /// Application root widget.
@@ -59,6 +60,7 @@ class _AppState extends State<App> {
       updateRoomUseCase: sl<UpdateRoomUseCase>(),
       deleteRoomUseCase: sl<DeleteRoomUseCase>(),
       joinRoomUseCase: sl<JoinRoomUseCase>(),
+      leaveRoomUseCase: sl<LeaveRoomUseCase>(),
     );
   }
 
