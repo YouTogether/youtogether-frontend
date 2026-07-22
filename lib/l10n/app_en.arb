@@ -275,5 +275,35 @@
   "editRoomGenericErrorMessage": "Something went wrong. Please try again.",
   "@editRoomGenericErrorMessage": {
     "description": "Fallback SnackBar message for any other Failure subtype (ValidationFailure reaching the SnackBar branch, CacheFailure, FirebaseFailure) that updateRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
+  },
+
+  "roomDetailDeleteButtonTooltip": "Delete room",
+  "@roomDetailDeleteButtonTooltip": {
+    "description": "Tooltip for the owner-only delete icon button in RoomDetailPage's AppBar (F-R04-T3)."
+  },
+
+  "roomDetailDeleteConfirmTitle": "Delete this room?",
+  "@roomDetailDeleteConfirmTitle": {
+    "description": "Title of the AlertDialog shown before deleting a room."
+  },
+
+  "roomDetailDeleteConfirmMessage": "This will remove the room from the public listing. This action cannot be undone.",
+  "@roomDetailDeleteConfirmMessage": {
+    "description": "Body text of the deletion confirmation AlertDialog."
+  },
+
+  "roomDetailDeleteCancelButtonLabel": "Cancel",
+  "@roomDetailDeleteCancelButtonLabel": {
+    "description": "Cancel button label on the deletion confirmation AlertDialog."
+  },
+
+  "roomDetailDeleteConfirmButtonLabel": "Delete",
+  "@roomDetailDeleteConfirmButtonLabel": {
+    "description": "Confirm button label on the deletion confirmation AlertDialog."
+  },
+
+  "roomDetailDeleteErrorMessage": "We couldn't delete this room. Please try again.",
+  "@roomDetailDeleteErrorMessage": {
+    "description": "SnackBar message for DeleteRoomState.failure(any Failure subtype), including a 403 from a non-owner request that reached the cubit despite the delete button being hidden for non-owners. Deliberately generic — never renders the raw Failure.message."
   }
 }

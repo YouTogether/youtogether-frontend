@@ -68,5 +68,12 @@
   "editRoomServerErrorMessage": "Le serveur a rejeté la demande. Veuillez réessayer.",
   "editRoomAuthErrorMessage": "Seul le propriétaire de la room peut effectuer cette modification.",
   "editRoomNotFoundErrorMessage": "Cette room n'existe plus.",
-  "editRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer."
+  "editRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer.",
+
+  "roomDetailDeleteButtonTooltip": "Supprimer la room",
+  "roomDetailDeleteConfirmTitle": "Supprimer cette room ?",
+  "roomDetailDeleteConfirmMessage": "Cette action retirera la room de la liste publique et est irréversible.",
+  "roomDetailDeleteCancelButtonLabel": "Annuler",
+  "roomDetailDeleteConfirmButtonLabel": "Supprimer",
+  "roomDetailDeleteErrorMessage": "Impossible de supprimer cette room. Veuillez réessayer."
 }
