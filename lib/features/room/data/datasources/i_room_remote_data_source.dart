@@ -59,4 +59,13 @@ abstract class IRoomRemoteDataSource {
   /// request, or `statusCode: 404` for a non-existent or
   /// already-deleted room.
   Future<void> deleteRoom({required String roomId});
+
+  /// Joins a room via `POST /rooms/:id/join`. No request body — the
+  /// joining user is derived server-side from the authenticated
+  /// request.
+  ///
+  /// Throws [ServerException] with `statusCode: 409` for a duplicate
+  /// active membership, or `statusCode: 404` for a non-existent or
+  /// soft-deleted room.
+  Future<RoomModel> joinRoom({required String roomId});
 }

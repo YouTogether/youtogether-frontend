@@ -103,6 +103,19 @@ class RoomRemoteDataSourceImpl implements IRoomRemoteDataSource {
     }
   }
 
+  @override
+  Future<RoomModel> joinRoom({required String roomId}) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/rooms/$roomId/join',
+      );
+
+      return RoomModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
   /// Maps a [DioException] to the typed exception hierarchy consumed by
   /// [RoomRepositoryImpl].
   ///
