@@ -143,10 +143,31 @@ class RoomRepositoryImpl implements IRoomRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteRoom({required String roomId}) {
-    throw UnimplementedError(
-      'RoomRepositoryImpl.deleteRoom will be implemented later.',
-    );
+  Future<Either<Failure, void>> deleteRoom({required String roomId}) async {
+    try {
+      await _remoteDataSource.deleteRoom(roomId: roomId);
+
+      return const Right(null);
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 403) {
+        return const Left(
+          Failure.auth(
+            message: 'Only the owner of this room may perform this action.',
+          ),
+        );
+      }
+      if (exception.statusCode == 404) {
+        return const Left(Failure.notFound());
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    }
   }
 
   @override

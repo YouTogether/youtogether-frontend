@@ -19,7 +19,7 @@ import 'i_room_remote_data_source.dart';
 /// - `getPublicRooms()`
 /// - `createRoom()`,
 /// - `updateRoom()`,
-/// - `getRoomById()`
+/// - `getRoomById()`,
 /// - `deleteRoom()`,
 /// - `joinRoom()`,
 /// - `leaveRoom()`
@@ -89,6 +89,15 @@ class RoomRemoteDataSourceImpl implements IRoomRemoteDataSource {
       final response = await _dio.get<Map<String, dynamic>>('/rooms/$roomId');
 
       return RoomModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
+  @override
+  Future<void> deleteRoom({required String roomId}) async {
+    try {
+      await _dio.delete<dynamic>('/rooms/$roomId');
     } on DioException catch (exception) {
       throw _mapDioException(exception);
     }

@@ -52,4 +52,11 @@ abstract class IRoomRemoteDataSource {
   /// documentation of that route. Throws [ServerException] with
   /// `statusCode: 404` for a non-existent or soft-deleted room.
   Future<RoomModel> getRoomById({required String roomId});
+
+  /// Soft-deletes a room via `DELETE /rooms/:id`. No request body.
+  ///
+  /// Throws [ServerException] with `statusCode: 403` for a non-owner
+  /// request, or `statusCode: 404` for a non-existent or
+  /// already-deleted room.
+  Future<void> deleteRoom({required String roomId});
 }
