@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/room_entity.dart';
 import '../cubit/edit_room_cubit.dart';
@@ -66,7 +68,14 @@ class _EditRoomViewState extends State<EditRoomView> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.editRoomPageTitle)),
+      appBar: AppBar(
+        title: Text(l10n.editRoomPageTitle),
+        leading: IconButton(
+          key: const Key('loginBackToHomeButton'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.roomDetailPattern),
+        ),
+      ),
       body: BlocListener<EditRoomCubit, EditRoomState>(
         listener: (context, state) {
           if (state is EditRoomSuccess) {
