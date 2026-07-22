@@ -14,9 +14,11 @@ import '../../features/room/domain/usecases/create_room_usecase.dart';
 import '../../features/room/domain/usecases/delete_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
+import '../../features/room/domain/usecases/join_room_usecase.dart';
 import '../../features/room/domain/usecases/update_room_usecase.dart';
 import '../../features/room/presentation/bloc/room_bloc.dart';
 import '../../features/room/presentation/bloc/room_event.dart';
+import '../../features/room/presentation/cubit/join_room_cubit.dart';
 import '../../features/room/presentation/pages/create_room_page.dart';
 import '../../features/room/presentation/pages/edit_room_page.dart';
 import '../../features/room/presentation/pages/home_page.dart';
@@ -173,6 +175,12 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// [deleteRoomUseCase] is threaded through to `RoomDetailPage`, which
 /// provides the resulting `DeleteRoomCubit` for its own owner-gated
 /// delete button and confirmation dialog (F-R04-T3).
+///
+/// [joinRoomUseCase] is threaded through to construct a `JoinRoomCubit`
+/// shared by every `RoomCard` on the `/` route (`HomePage`) and,
+/// separately, a fresh `JoinRoomCubit` provided by `RoomDetailPage` for
+/// its own non-owner-only join button — per this ticket's requirement
+/// to support joining from both screens.
 GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
@@ -182,6 +190,7 @@ GoRouter buildAppRouter({
   required GetRoomByIdUseCase getRoomByIdUseCase,
   required UpdateRoomUseCase updateRoomUseCase,
   required DeleteRoomUseCase deleteRoomUseCase,
+  required JoinRoomUseCase joinRoomUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -191,10 +200,15 @@ GoRouter buildAppRouter({
     routes: [
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => BlocProvider(
-          create: (_) =>
-              RoomBloc(getPublicRoomsUseCase: getPublicRoomsUseCase)
-                ..add(const RoomEvent.fetchPublicRooms()),
+        builder: (context, state) => MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) =>
+                  RoomBloc(getPublicRoomsUseCase: getPublicRoomsUseCase)
+                    ..add(const RoomEvent.fetchPublicRooms()),
+            ),
+            BlocProvider(create: (_) => JoinRoomCubit(joinRoomUseCase)),
+          ],
           child: const HomePage(),
         ),
       ),
@@ -245,6 +259,7 @@ GoRouter buildAppRouter({
           roomId: state.pathParameters['id']!,
           getRoomByIdUseCase: getRoomByIdUseCase,
           deleteRoomUseCase: deleteRoomUseCase,
+          joinRoomUseCase: joinRoomUseCase,
         ),
       ),
     ],

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:youtogether/features/room/domain/usecases/delete_room_usecase.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'core/di/injection_container.dart';
@@ -11,8 +10,10 @@ import 'features/auth/domain/usecases/register_usecase.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/room/domain/usecases/create_room_usecase.dart';
+import 'features/room/domain/usecases/delete_room_usecase.dart';
 import 'features/room/domain/usecases/get_public_rooms_usecase.dart';
 import 'features/room/domain/usecases/get_room_by_id_usecase.dart';
+import 'features/room/domain/usecases/join_room_usecase.dart';
 import 'features/room/domain/usecases/update_room_usecase.dart';
 
 /// Application root widget.
@@ -57,6 +58,7 @@ class _AppState extends State<App> {
       getRoomByIdUseCase: sl<GetRoomByIdUseCase>(),
       updateRoomUseCase: sl<UpdateRoomUseCase>(),
       deleteRoomUseCase: sl<DeleteRoomUseCase>(),
+      joinRoomUseCase: sl<JoinRoomUseCase>(),
     );
   }
 
