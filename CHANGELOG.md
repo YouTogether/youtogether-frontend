@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.18.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.17.0...v0.18.0) (2026-07-22)
+
+
+### Features
+
+* **room:** [F-R01-T1] room domain listing ([#68](https://github.com/YouTogether/youtogether-frontend/issues/68)) ([0e6f525](https://github.com/YouTogether/youtogether-frontend/commit/0e6f5252a2882272e4ce96c71afe1a9d0a49b5bc))
+* **room:** [F-R01-T2] room data listing ([#80](https://github.com/YouTogether/youtogether-frontend/issues/80)) ([a01c02c](https://github.com/YouTogether/youtogether-frontend/commit/a01c02cb0615015314f5b205823e0e05e34f705d))
+* **room:** [F-R01-T3] implement RoomBloc and room listing UI on HomePage ([#84](https://github.com/YouTogether/youtogether-frontend/issues/84)) ([0a7e223](https://github.com/YouTogether/youtogether-frontend/commit/0a7e223b8a7946cec2598bf19410bbe68b460273))
+* **room:** [F-R02-T1] addroom usecase ([#70](https://github.com/YouTogether/youtogether-frontend/issues/70)) ([a712255](https://github.com/YouTogether/youtogether-frontend/commit/a7122558feb5d522950f66117b02e70c80363977))
+* **room:** [F-R02-T2] create room data ([#82](https://github.com/YouTogether/youtogether-frontend/issues/82)) ([87a124e](https://github.com/YouTogether/youtogether-frontend/commit/87a124e1dc7ecfc544cdefb94eb330f8f1c76dd4))
+* **room:** [F-R02-T3] build room creation form and wire to RoomBloc ([#86](https://github.com/YouTogether/youtogether-frontend/issues/86)) ([672272e](https://github.com/YouTogether/youtogether-frontend/commit/672272e013bebd6897b13bf9904992648a43f941))
+* **room:** [F-R03-T1] update room usecase ([#72](https://github.com/YouTogether/youtogether-frontend/issues/72)) ([abe2259](https://github.com/YouTogether/youtogether-frontend/commit/abe22598415ece7b1f560c4e353a279be608d0d0))
+* **room:** [F-R03-T2] implement updateRoom in repository and data sources ([#88](https://github.com/YouTogether/youtogether-frontend/issues/88)) ([38298e2](https://github.com/YouTogether/youtogether-frontend/commit/38298e2a0218c3ae6796a1b2cdfd2a7784a84e06))
+* **room:** [F-R03-T3] presentation -- build room edit UI with owner-only access ([#92](https://github.com/YouTogether/youtogether-frontend/issues/92)) ([e601c94](https://github.com/YouTogether/youtogether-frontend/commit/e601c94e2b9440e3f11ec939e107b7e2bc26b7fc))
+* **room:** [F-R04-T1] delete room usecase ([#74](https://github.com/YouTogether/youtogether-frontend/issues/74)) ([bed9ff8](https://github.com/YouTogether/youtogether-frontend/commit/bed9ff8e56b656eda0e916038b71040f44ad835a))
+* **room:** [F-R04-T2] data -- implement deleteRoom in repository and data sources ([#94](https://github.com/YouTogether/youtogether-frontend/issues/94)) ([6c5e687](https://github.com/YouTogether/youtogether-frontend/commit/6c5e687a7840522d8d552774daa3a8de8e79fc61))
+* **room:** [F-R04-T3] presentation -- build deletion confirmation and wire navigation ([#93](https://github.com/YouTogether/youtogether-frontend/issues/93)) ([7d0ef2f](https://github.com/YouTogether/youtogether-frontend/commit/7d0ef2fb8a395f304b8460b1b5d5d3250ff790ad))
+* **room:** [F-R05-T1] join room usecase ([#76](https://github.com/YouTogether/youtogether-frontend/issues/76)) ([023c631](https://github.com/YouTogether/youtogether-frontend/commit/023c631997e7f5f3b38b65434ee0b38e31c9edba))
+* **room:** [F-R05-T2] data -- implement joinRoom in repository and data sources ([#95](https://github.com/YouTogether/youtogether-frontend/issues/95)) ([6ee6d01](https://github.com/YouTogether/youtogether-frontend/commit/6ee6d01743c1c3320cc7ef6981c01124c9f99e29))
+* **room:** [F-R05-T3] presentation -- wire join button and navigation ([#97](https://github.com/YouTogether/youtogether-frontend/issues/97)) ([55bf011](https://github.com/YouTogether/youtogether-frontend/commit/55bf011b33b04415eb4f618d460380576276222a))
+* **room:** [F-R06-T1] leave room usecase ([#78](https://github.com/YouTogether/youtogether-frontend/issues/78)) ([8f098e3](https://github.com/YouTogether/youtogether-frontend/commit/8f098e353d3be609190dcf2cd7e5446f7dab024a))
+* **room:** [F-R06-T2] data -- implement leaveRoom in repository and data sources ([#96](https://github.com/YouTogether/youtogether-frontend/issues/96)) ([f8fc62e](https://github.com/YouTogether/youtogether-frontend/commit/f8fc62e42b0d49ec8aca0e872aa2032583c02ed5))
+* **room:** [F-R06-T3] presentation -- wire leave button with owner guard ([#98](https://github.com/YouTogether/youtogether-frontend/issues/98)) ([756d11e](https://github.com/YouTogether/youtogether-frontend/commit/756d11e6684c3e5d95fe12fba909c95cb1717b15))
+* **room:** room detail page ([#91](https://github.com/YouTogether/youtogether-frontend/issues/91)) ([907137c](https://github.com/YouTogether/youtogether-frontend/commit/907137c4f9e4bc0ed1b26785e1706b48425f0d0c))
+* **room:** room detail prereq get room by domain ([#89](https://github.com/YouTogether/youtogether-frontend/issues/89)) ([6c171dd](https://github.com/YouTogether/youtogether-frontend/commit/6c171dd4c8a676a4798c1a18a9a57c1033537889))
+* **room:** room detail prereq get room by id data ([#90](https://github.com/YouTogether/youtogether-frontend/issues/90)) ([3692b25](https://github.com/YouTogether/youtogether-frontend/commit/3692b25363309745558ef1834c4feff1bab5556d))
+
+
+### Bug Fixes
+
+* **auth:** post login state sync and home navigation ([#87](https://github.com/YouTogether/youtogether-frontend/issues/87)) ([c736dd7](https://github.com/YouTogether/youtogether-frontend/commit/c736dd74733dae79e2f357021c1990af57b3e464))
+
 ## [0.17.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.16.0...v0.17.0) (2026-07-20)
 
 
