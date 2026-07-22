@@ -15,22 +15,9 @@ import '../datasources/i_room_remote_data_source.dart';
 /// [IRoomRemoteDataSource] at this stage; anything else propagates
 /// unhandled rather than being silently swallowed.
 ///
-/// ## Incremental implementation status
-/// [IRoomRepository] was completed in full across the domain-layer
-/// tasks before any data-layer task began —
-/// unlike the backend, where the repository interface and its
-/// implementation grew in lockstep, one method per task. Dart requires
-/// every abstract method of an implemented interface to have a body to
-/// compile at all, so this class already declared all six methods from
-/// well ahead of the tasks that implement each one for real.
-///
-/// [deleteRoom], [joinRoom], and [leaveRoom] still throw
-/// [UnimplementedError] for now, each annotated with the task that will
-/// replace it; [createRoom], [updateRoom], and [getRoomById]
-/// are now fully implemented. This is a deliberate, visible
-/// placeholder for the remaining methods — not a silently swallowed
-/// gap — and is called out explicitly here rather than discovered
-/// later.
+/// All six [IRoomRepository] methods are now fully implemented:
+/// `getPublicRooms`, `createRoom`, `updateRoom`,
+/// `getRoomById`, `joinRoom`, `deleteRoom`, and `leaveRoom`
 ///
 /// @see IRoomRepository — the domain port being implemented
 class RoomRepositoryImpl implements IRoomRepository {
@@ -197,9 +184,32 @@ class RoomRepositoryImpl implements IRoomRepository {
   }
 
   @override
-  Future<Either<Failure, void>> leaveRoom({required String roomId}) {
-    throw UnimplementedError(
-      'RoomRepositoryImpl.leaveRoom will be implemented later.',
-    );
+  Future<Either<Failure, void>> leaveRoom({required String roomId}) async {
+    try {
+      await _remoteDataSource.leaveRoom(roomId: roomId);
+
+      return const Right(null);
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 403) {
+        return const Left(
+          Failure.auth(
+            message:
+                'The owner of this room cannot leave it; delete the room '
+                'instead.',
+          ),
+        );
+      }
+      if (exception.statusCode == 404) {
+        return const Left(Failure.notFound());
+      }
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    }
   }
 }

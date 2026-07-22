@@ -760,4 +760,95 @@ void main() {
       },
     );
   });
+
+  group('RoomRemoteDataSourceImpl.leaveRoom', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+    final leaveRequestOptions = RequestOptions(path: '/rooms/$roomId/leave');
+
+    test('should POST /rooms/:id/leave with no request body', () async {
+      when(() => dio.post<dynamic>(any())).thenAnswer(
+        (_) async => Response(
+          data: null,
+          statusCode: 200,
+          requestOptions: leaveRequestOptions,
+        ),
+      );
+
+      await dataSource.leaveRoom(roomId: roomId);
+
+      verify(() => dio.post<dynamic>('/rooms/$roomId/leave')).called(1);
+    });
+
+    test(
+      'should throw ServerException with statusCode 403 for the room owner',
+      () async {
+        when(() => dio.post<dynamic>(any())).thenThrow(
+          DioException(
+            requestOptions: leaveRequestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {
+                'statusCode': 403,
+                'message':
+                    'The owner of this room cannot leave it; delete the '
+                    'room instead.',
+              },
+              statusCode: 403,
+              requestOptions: leaveRequestOptions,
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.leaveRoom(roomId: roomId),
+          throwsA(
+            isA<ServerException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              403,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('should throw ServerException with statusCode 404 when there is no '
+        'active membership', () async {
+      when(() => dio.post<dynamic>(any())).thenThrow(
+        DioException(
+          requestOptions: leaveRequestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 404, 'message': 'No active membership found.'},
+            statusCode: 404,
+            requestOptions: leaveRequestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.leaveRoom(roomId: roomId),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 404),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(() => dio.post<dynamic>(any())).thenThrow(
+          DioException(
+            requestOptions: leaveRequestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.leaveRoom(roomId: roomId),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }
