@@ -171,10 +171,29 @@ class RoomRepositoryImpl implements IRoomRepository {
   }
 
   @override
-  Future<Either<Failure, RoomEntity>> joinRoom({required String roomId}) {
-    throw UnimplementedError(
-      'RoomRepositoryImpl.joinRoom will be implemented later.',
-    );
+  Future<Either<Failure, RoomEntity>> joinRoom({required String roomId}) async {
+    try {
+      final model = await _remoteDataSource.joinRoom(roomId: roomId);
+
+      return Right(model.toDomain());
+    } on ServerException catch (exception) {
+      if (exception.statusCode == 404) {
+        return const Left(Failure.notFound());
+      }
+      // Includes the 409 duplicate-active-membership case: no dedicated
+      // Failure variant exists for it (only seven variants total — see
+      // core/error/failures.dart), so it surfaces as a generic
+      // ServerFailure carrying statusCode: 409, exactly like the
+      // backend integration test suite's own expectation.
+      return Left(
+        Failure.server(
+          statusCode: exception.statusCode,
+          message: exception.message,
+        ),
+      );
+    } on NetworkException {
+      return const Left(Failure.network());
+    }
   }
 
   @override
