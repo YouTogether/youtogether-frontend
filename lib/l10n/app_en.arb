@@ -228,7 +228,52 @@
   },
 
   "roomDetailBackButtonTooltip": "Back to room list",
-    "@roomDetailBackButtonTooltip": {
-      "description": "Tooltip/semantic label for the back button on RoomDetailPage's AppBar, present in every state (loading, loaded, failure)."
-    }
+  "@roomDetailBackButtonTooltip": {
+    "description": "Tooltip/semantic label for the back button on RoomDetailPage's AppBar, present in every state (loading, loaded, failure)."
+  },
+
+  "roomDetailBackButtonTooltip": "Back to room list",
+  "@roomDetailBackButtonTooltip": {
+    "description": "Tooltip for the back button in RoomDetailPage's AppBar (navigation via context.go, no automatic back arrow)."
+  },
+
+  "roomDetailEditButtonTooltip": "Edit room",
+  "@roomDetailEditButtonTooltip": {
+    "description": "Tooltip for the owner-only edit icon button in RoomDetailPage's AppBar (F-R03-T3)."
+  },
+
+  "editRoomPageTitle": "Edit room",
+  "@editRoomPageTitle": {
+    "description": "AppBar title on the room edit screen (F-R03-T3)."
+  },
+
+  "editRoomSubmitButtonLabel": "Save changes",
+  "@editRoomSubmitButtonLabel": {
+    "description": "Submit button label on the room edit form."
+  },
+
+  "editRoomNetworkErrorMessage": "No internet connection. Please check your network and try again.",
+  "@editRoomNetworkErrorMessage": {
+    "description": "SnackBar message for EditRoomState.failure(NetworkFailure)."
+  },
+
+  "editRoomServerErrorMessage": "The server rejected the request. Please try again.",
+  "@editRoomServerErrorMessage": {
+    "description": "SnackBar message for EditRoomState.failure(ServerFailure) — never renders the raw ServerFailure.message."
+  },
+
+  "editRoomAuthErrorMessage": "Only the room owner can make this change.",
+  "@editRoomAuthErrorMessage": {
+    "description": "SnackBar message for EditRoomState.failure(AuthFailure), i.e. a 403 from a non-owner request that reached the cubit despite the edit button being hidden for non-owners."
+  },
+
+  "editRoomNotFoundErrorMessage": "This room no longer exists.",
+  "@editRoomNotFoundErrorMessage": {
+    "description": "SnackBar message for EditRoomState.failure(NotFoundFailure) — the room was deleted between opening the edit form and submitting it."
+  },
+
+  "editRoomGenericErrorMessage": "Something went wrong. Please try again.",
+  "@editRoomGenericErrorMessage": {
+    "description": "Fallback SnackBar message for any other Failure subtype (ValidationFailure reaching the SnackBar branch, CacheFailure, FirebaseFailure) that updateRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
+  }
 }
