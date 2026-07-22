@@ -560,4 +560,94 @@ void main() {
       },
     );
   });
+
+  group('RoomRemoteDataSourceImpl.deleteRoom', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+    final deleteRequestOptions = RequestOptions(path: '/rooms/$roomId');
+
+    test('should DELETE /rooms/:id with the correct room id', () async {
+      when(() => dio.delete<dynamic>(any())).thenAnswer(
+        (_) async => Response(
+          data: null,
+          statusCode: 200,
+          requestOptions: deleteRequestOptions,
+        ),
+      );
+
+      await dataSource.deleteRoom(roomId: roomId);
+
+      verify(() => dio.delete<dynamic>('/rooms/$roomId')).called(1);
+    });
+
+    test(
+      'should throw ServerException with statusCode 403 for a non-owner',
+      () async {
+        when(() => dio.delete<dynamic>(any())).thenThrow(
+          DioException(
+            requestOptions: deleteRequestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {
+                'statusCode': 403,
+                'message':
+                    'Only the owner of this room may perform this action.',
+              },
+              statusCode: 403,
+              requestOptions: deleteRequestOptions,
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.deleteRoom(roomId: roomId),
+          throwsA(
+            isA<ServerException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              403,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('should throw ServerException with statusCode 404 for a missing or '
+        'already-deleted room', () async {
+      when(() => dio.delete<dynamic>(any())).thenThrow(
+        DioException(
+          requestOptions: deleteRequestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 404, 'message': 'Room not found.'},
+            statusCode: 404,
+            requestOptions: deleteRequestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.deleteRoom(roomId: roomId),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 404),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(() => dio.delete<dynamic>(any())).thenThrow(
+          DioException(
+            requestOptions: deleteRequestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.deleteRoom(roomId: roomId),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
 }
