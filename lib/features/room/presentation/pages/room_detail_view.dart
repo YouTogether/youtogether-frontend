@@ -9,6 +9,8 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../cubit/delete_room_cubit.dart';
 import '../cubit/delete_room_state.dart';
+import '../cubit/join_room_cubit.dart';
+import '../cubit/join_room_state.dart';
 import '../cubit/room_detail_cubit.dart';
 import '../cubit/room_detail_state.dart';
 
@@ -57,6 +59,17 @@ import '../cubit/room_detail_state.dart';
 /// `EditRoomPage`'s navigation back to this same page — constructs a
 /// fresh `RoomBloc` and re-fetches, satisfying "refresh the room list"
 /// without extra plumbing.
+///
+/// ## Joining (F-R05-T3)
+/// The non-owner-only join button (same visibility condition as leave
+/// — this view has no membership data to distinguish "already a
+/// member" from "not yet a member", the same limitation already
+/// accepted for the leave button) calls [JoinRoomCubit.joinRoom].
+/// Unlike joining from `HomePage` (which navigates *into* this page on
+/// success, since the user starts elsewhere), a successful join here
+/// simply re-fetches ([RoomDetailCubit.fetchRoom]) to reflect the
+/// incremented member count — the user is already looking at the room
+/// they just joined, so there is nowhere further to navigate.
 class RoomDetailView extends StatelessWidget {
   const RoomDetailView({required this.roomId, super.key});
 
@@ -66,16 +79,34 @@ class RoomDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    return BlocListener<DeleteRoomCubit, DeleteRoomState>(
-      listener: (context, deleteState) {
-        if (deleteState is DeleteRoomSuccess) {
-          context.go(AppRoutes.home);
-        } else if (deleteState is DeleteRoomFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.roomDetailDeleteErrorMessage)),
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<DeleteRoomCubit, DeleteRoomState>(
+          listener: (context, deleteState) {
+            if (deleteState is DeleteRoomSuccess) {
+              context.go(AppRoutes.home);
+            } else if (deleteState is DeleteRoomFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.roomDetailDeleteErrorMessage)),
+              );
+            }
+          },
+        ),
+        BlocListener<JoinRoomCubit, JoinRoomState>(
+          listener: (context, joinState) {
+            if (joinState is JoinRoomSuccess) {
+              context.read<RoomDetailCubit>().fetchRoom(roomId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.roomDetailJoinSuccessMessage)),
+              );
+            } else if (joinState is JoinRoomFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.roomDetailJoinErrorMessage)),
+              );
+            }
+          },
+        ),
+      ],
       child: BlocBuilder<RoomDetailCubit, RoomDetailState>(
         builder: (context, state) {
           return Scaffold(
@@ -139,6 +170,54 @@ class RoomDetailView extends StatelessWidget {
                         tooltip: l10n.roomDetailDeleteButtonTooltip,
                         onPressed: () =>
                             _confirmDeletion(context, l10n, state.room.id),
+                      );
+                    },
+                  ),
+                if (state is RoomDetailLoaded)
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final isNonOwnerViewer = switch (authState) {
+                        AuthAuthenticated(:final user) =>
+                          user.id != state.room.ownerId,
+                        AuthInitial() ||
+                        AuthLoading() ||
+                        AuthUnauthenticated() ||
+                        AuthOperationFailure() => false,
+                      };
+
+                      if (!isNonOwnerViewer) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return BlocBuilder<JoinRoomCubit, JoinRoomState>(
+                        builder: (context, joinState) {
+                          final isJoiningThisRoom =
+                              joinState is JoinRoomLoading &&
+                              joinState.roomId == state.room.id;
+
+                          if (isJoiningThisRoom) {
+                            return const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                key: Key('roomDetailJoinLoadingIndicator'),
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          }
+
+                          return IconButton(
+                            key: const Key('roomDetailJoinButton'),
+                            icon: const Icon(Icons.group_add),
+                            tooltip: l10n.roomDetailJoinButtonTooltip,
+                            onPressed: () => context
+                                .read<JoinRoomCubit>()
+                                .joinRoom(state.room.id),
+                          );
+                        },
                       );
                     },
                   ),

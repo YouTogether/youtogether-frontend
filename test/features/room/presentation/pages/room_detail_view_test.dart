@@ -15,6 +15,8 @@ import 'package:youtogether/features/auth/presentation/bloc/auth_state.dart';
 import 'package:youtogether/features/room/domain/entities/room_entity.dart';
 import 'package:youtogether/features/room/presentation/cubit/delete_room_cubit.dart';
 import 'package:youtogether/features/room/presentation/cubit/delete_room_state.dart';
+import 'package:youtogether/features/room/presentation/cubit/join_room_cubit.dart';
+import 'package:youtogether/features/room/presentation/cubit/join_room_state.dart';
 import 'package:youtogether/features/room/presentation/cubit/room_detail_cubit.dart';
 import 'package:youtogether/features/room/presentation/cubit/room_detail_state.dart';
 import 'package:youtogether/features/room/presentation/pages/room_detail_view.dart';
@@ -26,6 +28,9 @@ class MockRoomDetailCubit extends MockCubit<RoomDetailState>
 class MockDeleteRoomCubit extends MockCubit<DeleteRoomState>
     implements DeleteRoomCubit {}
 
+class MockJoinRoomCubit extends MockCubit<JoinRoomState>
+    implements JoinRoomCubit {}
+
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 
 /// Widget tests for [RoomDetailView].
@@ -36,6 +41,7 @@ class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 void main() {
   late MockRoomDetailCubit roomDetailCubit;
   late MockDeleteRoomCubit deleteRoomCubit;
+  late MockJoinRoomCubit joinRoomCubit;
   late MockAuthBloc authBloc;
 
   final ownerUser = UserEntity(
@@ -65,6 +71,7 @@ void main() {
   setUp(() {
     roomDetailCubit = MockRoomDetailCubit();
     deleteRoomCubit = MockDeleteRoomCubit();
+    joinRoomCubit = MockJoinRoomCubit();
     authBloc = MockAuthBloc();
   });
 
@@ -84,12 +91,18 @@ void main() {
       const Stream<DeleteRoomState>.empty(),
       initialState: const DeleteRoomState.initial(),
     );
+    whenListen(
+      joinRoomCubit,
+      const Stream<JoinRoomState>.empty(),
+      initialState: const JoinRoomState.initial(),
+    );
 
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>.value(value: authBloc),
         BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
         BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
+        BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(
@@ -378,6 +391,11 @@ void main() {
           controller.stream,
           initialState: const DeleteRoomState.initial(),
         );
+        whenListen(
+          joinRoomCubit,
+          const Stream<JoinRoomState>.empty(),
+          initialState: const JoinRoomState.initial(),
+        );
 
         await tester.pumpWidget(
           MultiBlocProvider(
@@ -385,6 +403,7 @@ void main() {
               BlocProvider<AuthBloc>.value(value: authBloc),
               BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
               BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
+              BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
             ],
             child: MaterialApp.router(
               routerConfig: GoRouter(
@@ -414,5 +433,150 @@ void main() {
         expect(find.byKey(const Key('homeRouteReached')), findsOneWidget);
       },
     );
+  });
+
+  group('RoomDetailView — join button', () {
+    testWidgets('visible for a non-owner authenticated viewer', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          RoomDetailState.loaded(room),
+          AuthState.authenticated(visitorUser),
+        ),
+      );
+
+      expect(find.byKey(const Key('roomDetailJoinButton')), findsOneWidget);
+    });
+
+    testWidgets('hidden for the room owner', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), AuthState.authenticated(ownerUser)),
+      );
+
+      expect(find.byKey(const Key('roomDetailJoinButton')), findsNothing);
+    });
+
+    testWidgets('hidden for an unauthenticated viewer', (tester) async {
+      await tester.pumpWidget(
+        wrap(RoomDetailState.loaded(room), const AuthState.unauthenticated()),
+      );
+
+      expect(find.byKey(const Key('roomDetailJoinButton')), findsNothing);
+    });
+
+    testWidgets('calls JoinRoomCubit.joinRoom(roomId) when tapped', (
+      tester,
+    ) async {
+      when(() => joinRoomCubit.joinRoom(any())).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        wrap(
+          RoomDetailState.loaded(room),
+          AuthState.authenticated(visitorUser),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('roomDetailJoinButton')));
+      await tester.pump();
+
+      verify(() => joinRoomCubit.joinRoom(room.id)).called(1);
+    });
+
+    testWidgets('shows a loading indicator while joining this room', (
+      tester,
+    ) async {
+      whenListen(
+        joinRoomCubit,
+        const Stream<JoinRoomState>.empty(),
+        initialState: JoinRoomState.loading(room.id),
+      );
+      whenListen(
+        roomDetailCubit,
+        const Stream<RoomDetailState>.empty(),
+        initialState: RoomDetailState.loaded(room),
+      );
+      whenListen(
+        authBloc,
+        const Stream<AuthState>.empty(),
+        initialState: AuthState.authenticated(visitorUser),
+      );
+      whenListen(
+        deleteRoomCubit,
+        const Stream<DeleteRoomState>.empty(),
+        initialState: const DeleteRoomState.initial(),
+      );
+
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthBloc>.value(value: authBloc),
+            BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
+            BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
+            BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: RoomDetailView(roomId: room.id),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('roomDetailJoinLoadingIndicator')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('roomDetailJoinButton')), findsNothing);
+    });
+
+    testWidgets('refetches the room and shows a confirmation when '
+        'JoinRoomState.success is emitted', (tester) async {
+      final controller = StreamController<JoinRoomState>();
+      addTearDown(controller.close);
+
+      when(() => roomDetailCubit.fetchRoom(any())).thenAnswer((_) async {});
+
+      whenListen(
+        roomDetailCubit,
+        const Stream<RoomDetailState>.empty(),
+        initialState: RoomDetailState.loaded(room),
+      );
+      whenListen(
+        authBloc,
+        const Stream<AuthState>.empty(),
+        initialState: AuthState.authenticated(visitorUser),
+      );
+      whenListen(
+        deleteRoomCubit,
+        const Stream<DeleteRoomState>.empty(),
+        initialState: const DeleteRoomState.initial(),
+      );
+      whenListen(
+        joinRoomCubit,
+        controller.stream,
+        initialState: const JoinRoomState.initial(),
+      );
+
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<AuthBloc>.value(value: authBloc),
+            BlocProvider<RoomDetailCubit>.value(value: roomDetailCubit),
+            BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
+            BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: RoomDetailView(roomId: room.id),
+          ),
+        ),
+      );
+
+      controller.add(JoinRoomState.success(room));
+      await tester.pump();
+
+      verify(() => roomDetailCubit.fetchRoom(room.id)).called(1);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
   });
 }

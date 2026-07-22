@@ -75,5 +75,11 @@
   "roomDetailDeleteConfirmMessage": "Cette action retirera la room de la liste publique et est irréversible.",
   "roomDetailDeleteCancelButtonLabel": "Annuler",
   "roomDetailDeleteConfirmButtonLabel": "Supprimer",
-  "roomDetailDeleteErrorMessage": "Impossible de supprimer cette room. Veuillez réessayer."
+  "roomDetailDeleteErrorMessage": "Impossible de supprimer cette room. Veuillez réessayer.",
+
+  "homeRoomCardJoinButtonLabel": "Rejoindre",
+  "homeJoinErrorMessage": "Impossible de rejoindre cette room. Veuillez réessayer.",
+  "roomDetailJoinButtonTooltip": "Rejoindre la room",
+  "roomDetailJoinSuccessMessage": "Vous avez rejoint cette room.",
+  "roomDetailJoinErrorMessage": "Impossible de rejoindre cette room. Veuillez réessayer."
 }

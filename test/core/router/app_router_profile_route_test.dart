@@ -19,6 +19,7 @@ import 'package:youtogether/features/room/domain/usecases/create_room_usecase.da
 import 'package:youtogether/features/room/domain/usecases/delete_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/get_public_rooms_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
+import 'package:youtogether/features/room/domain/usecases/join_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/update_room_usecase.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
@@ -33,6 +34,8 @@ class MockGetPublicRoomsUseCase extends Mock implements GetPublicRoomsUseCase {}
 class MockCreateRoomUseCase extends Mock implements CreateRoomUseCase {}
 
 class MockDeleteRoomUseCase extends Mock implements DeleteRoomUseCase {}
+
+class MockJoinRoomUseCase extends Mock implements JoinRoomUseCase {}
 
 class MockGetRoomByIdUseCase extends Mock implements GetRoomByIdUseCase {}
 
@@ -81,6 +84,7 @@ void main() {
   late MockGetRoomByIdUseCase getRoomByIdUseCase;
   late MockUpdateRoomUseCase updateRoomUseCase;
   late MockDeleteRoomUseCase deleteRoomUseCase;
+  late MockJoinRoomUseCase joinRoomUseCase;
 
   final user = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -99,6 +103,7 @@ void main() {
     getRoomByIdUseCase = MockGetRoomByIdUseCase();
     updateRoomUseCase = MockUpdateRoomUseCase();
     deleteRoomUseCase = MockDeleteRoomUseCase();
+    joinRoomUseCase = MockJoinRoomUseCase();
 
     // buildAppRouter always sets initialLocation to AppRoutes.home, so
     // the '/' route (and the RoomBloc it constructs, which immediately
@@ -122,6 +127,7 @@ void main() {
       getRoomByIdUseCase: getRoomByIdUseCase,
       updateRoomUseCase: updateRoomUseCase,
       deleteRoomUseCase: deleteRoomUseCase,
+      joinRoomUseCase: joinRoomUseCase,
     );
 
     await tester.pumpWidget(

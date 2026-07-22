@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/usecases/delete_room_usecase.dart';
 import '../../domain/usecases/get_room_by_id_usecase.dart';
+import '../../domain/usecases/join_room_usecase.dart';
 import '../cubit/delete_room_cubit.dart';
+import '../cubit/join_room_cubit.dart';
 import '../cubit/room_detail_cubit.dart';
 import 'room_detail_view.dart';
 
@@ -21,12 +23,14 @@ class RoomDetailPage extends StatelessWidget {
     required this.roomId,
     required this.getRoomByIdUseCase,
     required this.deleteRoomUseCase,
+    required this.joinRoomUseCase,
     super.key,
   });
 
   final String roomId;
   final GetRoomByIdUseCase getRoomByIdUseCase;
   final DeleteRoomUseCase deleteRoomUseCase;
+  final JoinRoomUseCase joinRoomUseCase;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +40,7 @@ class RoomDetailPage extends StatelessWidget {
           create: (_) => RoomDetailCubit(getRoomByIdUseCase)..fetchRoom(roomId),
         ),
         BlocProvider(create: (_) => DeleteRoomCubit(deleteRoomUseCase)),
+        BlocProvider(create: (_) => JoinRoomCubit(joinRoomUseCase)),
       ],
       child: RoomDetailView(roomId: roomId),
     );
