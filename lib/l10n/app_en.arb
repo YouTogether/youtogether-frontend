@@ -305,5 +305,30 @@
   "roomDetailDeleteErrorMessage": "We couldn't delete this room. Please try again.",
   "@roomDetailDeleteErrorMessage": {
     "description": "SnackBar message for DeleteRoomState.failure(any Failure subtype), including a 403 from a non-owner request that reached the cubit despite the delete button being hidden for non-owners. Deliberately generic — never renders the raw Failure.message."
+  },
+
+  "homeRoomCardJoinButtonLabel": "Join",
+  "@homeRoomCardJoinButtonLabel": {
+    "description": "Label for the join button on each RoomCard in HomePage's listing (F-R05-T3)."
+  },
+
+  "homeJoinErrorMessage": "We couldn't join this room. Please try again.",
+  "@homeJoinErrorMessage": {
+    "description": "SnackBar message shown on HomePage for JoinRoomState.failure(any Failure subtype), including a 409 (already an active member) or 404 (room deleted between listing and join). Deliberately generic — never renders the raw Failure.message."
+  },
+
+  "roomDetailJoinButtonTooltip": "Join room",
+  "@roomDetailJoinButtonTooltip": {
+    "description": "Tooltip for the non-owner-only join icon button in RoomDetailPage's AppBar (F-R05-T3)."
+  },
+
+  "roomDetailJoinSuccessMessage": "You've joined this room.",
+  "@roomDetailJoinSuccessMessage": {
+    "description": "SnackBar confirmation shown on RoomDetailPage after a successful join — no navigation occurs here, since the viewer is already on the room they just joined."
+  },
+
+  "roomDetailJoinErrorMessage": "We couldn't join this room. Please try again.",
+  "@roomDetailJoinErrorMessage": {
+    "description": "SnackBar message shown on RoomDetailPage for JoinRoomState.failure(any Failure subtype). Deliberately generic — never renders the raw Failure.message."
   }
 }
