@@ -11,6 +11,7 @@ import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/room/domain/entities/room_entity.dart';
 import '../../features/room/domain/usecases/create_room_usecase.dart';
+import '../../features/room/domain/usecases/delete_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
 import '../../features/room/domain/usecases/update_room_usecase.dart';
@@ -168,6 +169,10 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// `RoomDetailPage`'s owner-gated edit button via `context.go(...,
 /// extra: room)` — see `EditRoomPage`'s own doc for why the room is
 /// passed as `extra` rather than re-fetched.
+///
+/// [deleteRoomUseCase] is threaded through to `RoomDetailPage`, which
+/// provides the resulting `DeleteRoomCubit` for its own owner-gated
+/// delete button and confirmation dialog (F-R04-T3).
 GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
@@ -176,6 +181,7 @@ GoRouter buildAppRouter({
   required CreateRoomUseCase createRoomUseCase,
   required GetRoomByIdUseCase getRoomByIdUseCase,
   required UpdateRoomUseCase updateRoomUseCase,
+  required DeleteRoomUseCase deleteRoomUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -238,6 +244,7 @@ GoRouter buildAppRouter({
         builder: (context, state) => RoomDetailPage(
           roomId: state.pathParameters['id']!,
           getRoomByIdUseCase: getRoomByIdUseCase,
+          deleteRoomUseCase: deleteRoomUseCase,
         ),
       ),
     ],

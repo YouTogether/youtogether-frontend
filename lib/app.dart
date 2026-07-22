@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:youtogether/features/room/domain/usecases/delete_room_usecase.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'core/di/injection_container.dart';
@@ -55,6 +56,7 @@ class _AppState extends State<App> {
       createRoomUseCase: sl<CreateRoomUseCase>(),
       getRoomByIdUseCase: sl<GetRoomByIdUseCase>(),
       updateRoomUseCase: sl<UpdateRoomUseCase>(),
+      deleteRoomUseCase: sl<DeleteRoomUseCase>(),
     );
   }
 
