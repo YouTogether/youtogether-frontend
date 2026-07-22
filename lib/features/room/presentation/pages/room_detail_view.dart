@@ -11,6 +11,8 @@ import '../cubit/delete_room_cubit.dart';
 import '../cubit/delete_room_state.dart';
 import '../cubit/join_room_cubit.dart';
 import '../cubit/join_room_state.dart';
+import '../cubit/leave_room_cubit.dart';
+import '../cubit/leave_room_state.dart';
 import '../cubit/room_detail_cubit.dart';
 import '../cubit/room_detail_state.dart';
 
@@ -60,7 +62,7 @@ import '../cubit/room_detail_state.dart';
 /// fresh `RoomBloc` and re-fetches, satisfying "refresh the room list"
 /// without extra plumbing.
 ///
-/// ## Joining (F-R05-T3)
+/// ## Joining
 /// The non-owner-only join button (same visibility condition as leave
 /// — this view has no membership data to distinguish "already a
 /// member" from "not yet a member", the same limitation already
@@ -70,6 +72,13 @@ import '../cubit/room_detail_state.dart';
 /// simply re-fetches ([RoomDetailCubit.fetchRoom]) to reflect the
 /// incremented member count — the user is already looking at the room
 /// they just joined, so there is nowhere further to navigate.
+///
+/// ## Leaving
+/// The non-owner-only leave button calls [LeaveRoomCubit.leaveRoom]
+/// directly — no confirmation dialog, unlike deletion, since leaving is
+/// reversible (rejoin at any time). A second [BlocListener] alongside
+/// the deletion one reacts to [LeaveRoomState.success] the same way:
+/// `context.go(AppRoutes.home)`.
 class RoomDetailView extends StatelessWidget {
   const RoomDetailView({required this.roomId, super.key});
 
@@ -102,6 +111,17 @@ class RoomDetailView extends StatelessWidget {
             } else if (joinState is JoinRoomFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(l10n.roomDetailJoinErrorMessage)),
+              );
+            }
+          },
+        ),
+        BlocListener<LeaveRoomCubit, LeaveRoomState>(
+          listener: (context, leaveState) {
+            if (leaveState is LeaveRoomSuccess) {
+              context.go(AppRoutes.home);
+            } else if (leaveState is LeaveRoomFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l10n.roomDetailLeaveErrorMessage)),
               );
             }
           },
@@ -218,6 +238,32 @@ class RoomDetailView extends StatelessWidget {
                                 .joinRoom(state.room.id),
                           );
                         },
+                      );
+                    },
+                  ),
+                if (state is RoomDetailLoaded)
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final isNonOwnerViewer = switch (authState) {
+                        AuthAuthenticated(:final user) =>
+                          user.id != state.room.ownerId,
+                        AuthInitial() ||
+                        AuthLoading() ||
+                        AuthUnauthenticated() ||
+                        AuthOperationFailure() => false,
+                      };
+
+                      if (!isNonOwnerViewer) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return IconButton(
+                        key: const Key('roomDetailLeaveButton'),
+                        icon: const Icon(Icons.exit_to_app),
+                        tooltip: l10n.roomDetailLeaveButtonTooltip,
+                        onPressed: () => context
+                            .read<LeaveRoomCubit>()
+                            .leaveRoom(state.room.id),
                       );
                     },
                   ),

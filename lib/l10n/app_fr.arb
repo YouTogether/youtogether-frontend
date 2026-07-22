@@ -76,10 +76,11 @@
   "roomDetailDeleteCancelButtonLabel": "Annuler",
   "roomDetailDeleteConfirmButtonLabel": "Supprimer",
   "roomDetailDeleteErrorMessage": "Impossible de supprimer cette room. Veuillez réessayer.",
-
   "homeRoomCardJoinButtonLabel": "Rejoindre",
   "homeJoinErrorMessage": "Impossible de rejoindre cette room. Veuillez réessayer.",
   "roomDetailJoinButtonTooltip": "Rejoindre la room",
   "roomDetailJoinSuccessMessage": "Vous avez rejoint cette room.",
-  "roomDetailJoinErrorMessage": "Impossible de rejoindre cette room. Veuillez réessayer."
+  "roomDetailJoinErrorMessage": "Impossible de rejoindre cette room. Veuillez réessayer.",
+  "roomDetailLeaveButtonTooltip": "Quitter la room",
+  "roomDetailLeaveErrorMessage": "Impossible de quitter cette room. Veuillez réessayer."
 }

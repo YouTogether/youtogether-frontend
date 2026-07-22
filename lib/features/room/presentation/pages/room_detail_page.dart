@@ -4,8 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/delete_room_usecase.dart';
 import '../../domain/usecases/get_room_by_id_usecase.dart';
 import '../../domain/usecases/join_room_usecase.dart';
+import '../../domain/usecases/leave_room_usecase.dart';
 import '../cubit/delete_room_cubit.dart';
 import '../cubit/join_room_cubit.dart';
+import '../cubit/leave_room_cubit.dart';
 import '../cubit/room_detail_cubit.dart';
 import 'room_detail_view.dart';
 
@@ -17,13 +19,15 @@ import 'room_detail_view.dart';
 /// `/` route constructs a fresh `RoomBloc` for `HomePage`. Also
 /// provides a fresh [DeleteRoomCubit], read by
 /// `RoomDetailView`'s owner-only delete button and confirmation
-/// dialog.
+/// dialog, and [JoinRoomCubit], [LeaveRoomCubit]
+/// non-owner-only leave button respectively.
 class RoomDetailPage extends StatelessWidget {
   const RoomDetailPage({
     required this.roomId,
     required this.getRoomByIdUseCase,
     required this.deleteRoomUseCase,
     required this.joinRoomUseCase,
+    required this.leaveRoomUseCase,
     super.key,
   });
 
@@ -31,6 +35,7 @@ class RoomDetailPage extends StatelessWidget {
   final GetRoomByIdUseCase getRoomByIdUseCase;
   final DeleteRoomUseCase deleteRoomUseCase;
   final JoinRoomUseCase joinRoomUseCase;
+  final LeaveRoomUseCase leaveRoomUseCase;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +46,7 @@ class RoomDetailPage extends StatelessWidget {
         ),
         BlocProvider(create: (_) => DeleteRoomCubit(deleteRoomUseCase)),
         BlocProvider(create: (_) => JoinRoomCubit(joinRoomUseCase)),
+        BlocProvider(create: (_) => LeaveRoomCubit(leaveRoomUseCase)),
       ],
       child: RoomDetailView(roomId: roomId),
     );
