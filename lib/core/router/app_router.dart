@@ -9,12 +9,15 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/profile_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/room/domain/entities/room_entity.dart';
 import '../../features/room/domain/usecases/create_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
+import '../../features/room/domain/usecases/update_room_usecase.dart';
 import '../../features/room/presentation/bloc/room_bloc.dart';
 import '../../features/room/presentation/bloc/room_event.dart';
 import '../../features/room/presentation/pages/create_room_page.dart';
+import '../../features/room/presentation/pages/edit_room_page.dart';
 import '../../features/room/presentation/pages/home_page.dart';
 import '../../features/room/presentation/pages/room_detail_page.dart';
 import 'go_router_refresh_stream.dart';
@@ -38,6 +41,15 @@ abstract final class AppRoutes {
   /// Builds a concrete room detail path for navigation, e.g.
   /// `context.go(AppRoutes.roomDetail(room.id))`.
   static String roomDetail(String roomId) => '/rooms/$roomId';
+
+  /// Path pattern registered with `GoRouter` for the room edit route.
+  static const String editRoomPattern = '/rooms/:id/edit';
+
+  /// Builds a concrete room edit path for navigation. The current
+  /// [RoomEntity] must be passed as `context.go(...)`'s `extra`
+  /// argument — see `EditRoomPage`'s own doc for why no re-fetch
+  /// happens at this route.
+  static String editRoom(String roomId) => '/rooms/$roomId/edit';
 }
 
 /// Pure route-guard decision function, extracted from
@@ -151,6 +163,11 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// though the session was valid. `GoRouterRefreshStream` then reacts to
 /// the resulting `AuthAuthenticated` emission the same way it does at
 /// cold start.
+/// [updateRoomUseCase] is threaded through to `EditRoomPage`
+/// (`AppRoutes.editRoomPattern`, `/rooms/:id/edit`), reached only from
+/// `RoomDetailPage`'s owner-gated edit button via `context.go(...,
+/// extra: room)` — see `EditRoomPage`'s own doc for why the room is
+/// passed as `extra` rather than re-fetched.
 GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
@@ -158,6 +175,7 @@ GoRouter buildAppRouter({
   required GetPublicRoomsUseCase getPublicRoomsUseCase,
   required CreateRoomUseCase createRoomUseCase,
   required GetRoomByIdUseCase getRoomByIdUseCase,
+  required UpdateRoomUseCase updateRoomUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -205,6 +223,14 @@ GoRouter buildAppRouter({
         builder: (context, state) => CreateRoomPage(
           createRoomUseCase: createRoomUseCase,
           onRoomCreated: (room) => context.go(AppRoutes.roomDetail(room.id)),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.editRoomPattern,
+        builder: (context, state) => EditRoomPage(
+          initialRoom: state.extra! as RoomEntity,
+          updateRoomUseCase: updateRoomUseCase,
+          onRoomUpdated: (room) => context.go(AppRoutes.roomDetail(room.id)),
         ),
       ),
       GoRoute(

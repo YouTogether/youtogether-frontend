@@ -22,14 +22,27 @@ import '../cubit/room_detail_state.dart';
 /// other use for it, since the room itself (once loaded) carries its
 /// own id.
 ///
-/// Renders name, description, member count, and an owner badge shown
-/// only when the current [AuthState] is [AuthAuthenticated] with a
-/// [UserEntity.id] matching the room's `ownerId` — per this page's
-/// Definition of Done ("owner-status relative to the current user").
-/// An unauthenticated or non-owner viewer sees no badge at all, not a
-/// "not the owner" negative indicator — there being no badge already
-/// communicates that clearly enough, and a page with no owner-only
-/// actions has no reason to state a negative.
+/// ## Back navigation
+/// This page is reached via `context.go(...)` everywhere it's linked
+/// from (`HomePage`'s `RoomCard` tap, `CreateRoomPage.onRoomCreated`) —
+/// `go()` replaces the current location rather than pushing onto a
+/// navigation stack, so no automatic back arrow or system-back
+/// behaviour is available here for free, unlike a page reached via
+/// `Navigator.push`. The [AppBar]'s `leading` button is therefore an
+/// explicit `context.go(AppRoutes.home)` call, present identically in
+/// every [RoomDetailState] (loading, loaded, failure) — a user must
+/// always be able to get back to the room listing, including while a
+/// fetch is still in flight or has failed.
+///
+/// Renders name (as the AppBar title once loaded), description, member
+/// count, and an owner badge shown only when the current [AuthState] is
+/// [AuthAuthenticated] with a [UserEntity.id] matching the room's
+/// `ownerId` — per this page's Definition of Done ("owner-status
+/// relative to the current user"). An unauthenticated or non-owner
+/// viewer sees no badge at all, not a "not the owner" negative
+/// indicator — there being no badge already communicates that clearly
+/// enough, and a page with no owner-only actions has no reason to
+/// state a negative.
 class RoomDetailView extends StatelessWidget {
   const RoomDetailView({required this.roomId, super.key});
 
@@ -52,6 +65,35 @@ class RoomDetailView extends StatelessWidget {
             title: Text(
               state is RoomDetailLoaded ? state.room.name : l10n.appTitle,
             ),
+            actions: [
+              if (state is RoomDetailLoaded)
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, authState) {
+                    final isOwner = switch (authState) {
+                      AuthAuthenticated(:final user) =>
+                        user.id == state.room.ownerId,
+                      AuthInitial() ||
+                      AuthLoading() ||
+                      AuthUnauthenticated() ||
+                      AuthOperationFailure() => false,
+                    };
+
+                    if (!isOwner) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return IconButton(
+                      key: const Key('roomDetailEditButton'),
+                      icon: const Icon(Icons.edit),
+                      tooltip: l10n.roomDetailEditButtonTooltip,
+                      onPressed: () => context.go(
+                        AppRoutes.editRoom(state.room.id),
+                        extra: state.room,
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
           body: switch (state) {
             RoomDetailInitial() || RoomDetailLoading() => const Center(

@@ -57,5 +57,16 @@
   "roomDetailOwnerBadgeLabel": "Propriétaire",
   "roomDetailErrorMessage": "Impossible de charger cette room. Veuillez réessayer.",
   "roomDetailRetryButtonLabel": "Réessayer",
-  "roomDetailBackButtonTooltip": "Retour à la liste des rooms"
+  "roomDetailBackButtonTooltip": "Retour à la liste des rooms",
+
+  "roomDetailBackButtonTooltip": "Retour à la liste des rooms",
+  "roomDetailEditButtonTooltip": "Modifier la room",
+
+  "editRoomPageTitle": "Modifier la room",
+  "editRoomSubmitButtonLabel": "Enregistrer les modifications",
+  "editRoomNetworkErrorMessage": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
+  "editRoomServerErrorMessage": "Le serveur a rejeté la demande. Veuillez réessayer.",
+  "editRoomAuthErrorMessage": "Seul le propriétaire de la room peut effectuer cette modification.",
+  "editRoomNotFoundErrorMessage": "Cette room n'existe plus.",
+  "editRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer."
 }

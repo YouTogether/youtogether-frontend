@@ -22,6 +22,7 @@ import '../../features/room/domain/repositories/i_room_repository.dart';
 import '../../features/room/domain/usecases/create_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
+import '../../features/room/domain/usecases/update_room_usecase.dart';
 
 /// Application-wide service locator.
 ///
@@ -166,4 +167,5 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   sl.registerLazySingleton(() => GetPublicRoomsUseCase(sl()));
   sl.registerLazySingleton(() => CreateRoomUseCase(sl()));
   sl.registerLazySingleton(() => GetRoomByIdUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateRoomUseCase(sl()));
 }
