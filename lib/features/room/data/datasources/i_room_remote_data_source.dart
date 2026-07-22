@@ -68,4 +68,13 @@ abstract class IRoomRemoteDataSource {
   /// active membership, or `statusCode: 404` for a non-existent or
   /// soft-deleted room.
   Future<RoomModel> joinRoom({required String roomId});
+
+  /// Ends the caller's active membership in a room via
+  /// `POST /rooms/:id/leave`. No request body.
+  ///
+  /// Throws [ServerException] with `statusCode: 403` if the caller is
+  /// the room's owner (an owner must delete the room instead), or
+  /// `statusCode: 404` if the caller holds no active membership in
+  /// this room.
+  Future<void> leaveRoom({required String roomId});
 }

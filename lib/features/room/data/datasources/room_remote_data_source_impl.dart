@@ -116,6 +116,15 @@ class RoomRemoteDataSourceImpl implements IRoomRemoteDataSource {
     }
   }
 
+  @override
+  Future<void> leaveRoom({required String roomId}) async {
+    try {
+      await _dio.post<dynamic>('/rooms/$roomId/leave');
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
   /// Maps a [DioException] to the typed exception hierarchy consumed by
   /// [RoomRepositoryImpl].
   ///
