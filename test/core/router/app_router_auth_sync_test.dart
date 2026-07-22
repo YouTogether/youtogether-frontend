@@ -18,6 +18,7 @@ import 'package:youtogether/features/auth/presentation/bloc/auth_state.dart';
 import 'package:youtogether/features/room/domain/usecases/create_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/get_public_rooms_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
+import 'package:youtogether/features/room/domain/usecases/update_room_usecase.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
@@ -31,6 +32,8 @@ class MockGetPublicRoomsUseCase extends Mock implements GetPublicRoomsUseCase {}
 class MockCreateRoomUseCase extends Mock implements CreateRoomUseCase {}
 
 class MockGetRoomByIdUseCase extends Mock implements GetRoomByIdUseCase {}
+
+class MockUpdateRoomUseCase extends Mock implements UpdateRoomUseCase {}
 
 /// Regression test for the reported bug: following a
 /// successful login (or registration), `HomePage` still appeared as an
@@ -56,6 +59,7 @@ void main() {
   late MockGetPublicRoomsUseCase getPublicRoomsUseCase;
   late MockCreateRoomUseCase createRoomUseCase;
   late MockGetRoomByIdUseCase getRoomByIdUseCase;
+  late MockUpdateRoomUseCase updateRoomUseCase;
 
   final authenticatedUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -87,6 +91,7 @@ void main() {
     getPublicRoomsUseCase = MockGetPublicRoomsUseCase();
     createRoomUseCase = MockCreateRoomUseCase();
     getRoomByIdUseCase = MockGetRoomByIdUseCase();
+    updateRoomUseCase = MockUpdateRoomUseCase();
 
     whenListen(
       authBloc,
@@ -108,6 +113,7 @@ void main() {
       getPublicRoomsUseCase: getPublicRoomsUseCase,
       createRoomUseCase: createRoomUseCase,
       getRoomByIdUseCase: getRoomByIdUseCase,
+      updateRoomUseCase: updateRoomUseCase,
     );
 
     await tester.pumpWidget(
