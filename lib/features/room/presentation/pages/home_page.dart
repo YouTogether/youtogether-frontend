@@ -129,7 +129,10 @@ class _RoomListView extends StatelessWidget {
         // working regardless of content length.
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: rooms.length,
-        itemBuilder: (context, index) => RoomCard(room: rooms[index]),
+        itemBuilder: (context, index) => RoomCard(
+          room: rooms[index],
+          onTap: () => context.go(AppRoutes.roomDetail(rooms[index].id)),
+        ),
       ),
     );
   }

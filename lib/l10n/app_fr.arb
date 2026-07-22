@@ -31,10 +31,17 @@
   "profileRoleGuest": "Invité",
   "profileLogoutButton": "Se déconnecter",
 
-  "homeEmptyStateMessage": "Aucune room publique disponible pour le moment.",
+  "homeEmptyStateMessage": "Aucune room publique disponible pour le moment. Soyez le premier à en créer une !",
   "homeErrorMessage": "Impossible de charger les rooms. Veuillez réessayer.",
   "homeRetryButtonLabel": "Réessayer",
   "homeRoomCardMemberCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}",
+  "@homeRoomCardMemberCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
 
   "createRoomPageTitle": "Créer une room",
   "createRoomNameFieldLabel": "Nom de la room",
@@ -45,5 +52,10 @@
   "createRoomServerErrorMessage": "Le serveur a rejeté la demande. Veuillez réessayer.",
   "createRoomAuthErrorMessage": "Vous devez être connecté pour créer une room.",
   "createRoomNotFoundErrorMessage": "Une erreur est survenue. Veuillez réessayer.",
-  "createRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer."
+  "createRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer.",
+
+  "roomDetailOwnerBadgeLabel": "Propriétaire",
+  "roomDetailErrorMessage": "Impossible de charger cette room. Veuillez réessayer.",
+  "roomDetailRetryButtonLabel": "Réessayer",
+  "roomDetailBackButtonTooltip": "Retour à la liste des rooms"
 }
