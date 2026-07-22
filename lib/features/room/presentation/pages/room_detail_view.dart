@@ -7,6 +7,8 @@ import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../cubit/delete_room_cubit.dart';
+import '../cubit/delete_room_state.dart';
 import '../cubit/room_detail_cubit.dart';
 import '../cubit/room_detail_state.dart';
 
@@ -43,6 +45,18 @@ import '../cubit/room_detail_state.dart';
 /// indicator — there being no badge already communicates that clearly
 /// enough, and a page with no owner-only actions has no reason to
 /// state a negative.
+///
+/// ## Deletion
+/// The owner-only delete button opens a confirmation `AlertDialog`
+/// (`_confirmDeletion`) before ever calling
+/// [DeleteRoomCubit.deleteRoom] — deliberate friction against an
+/// irreversible-from-the-user's-perspective action, per this ticket's
+/// Definition of Done. A [BlocListener] wrapping the whole page reacts
+/// to [DeleteRoomState.success] by navigating home
+/// (`context.go(AppRoutes.home)`), which — exactly like
+/// `EditRoomPage`'s navigation back to this same page — constructs a
+/// fresh `RoomBloc` and re-fetches, satisfying "refresh the room list"
+/// without extra plumbing.
 class RoomDetailView extends StatelessWidget {
   const RoomDetailView({required this.roomId, super.key});
 
@@ -52,65 +66,36 @@ class RoomDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    return BlocBuilder<RoomDetailCubit, RoomDetailState>(
-      builder: (context, state) {
-        return Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              key: const Key('roomDetailBackButton'),
-              icon: const Icon(Icons.arrow_back),
-              tooltip: l10n.roomDetailBackButtonTooltip,
-              onPressed: () => context.go(AppRoutes.home),
-            ),
-            title: Text(
-              state is RoomDetailLoaded ? state.room.name : l10n.appTitle,
-            ),
-            actions: [
-              if (state is RoomDetailLoaded)
-                BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, authState) {
-                    final isOwner = switch (authState) {
-                      AuthAuthenticated(:final user) =>
-                        user.id == state.room.ownerId,
-                      AuthInitial() ||
-                      AuthLoading() ||
-                      AuthUnauthenticated() ||
-                      AuthOperationFailure() => false,
-                    };
-
-                    if (!isOwner) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return IconButton(
-                      key: const Key('roomDetailEditButton'),
-                      icon: const Icon(Icons.edit),
-                      tooltip: l10n.roomDetailEditButtonTooltip,
-                      onPressed: () => context.go(
-                        AppRoutes.editRoom(state.room.id),
-                        extra: state.room,
-                      ),
-                    );
-                  },
-                ),
-            ],
-          ),
-          body: switch (state) {
-            RoomDetailInitial() || RoomDetailLoading() => const Center(
-              child: CircularProgressIndicator(
-                key: Key('roomDetailLoadingIndicator'),
+    return BlocListener<DeleteRoomCubit, DeleteRoomState>(
+      listener: (context, deleteState) {
+        if (deleteState is DeleteRoomSuccess) {
+          context.go(AppRoutes.home);
+        } else if (deleteState is DeleteRoomFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.roomDetailDeleteErrorMessage)),
+          );
+        }
+      },
+      child: BlocBuilder<RoomDetailCubit, RoomDetailState>(
+        builder: (context, state) {
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                key: const Key('roomDetailBackButton'),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: l10n.roomDetailBackButtonTooltip,
+                onPressed: () => context.go(AppRoutes.home),
               ),
-            ),
-            RoomDetailLoaded(:final room) => Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              title: Text(
+                state is RoomDetailLoaded ? state.room.name : l10n.appTitle,
+              ),
+              actions: [
+                if (state is RoomDetailLoaded)
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, authState) {
                       final isOwner = switch (authState) {
                         AuthAuthenticated(:final user) =>
-                          user.id == room.ownerId,
+                          user.id == state.room.ownerId,
                         AuthInitial() ||
                         AuthLoading() ||
                         AuthUnauthenticated() ||
@@ -121,49 +106,150 @@ class RoomDetailView extends StatelessWidget {
                         return const SizedBox.shrink();
                       }
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Chip(
-                          key: const Key('roomDetailOwnerBadge'),
-                          label: Text(l10n.roomDetailOwnerBadgeLabel),
+                      return IconButton(
+                        key: const Key('roomDetailEditButton'),
+                        icon: const Icon(Icons.edit),
+                        tooltip: l10n.roomDetailEditButtonTooltip,
+                        onPressed: () => context.go(
+                          AppRoutes.editRoom(state.room.id),
+                          extra: state.room,
                         ),
                       );
                     },
                   ),
-                  if (room.description != null)
-                    Text(
-                      room.description!,
-                      key: const Key('roomDetailDescription'),
+                if (state is RoomDetailLoaded)
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final isOwner = switch (authState) {
+                        AuthAuthenticated(:final user) =>
+                          user.id == state.room.ownerId,
+                        AuthInitial() ||
+                        AuthLoading() ||
+                        AuthUnauthenticated() ||
+                        AuthOperationFailure() => false,
+                      };
+
+                      if (!isOwner) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return IconButton(
+                        key: const Key('roomDetailDeleteButton'),
+                        icon: const Icon(Icons.delete),
+                        tooltip: l10n.roomDetailDeleteButtonTooltip,
+                        onPressed: () =>
+                            _confirmDeletion(context, l10n, state.room.id),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            body: switch (state) {
+              RoomDetailInitial() || RoomDetailLoading() => const Center(
+                child: CircularProgressIndicator(
+                  key: Key('roomDetailLoadingIndicator'),
+                ),
+              ),
+              RoomDetailLoaded(:final room) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, authState) {
+                        final isOwner = switch (authState) {
+                          AuthAuthenticated(:final user) =>
+                            user.id == room.ownerId,
+                          AuthInitial() ||
+                          AuthLoading() ||
+                          AuthUnauthenticated() ||
+                          AuthOperationFailure() => false,
+                        };
+
+                        if (!isOwner) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Chip(
+                            key: const Key('roomDetailOwnerBadge'),
+                            label: Text(l10n.roomDetailOwnerBadgeLabel),
+                          ),
+                        );
+                      },
                     ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.homeRoomCardMemberCount(room.memberCount),
-                    key: const Key('roomDetailMemberCount'),
-                  ),
-                ],
+                    if (room.description != null)
+                      Text(
+                        room.description!,
+                        key: const Key('roomDetailDescription'),
+                      ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.homeRoomCardMemberCount(room.memberCount),
+                      key: const Key('roomDetailMemberCount'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            RoomDetailFailure() => Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n.roomDetailErrorMessage,
-                    key: const Key('roomDetailErrorMessage'),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    key: const Key('roomDetailRetryButton'),
-                    onPressed: () =>
-                        context.read<RoomDetailCubit>().fetchRoom(roomId),
-                    child: Text(l10n.roomDetailRetryButtonLabel),
-                  ),
-                ],
+              RoomDetailFailure() => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.roomDetailErrorMessage,
+                      key: const Key('roomDetailErrorMessage'),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      key: const Key('roomDetailRetryButton'),
+                      onPressed: () =>
+                          context.read<RoomDetailCubit>().fetchRoom(roomId),
+                      child: Text(l10n.roomDetailRetryButtonLabel),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          },
-        );
-      },
+            },
+          );
+        },
+      ),
     );
+  }
+
+  /// Shows the deletion confirmation `AlertDialog`. Only calls
+  /// [DeleteRoomCubit.deleteRoom] if the owner explicitly confirms —
+  /// dismissing the dialog (tapping outside, system back, or Cancel)
+  /// all resolve to `null`/`false` and take no action.
+  Future<void> _confirmDeletion(
+    BuildContext context,
+    AppLocalizations l10n,
+    String roomId,
+  ) async {
+    final deleteRoomCubit = context.read<DeleteRoomCubit>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.roomDetailDeleteConfirmTitle),
+        content: Text(l10n.roomDetailDeleteConfirmMessage),
+        actions: [
+          TextButton(
+            key: const Key('roomDetailDeleteCancelButton'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.roomDetailDeleteCancelButtonLabel),
+          ),
+          TextButton(
+            key: const Key('roomDetailDeleteConfirmButton'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.roomDetailDeleteConfirmButtonLabel),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await deleteRoomCubit.deleteRoom(roomId);
+    }
   }
 }

@@ -20,6 +20,7 @@ import '../../features/room/data/datasources/room_remote_data_source_impl.dart';
 import '../../features/room/data/repositories/room_repository_impl.dart';
 import '../../features/room/domain/repositories/i_room_repository.dart';
 import '../../features/room/domain/usecases/create_room_usecase.dart';
+import '../../features/room/domain/usecases/delete_room_usecase.dart';
 import '../../features/room/domain/usecases/get_public_rooms_usecase.dart';
 import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
 import '../../features/room/domain/usecases/update_room_usecase.dart';
@@ -168,4 +169,5 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   sl.registerLazySingleton(() => CreateRoomUseCase(sl()));
   sl.registerLazySingleton(() => GetRoomByIdUseCase(sl()));
   sl.registerLazySingleton(() => UpdateRoomUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteRoomUseCase(sl()));
 }
