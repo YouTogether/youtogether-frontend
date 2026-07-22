@@ -506,4 +506,78 @@ void main() {
       expect(result.left, isA<NetworkFailure>());
     });
   });
+
+  group('RoomRepositoryImpl.leaveRoom', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+
+    test('should return Right(null) on success (R-LEA-01)', () async {
+      when(
+        () => remoteDataSource.leaveRoom(roomId: any(named: 'roomId')),
+      ).thenAnswer((_) async {});
+
+      final result = await roomRepository.leaveRoom(roomId: roomId);
+
+      expect(result.isRight, isTrue);
+    });
+
+    test(
+      'should delegate to the remote data source with the given room id',
+      () async {
+        when(
+          () => remoteDataSource.leaveRoom(roomId: any(named: 'roomId')),
+        ).thenAnswer((_) async {});
+
+        await roomRepository.leaveRoom(roomId: roomId);
+
+        verify(() => remoteDataSource.leaveRoom(roomId: roomId)).called(1);
+      },
+    );
+
+    test('should map a 403 ServerException to Left(AuthFailure) (owner cannot '
+        'leave, R-LEA-04)', () async {
+      when(
+        () => remoteDataSource.leaveRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 403,
+          message:
+              'The owner of this room cannot leave it; delete the room '
+              'instead.',
+        ),
+      );
+
+      final result = await roomRepository.leaveRoom(roomId: roomId);
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<AuthFailure>());
+    });
+
+    test('should map a 404 ServerException to Left(NotFoundFailure) (no '
+        'active membership, R-LEA-03)', () async {
+      when(
+        () => remoteDataSource.leaveRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 404,
+          message: 'No active membership found.',
+        ),
+      );
+
+      final result = await roomRepository.leaveRoom(roomId: roomId);
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NotFoundFailure>());
+    });
+
+    test('should map a NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.leaveRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(const NetworkException());
+
+      final result = await roomRepository.leaveRoom(roomId: roomId);
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
 }
