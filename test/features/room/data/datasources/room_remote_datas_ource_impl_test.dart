@@ -561,6 +561,116 @@ void main() {
     );
   });
 
+  group('RoomRemoteDataSourceImpl.joinRoom', () {
+    const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
+    final joinRequestOptions = RequestOptions(path: '/rooms/$roomId/join');
+
+    Map<String, dynamic> buildJoinSuccessBody() => {
+      'id': roomId,
+      'name': 'Friday Movie Night',
+      'description': 'Weekly watch party',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 2,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-01T00:00:00.000Z',
+    };
+
+    test('should POST /rooms/:id/join with no request body', () async {
+      when(() => dio.post<Map<String, dynamic>>(any())).thenAnswer(
+        (_) async => Response(
+          data: buildJoinSuccessBody(),
+          statusCode: 200,
+          requestOptions: joinRequestOptions,
+        ),
+      );
+
+      await dataSource.joinRoom(roomId: roomId);
+
+      verify(
+        () => dio.post<Map<String, dynamic>>('/rooms/$roomId/join'),
+      ).called(1);
+    });
+
+    test(
+      'should return a RoomModel with the refreshed member count on 200',
+      () async {
+        when(() => dio.post<Map<String, dynamic>>(any())).thenAnswer(
+          (_) async => Response(
+            data: buildJoinSuccessBody(),
+            statusCode: 200,
+            requestOptions: joinRequestOptions,
+          ),
+        );
+
+        final result = await dataSource.joinRoom(roomId: roomId);
+
+        expect(result.memberCount, 2);
+      },
+    );
+
+    test('should throw ServerException with statusCode 409 for a duplicate '
+        'active membership', () async {
+      when(() => dio.post<Map<String, dynamic>>(any())).thenThrow(
+        DioException(
+          requestOptions: joinRequestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 409, 'message': 'already an active member'},
+            statusCode: 409,
+            requestOptions: joinRequestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.joinRoom(roomId: roomId),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 409),
+        ),
+      );
+    });
+
+    test('should throw ServerException with statusCode 404 for a missing or '
+        'deleted room', () async {
+      when(() => dio.post<Map<String, dynamic>>(any())).thenThrow(
+        DioException(
+          requestOptions: joinRequestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {'statusCode': 404, 'message': 'Room not found.'},
+            statusCode: 404,
+            requestOptions: joinRequestOptions,
+          ),
+        ),
+      );
+
+      await expectLater(
+        () => dataSource.joinRoom(roomId: roomId),
+        throwsA(
+          isA<ServerException>().having((e) => e.statusCode, 'statusCode', 404),
+        ),
+      );
+    });
+
+    test(
+      'should throw NetworkException on DioExceptionType.connectionError',
+      () async {
+        when(() => dio.post<Map<String, dynamic>>(any())).thenThrow(
+          DioException(
+            requestOptions: joinRequestOptions,
+            type: DioExceptionType.connectionError,
+          ),
+        );
+
+        await expectLater(
+          () => dataSource.joinRoom(roomId: roomId),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+  });
+
   group('RoomRemoteDataSourceImpl.deleteRoom', () {
     const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
     final deleteRequestOptions = RequestOptions(path: '/rooms/$roomId');

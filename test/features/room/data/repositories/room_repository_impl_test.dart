@@ -437,4 +437,73 @@ void main() {
       expect(result.left, isA<NetworkFailure>());
     });
   });
+
+  group('RoomRepositoryImpl.joinRoom', () {
+    final joinedRoom = RoomModel.fromJson({
+      'id': '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f',
+      'name': 'Friday Movie Night',
+      'description': 'Weekly watch party',
+      'ownerId': '550e8400-e29b-41d4-a716-446655440000',
+      'isPublic': true,
+      'memberCount': 2,
+      'createdAt': '2026-01-01T00:00:00.000Z',
+      'updatedAt': '2026-01-01T00:00:00.000Z',
+    });
+
+    test('should return Right(RoomEntity) with the refreshed member count on '
+        'success (R-JOI-01)', () async {
+      when(
+        () => remoteDataSource.joinRoom(roomId: any(named: 'roomId')),
+      ).thenAnswer((_) async => joinedRoom);
+
+      final result = await roomRepository.joinRoom(roomId: joinedRoom.id);
+
+      expect(result.isRight, isTrue);
+      expect(result.right.memberCount, 2);
+    });
+
+    test('should map a 409 ServerException to Left(ServerFailure) unchanged '
+        '(duplicate active membership, R-JOI-03)', () async {
+      when(
+        () => remoteDataSource.joinRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(
+        const ServerException(
+          statusCode: 409,
+          message: 'already an active member',
+        ),
+      );
+
+      final result = await roomRepository.joinRoom(roomId: joinedRoom.id);
+
+      expect(result.isLeft, isTrue);
+      expect((result.left as ServerFailure).statusCode, 409);
+    });
+
+    test(
+      'should map a 404 ServerException to Left(NotFoundFailure) (R-JOI-04)',
+      () async {
+        when(
+          () => remoteDataSource.joinRoom(roomId: any(named: 'roomId')),
+        ).thenThrow(
+          const ServerException(statusCode: 404, message: 'Room not found.'),
+        );
+
+        final result = await roomRepository.joinRoom(roomId: 'unknown-id');
+
+        expect(result.isLeft, isTrue);
+        expect(result.left, isA<NotFoundFailure>());
+      },
+    );
+
+    test('should map a NetworkException to Left(NetworkFailure)', () async {
+      when(
+        () => remoteDataSource.joinRoom(roomId: any(named: 'roomId')),
+      ).thenThrow(const NetworkException());
+
+      final result = await roomRepository.joinRoom(roomId: joinedRoom.id);
+
+      expect(result.isLeft, isTrue);
+      expect(result.left, isA<NetworkFailure>());
+    });
+  });
 }
