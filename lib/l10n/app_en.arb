@@ -252,6 +252,11 @@
     "description": "Submit button label on the room edit form."
   },
 
+  "editRoomCancelButtonLabel": "Cancel",
+    "@editRoomCancelButtonLabel": {
+      "description": "Cancel button label below the submit button on the room edit form. Discards the edit and returns to the room detail view without a confirmation dialog."
+    },
+
   "editRoomNetworkErrorMessage": "No internet connection. Please check your network and try again.",
   "@editRoomNetworkErrorMessage": {
     "description": "SnackBar message for EditRoomState.failure(NetworkFailure)."
