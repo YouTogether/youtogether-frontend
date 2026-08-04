@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failures.dart';
-import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/room_entity.dart';
 import '../cubit/edit_room_cubit.dart';
@@ -12,7 +10,7 @@ import '../cubit/edit_room_state.dart';
 /// Room edit form, driven by the [EditRoomCubit] provided by an
 /// ancestor `BlocProvider` (normally `EditRoomPage`).
 ///
-/// Mirrors `CreateRoomView` almost exactly; the two differences are:
+/// Mirrors `CreateRoomView` almost exactly; the differences are:
 /// - Fields are pre-populated from [initialRoom] rather than starting
 ///   empty (this ticket's Definition of Done: "form pre-populated with
 ///   existing values").
@@ -20,15 +18,28 @@ import '../cubit/edit_room_state.dart';
 ///   submission (see `EditRoomCubit`'s own doc for why this form has
 ///   no "leave a field unchanged" affordance, unlike the underlying
 ///   partial-update API it calls).
+/// - A cancel button sits below the submit button, discarding the edit
+///   and returning to the room detail view via [onCancel] — mirroring
+///   [onRoomUpdated] as a callback rather than a hardcoded navigation,
+///   for the same reason `CreateRoomPage`/`RegisterPage`/`LoginPage`
+///   expose their own `on*` callbacks instead of navigating directly.
 class EditRoomView extends StatefulWidget {
   const EditRoomView({
     required this.initialRoom,
     required this.onRoomUpdated,
+    required this.onCancel,
     super.key,
   });
 
   final RoomEntity initialRoom;
   final ValueChanged<RoomEntity> onRoomUpdated;
+
+  /// Invoked when the cancel button is tapped. Discards any unsaved
+  /// changes in the form (no confirmation dialog — unlike deletion,
+  /// cancelling an edit is not a destructive, hard-to-reverse action:
+  /// the room itself is untouched, and the user can simply reopen the
+  /// edit form to try again).
+  final VoidCallback onCancel;
 
   @override
   State<EditRoomView> createState() => _EditRoomViewState();
@@ -68,14 +79,7 @@ class _EditRoomViewState extends State<EditRoomView> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.editRoomPageTitle),
-        leading: IconButton(
-          key: const Key('loginBackToHomeButton'),
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.roomDetailPattern),
-        ),
-      ),
+      appBar: AppBar(title: Text(l10n.editRoomPageTitle)),
       body: BlocListener<EditRoomCubit, EditRoomState>(
         listener: (context, state) {
           if (state is EditRoomSuccess) {
@@ -126,7 +130,7 @@ class _EditRoomViewState extends State<EditRoomView> {
                         key: Key('editRoomLoadingIndicator'),
                       ),
                     )
-                  else
+                  else ...[
                     ElevatedButton(
                       key: const Key('editRoomSubmitButton'),
                       onPressed: () => context.read<EditRoomCubit>().updateRoom(
@@ -138,6 +142,13 @@ class _EditRoomViewState extends State<EditRoomView> {
                       ),
                       child: Text(l10n.editRoomSubmitButtonLabel),
                     ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      key: const Key('editRoomCancelButton'),
+                      onPressed: widget.onCancel,
+                      child: Text(l10n.editRoomCancelButtonLabel),
+                    ),
+                  ],
                 ],
               ),
             );
