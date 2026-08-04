@@ -64,6 +64,7 @@
 
   "editRoomPageTitle": "Modifier la room",
   "editRoomSubmitButtonLabel": "Enregistrer les modifications",
+  "editRoomCancelButtonLabel": "Annuler",
   "editRoomNetworkErrorMessage": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
   "editRoomServerErrorMessage": "Le serveur a rejeté la demande. Veuillez réessayer.",
   "editRoomAuthErrorMessage": "Seul le propriétaire de la room peut effectuer cette modification.",

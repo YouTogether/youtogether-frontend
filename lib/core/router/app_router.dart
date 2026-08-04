@@ -253,11 +253,15 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: AppRoutes.editRoomPattern,
-        builder: (context, state) => EditRoomPage(
-          initialRoom: state.extra! as RoomEntity,
-          updateRoomUseCase: updateRoomUseCase,
-          onRoomUpdated: (room) => context.go(AppRoutes.roomDetail(room.id)),
-        ),
+        builder: (context, state) {
+          final initialRoom = state.extra! as RoomEntity;
+          return EditRoomPage(
+            initialRoom: initialRoom,
+            updateRoomUseCase: updateRoomUseCase,
+            onRoomUpdated: (room) => context.go(AppRoutes.roomDetail(room.id)),
+            onCancel: () => context.go(AppRoutes.roomDetail(initialRoom.id)),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.roomDetailPattern,

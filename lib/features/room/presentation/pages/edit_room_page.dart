@@ -23,17 +23,25 @@ import 'edit_room_view.dart';
 /// fresh `RoomDetailCubit` and re-fetches — satisfying this ticket's
 /// "room detail refreshes on success" requirement the same way
 /// `CreateRoomPage`'s wiring satisfies its own refresh requirement.
+///
+/// [onCancel] is likewise a callback, wired in `AppRouter` to the same
+/// destination (`context.go(AppRoutes.roomDetail(initialRoom.id))`) —
+/// cancelling and successfully saving both end up back on the room
+/// detail view; only the path there (with or without a persisted
+/// change) differs.
 class EditRoomPage extends StatelessWidget {
   const EditRoomPage({
     required this.initialRoom,
     required this.updateRoomUseCase,
     required this.onRoomUpdated,
+    required this.onCancel,
     super.key,
   });
 
   final RoomEntity initialRoom;
   final UpdateRoomUseCase updateRoomUseCase;
   final ValueChanged<RoomEntity> onRoomUpdated;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +50,7 @@ class EditRoomPage extends StatelessWidget {
       child: EditRoomView(
         initialRoom: initialRoom,
         onRoomUpdated: onRoomUpdated,
+        onCancel: onCancel,
       ),
     );
   }
