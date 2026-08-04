@@ -24,6 +24,7 @@ class MockEditRoomCubit extends MockCubit<EditRoomState>
 void main() {
   late MockEditRoomCubit editRoomCubit;
   late RoomEntity? updatedRoom;
+  late bool cancelled;
 
   final initialRoom = RoomEntity(
     id: '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f',
@@ -39,6 +40,7 @@ void main() {
   setUp(() {
     editRoomCubit = MockEditRoomCubit();
     updatedRoom = null;
+    cancelled = false;
     when(() => editRoomCubit.reset()).thenReturn(null);
     when(
       () => editRoomCubit.updateRoom(
@@ -75,6 +77,7 @@ void main() {
         EditRoomView(
           initialRoom: initialRoom,
           onRoomUpdated: (room) => updatedRoom = room,
+          onCancel: () => cancelled = true,
         ),
       ),
     );
@@ -176,6 +179,7 @@ void main() {
           EditRoomView(
             initialRoom: initialRoom,
             onRoomUpdated: (room) => updatedRoom = room,
+            onCancel: () => cancelled = true,
           ),
         ),
       );
@@ -203,6 +207,7 @@ void main() {
           EditRoomView(
             initialRoom: initialRoom,
             onRoomUpdated: (room) => updatedRoom = room,
+            onCancel: () => cancelled = true,
           ),
         ),
       );
@@ -226,6 +231,55 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
 
       verify(() => editRoomCubit.reset()).called(1);
+    });
+  });
+
+  group('EditRoomView — cancel button', () {
+    testWidgets('renders below the submit button', (tester) async {
+      await pumpEditRoomView(
+        tester,
+        initialState: const EditRoomState.initial(),
+      );
+
+      expect(find.byKey(const Key('editRoomCancelButton')), findsOneWidget);
+
+      final submitPosition = tester.getTopLeft(
+        find.byKey(const Key('editRoomSubmitButton')),
+      );
+      final cancelPosition = tester.getTopLeft(
+        find.byKey(const Key('editRoomCancelButton')),
+      );
+      expect(cancelPosition.dy, greaterThan(submitPosition.dy));
+    });
+
+    testWidgets('invokes onCancel when tapped, without submitting', (
+      tester,
+    ) async {
+      await pumpEditRoomView(
+        tester,
+        initialState: const EditRoomState.initial(),
+      );
+
+      await tester.tap(find.byKey(const Key('editRoomCancelButton')));
+      await tester.pump();
+
+      expect(cancelled, isTrue);
+      verifyNever(
+        () => editRoomCubit.updateRoom(
+          roomId: any(named: 'roomId'),
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+        ),
+      );
+    });
+
+    testWidgets('is hidden while a submission is in flight', (tester) async {
+      await pumpEditRoomView(
+        tester,
+        initialState: const EditRoomState.loading(),
+      );
+
+      expect(find.byKey(const Key('editRoomCancelButton')), findsNothing);
     });
   });
 }
