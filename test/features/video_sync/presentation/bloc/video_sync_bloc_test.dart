@@ -32,7 +32,7 @@ class MockUpdatePlaybackStateUseCase extends Mock
 /// Uses `bloc_test`'s `blocTest`, mirroring `room_bloc_test.dart`.
 /// Extended for: `sessionJoined`'s three-step sequencing
 /// (metadata fetch, initial playback fetch, live subscription),
-/// disconnect handling (VS-SYN-06), and `retryRequested`. The F-V02
+/// disconnect handling, and `retryRequested`. The
 /// play/pause/seek suites are carried over, adapted to the bloc's new
 /// constructor shape (no more `isLeader`/`durationSeconds`/
 /// `initialPosition` constructor params — those are now populated by
@@ -411,6 +411,65 @@ void main() {
       act: (bloc) => bloc.add(const VideoSyncEvent.playRequested()),
       expect: () => <VideoSyncState>[],
       verify: (_) => verifyNever(() => updatePlaybackStateUseCase(any())),
+    );
+  });
+
+  group('VideoSyncEvent.adDetected / adEnded — F-V04', () {
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'emits adInProgress on adDetected',
+      build: () => buildBloc(currentUserId: leaderId),
+      act: (bloc) => bloc.add(const VideoSyncEvent.adDetected()),
+      expect: () => [const VideoSyncState.adInProgress()],
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'on adEnded, re-emits playing/paused from the last known session '
+      'received via sessionUpdated',
+      build: () {
+        when(
+          () => getVideoSessionUseCase(roomId),
+        ).thenAnswer((_) async => Right(metadata));
+        when(
+          () => getCurrentPlaybackStateUseCase(roomId),
+        ).thenAnswer((_) async => Right(buildSession(isPlaying: false)));
+        when(
+          () => subscribeToPlaybackStateUseCase(roomId),
+        ).thenAnswer((_) => const Stream.empty());
+        return buildBloc(currentUserId: leaderId);
+      },
+      act: (bloc) async {
+        bloc.add(const VideoSyncEvent.sessionJoined());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(
+          VideoSyncEvent.sessionUpdated(
+            Right(
+              buildSession(
+                isPlaying: true,
+                position: const Duration(seconds: 77),
+              ),
+            ),
+          ),
+        );
+        bloc.add(const VideoSyncEvent.adDetected());
+        bloc.add(const VideoSyncEvent.adEnded());
+      },
+      expect: () => [
+        const VideoSyncState.loading(),
+        const VideoSyncState.ready(
+          position: Duration(seconds: 42),
+          isPlaying: false,
+        ),
+        const VideoSyncState.playing(position: Duration(seconds: 77)),
+        const VideoSyncState.adInProgress(),
+        const VideoSyncState.playing(position: Duration(seconds: 77)),
+      ],
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'adEnded is a no-op (no emission) if no session has been received yet',
+      build: () => buildBloc(currentUserId: leaderId),
+      act: (bloc) => bloc.add(const VideoSyncEvent.adEnded()),
+      expect: () => <VideoSyncState>[],
     );
   });
 }
