@@ -57,4 +57,26 @@ sealed class VideoSyncState with _$VideoSyncState {
   /// handlers can themselves fail against
   /// [UpdatePlaybackStateUseCase] and need somewhere to report that.
   const factory VideoSyncState.failure(Failure failure) = VideoSyncFailure;
+
+  /// An advertisement is believed to be in progress locally
+  /// — leader-driven playback updates
+  /// keep arriving via `sessionUpdated` and are stored
+  /// (`VideoSyncBloc.lastKnownSession`), but not applied to the local
+  /// player until `PlayerReconciliation` observes progression resume
+  /// and dispatches `adEnded`.
+  /// Purely a UI signal (e.g. suppressing the failure banner, showing
+  /// an "ad in progress" indicator) — this state carries no position,
+  /// since the position that matters during an ad is `lastKnownSession`'s,
+  /// not a new one.
+  const factory VideoSyncState.adInProgress() = VideoSyncAdInProgress;
+
+  /// The ready gate (`sync_barrier`) is active: this participant is
+  /// waiting for every online participant to signal readiness (or for
+  /// the leader to force-start after `readyGateTimeout`) before content
+  /// playback begins. [readyCount]/[totalCount] are shown
+  /// as "3/5 ready" per the source document's own UI guidance.
+  const factory VideoSyncState.barrierWaiting({
+    required int readyCount,
+    required int totalCount,
+  }) = VideoSyncBarrierWaiting;
 }

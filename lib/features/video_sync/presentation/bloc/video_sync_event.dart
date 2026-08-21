@@ -56,4 +56,16 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
   /// bloc's `isLeader` flag is `false`.
   const factory VideoSyncEvent.seekRequested(Duration target) =
       VideoSyncSeekRequested;
+
+  /// Internal event: dispatched by `PlayerReconciliation` when
+  /// `SyncEngine.detectAd` transitions from `false` to `true` — the
+  /// local player is believed to have entered an advertisement.
+  /// Never dispatched by other UI code.
+  const factory VideoSyncEvent.adDetected() = VideoSyncAdDetected;
+
+  /// Internal event: dispatched by `PlayerReconciliation` once
+  /// `SyncEngine.detectAd` reports progression has resumed — the
+  /// advertisement is believed to have ended. Never dispatched by other
+  /// UI code.
+  const factory VideoSyncEvent.adEnded() = VideoSyncAdEnded;
 }

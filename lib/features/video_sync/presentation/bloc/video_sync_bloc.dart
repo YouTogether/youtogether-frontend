@@ -88,6 +88,8 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     on<VideoSyncPlayRequested>(_onPlayRequested);
     on<VideoSyncPauseRequested>(_onPauseRequested);
     on<VideoSyncSeekRequested>(_onSeekRequested);
+    on<VideoSyncAdDetected>(_onAdDetected);
+    on<VideoSyncAdEnded>(_onAdEnded);
   }
 
   final String _roomId;
@@ -101,6 +103,20 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   int _durationSeconds = 0;
   String _youtubeVideoId = '';
   StreamSubscription<Either<Failure, VideoSessionEntity>>? _liveSubscription;
+
+  /// The most recent session received via `sessionUpdated`, kept so
+  /// `_onAdEnded` (F-V04) can re-emit the correct playing/paused state
+  /// once an advertisement is believed to have ended, and so
+  /// `PlayerReconciliation` can read it (via [lastKnownSession]) to
+  /// compute the expected catch-up position through
+  /// `SyncEngine.computeExpectedPosition`.
+  VideoSessionEntity? _lastKnownSession;
+
+  /// Exposes the last session received via the live Firebase
+  /// subscription, for `PlayerReconciliation` to compute drift/ad
+  /// catch-up against. `null` before the first `sessionUpdated` event
+  /// arrives.
+  VideoSessionEntity? get lastKnownSession => _lastKnownSession;
 
   /// Whether the current user is this room's leader, derived by
   /// [_onSessionJoined]. `false` before the first successful
@@ -134,7 +150,10 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     VideoSyncReady(:final position) => position,
     VideoSyncInitial() ||
     VideoSyncLoading() ||
-    VideoSyncFailure() => Duration.zero,
+    VideoSyncFailure() ||
+    VideoSyncAdInProgress() ||
+    VideoSyncBarrierWaiting() =>
+      _lastKnownSession?.currentPosition ?? Duration.zero,
   };
 
   Future<void> _onSessionJoined(
@@ -185,12 +204,34 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     event.result.fold((failure) => emit(VideoSyncState.failure(failure)), (
       session,
     ) {
+      _lastKnownSession = session;
       emit(
         session.isPlaying
             ? VideoSyncState.playing(position: session.currentPosition)
             : VideoSyncState.paused(position: session.currentPosition),
       );
     });
+  }
+
+  Future<void> _onAdDetected(
+    VideoSyncAdDetected event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    emit(const VideoSyncState.adInProgress());
+  }
+
+  Future<void> _onAdEnded(
+    VideoSyncAdEnded event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    final session = _lastKnownSession;
+    if (session == null) return;
+
+    emit(
+      session.isPlaying
+          ? VideoSyncState.playing(position: session.currentPosition)
+          : VideoSyncState.paused(position: session.currentPosition),
+    );
   }
 
   Future<void> _onRetryRequested(
