@@ -56,17 +56,7 @@ class FakeYoutubePlayerControllerAdapter
 
 /// Unit and widget tests for [YouTubePlayerWidget].
 ///
-/// CORRECTION: this suite previously included a
-/// `buildPlayerSurface(isWeb: ...)` test asserting an `HtmlElementView`
-/// branch. That branch — and the hand-rolled web/mobile split it
-/// belonged to — was removed once verification against
-/// `youtube_player_iframe`'s actual published documentation showed the
-/// package already supports Web, Android, iOS, and macOS through one
-/// controller/widget API (see `youtube_player_controller_adapter.dart`'s
-/// own doc comment for the full correction). There is now exactly one
-/// code path to test, not two.
-///
-/// @competency Unit test harness (C2.2.2).
+/// @competency Unit test harness.
 void main() {
   group('YouTubePlayerWidget — native controls gating', () {
     testWidgets('should request native controls when isLeader is true', (

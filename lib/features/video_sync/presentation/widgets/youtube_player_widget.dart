@@ -1,17 +1,18 @@
 import 'package:flutter/widgets.dart';
 
 import 'youtube_player_controller_adapter.dart';
-import 'youtube_player_controller_factory.dart';
+import 'youtube_player_controller_factory.dart' as default_factory;
 
 /// Factory signature for constructing the [YoutubePlayerControllerAdapter]
 /// backing a [YouTubePlayerWidget] instance.
 ///
 /// Exposed as a constructor parameter (defaulting to
-/// [createYoutubePlayerControllerAdapter]) specifically so widget tests
-/// can inject a `FakeYoutubePlayerControllerAdapter` instead of a real
-/// `youtube_player_iframe` controller — mirroring how `RegisterPage`
-/// takes its use case via the constructor rather than resolving it from
-/// `get_it` internally.
+/// [default_factory.createYoutubePlayerControllerAdapter]) specifically
+/// so widget tests can inject a `FakeYoutubePlayerControllerAdapter`
+/// instead of a real `YoutubePlayerController` (which requires a real
+/// WebView to construct) — mirroring how `RegisterPage` takes its use
+/// case via the constructor rather than resolving it from `get_it`
+/// internally.
 typedef YoutubePlayerControllerFactory =
     YoutubePlayerControllerAdapter Function({
       required String videoId,
@@ -19,16 +20,15 @@ typedef YoutubePlayerControllerFactory =
     });
 
 /// Embeds a single YouTube video via `youtube_player_iframe`, which
-/// supports Web, Android, iOS, and macOS through the same controller
-/// and widget API — this widget contains no platform-conditional code
-/// of its own; see [YoutubePlayerControllerAdapter]'s doc comment for
-/// the correction this design went through.
+/// supports every platform this application targets through one
+/// controller and widget — see
+/// `youtube_player_controller_factory.dart`'s own doc comment.
 ///
 /// Native player controls (YouTube's own play/pause/seek bar overlay)
 /// are shown only when [isLeader] is `true` — for a non-leader viewer,
 /// playback must be driven exclusively by [PlayerReconciliation]
 /// reacting to `VideoSyncState`, never by the viewer directly
-/// interacting with the embedded player's own UI (Acceptance Criteria:
+/// interacting with the embedded player's own UI (Acceptance Criteria,
 /// "Play/pause/seek buttons disabled for non-leader viewers" —
 /// this widget is the first line of enforcement for that rule at the
 /// player-chrome level; `LeaderControls` is the second, for the
@@ -40,6 +40,9 @@ typedef YoutubePlayerControllerFactory =
 /// [onStateChange] merely reports what the player is doing so
 /// `VideoSyncBloc` can act on it. Leader-driven writes to Firebase
 /// happen in `LeaderControls`/`VideoSyncBloc`, not here.
+///
+/// @see YoutubePlayerControllerAdapter — the abstraction this widget
+///   depends on
 class YouTubePlayerWidget extends StatefulWidget {
   const YouTubePlayerWidget({
     super.key,
@@ -48,7 +51,8 @@ class YouTubePlayerWidget extends StatefulWidget {
     this.onReady,
     this.onStateChange,
     this.onError,
-    this.controllerFactory = createYoutubePlayerControllerAdapter,
+    this.controllerFactory =
+        default_factory.createYoutubePlayerControllerAdapter,
   });
 
   /// The YouTube video id to load.
@@ -101,5 +105,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   }
 
   @override
-  Widget build(BuildContext context) => _controller.buildView();
+  Widget build(BuildContext context) {
+    return _controller.buildView();
+  }
 }
