@@ -22,6 +22,10 @@ import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase
 import 'package:youtogether/features/room/domain/usecases/join_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/leave_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/update_room_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
@@ -43,6 +47,18 @@ class MockLeaveRoomUseCase extends Mock implements LeaveRoomUseCase {}
 class MockGetRoomByIdUseCase extends Mock implements GetRoomByIdUseCase {}
 
 class MockUpdateRoomUseCase extends Mock implements UpdateRoomUseCase {}
+
+class MockGetVideoSessionUseCase extends Mock
+    implements GetVideoSessionUseCase {}
+
+class MockGetCurrentPlaybackStateUseCase extends Mock
+    implements GetCurrentPlaybackStateUseCase {}
+
+class MockSubscribeToPlaybackStateUseCase extends Mock
+    implements SubscribeToPlaybackStateUseCase {}
+
+class MockUpdatePlaybackStateUseCase extends Mock
+    implements UpdatePlaybackStateUseCase {}
 
 /// Regression test for the reported bug: following a
 /// successful login (or registration), `HomePage` still appeared as an
@@ -72,6 +88,10 @@ void main() {
   late MockDeleteRoomUseCase deleteRoomUseCase;
   late MockJoinRoomUseCase joinRoomUseCase;
   late MockLeaveRoomUseCase leaveRoomUseCase;
+  late MockGetVideoSessionUseCase getVideoSessionUseCase;
+  late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
+  late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
+  late MockUpdatePlaybackStateUseCase updatePlaybackStateUseCase;
 
   final authenticatedUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -107,6 +127,10 @@ void main() {
     deleteRoomUseCase = MockDeleteRoomUseCase();
     joinRoomUseCase = MockJoinRoomUseCase();
     leaveRoomUseCase = MockLeaveRoomUseCase();
+    getVideoSessionUseCase = MockGetVideoSessionUseCase();
+    getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
+    subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
+    updatePlaybackStateUseCase = MockUpdatePlaybackStateUseCase();
 
     whenListen(
       authBloc,
@@ -132,6 +156,10 @@ void main() {
       deleteRoomUseCase: deleteRoomUseCase,
       joinRoomUseCase: joinRoomUseCase,
       leaveRoomUseCase: leaveRoomUseCase,
+      getVideoSessionUseCase: getVideoSessionUseCase,
+      getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
+      subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
+      updatePlaybackStateUseCase: updatePlaybackStateUseCase,
     );
 
     await tester.pumpWidget(
