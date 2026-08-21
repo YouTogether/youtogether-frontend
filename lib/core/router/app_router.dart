@@ -1,5 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
@@ -114,8 +118,7 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// [authBloc] is read both for the initial `redirect` evaluation
 /// (`authBloc.state`) and to construct the [GoRouterRefreshStream] that
 /// makes the router re-evaluate `redirect` on every subsequent
-/// [AuthState] emission — not just on user-initiated navigation. This
-/// closes gaps 3 and 4 of `ADR-001-authentication-infrastructure-deferral.md`.
+/// [AuthState] emission — not just on user-initiated navigation.
 ///
 /// [AppRoutes.profile] renders [ProfilePage] directly: unlike
 /// [LoginPage]/[RegisterPage], it takes no constructor dependencies (it
@@ -138,7 +141,7 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// dispatches `AuthEvent.checkStatusRequested` once on `AuthBloc`, but
 /// scoped to this one route instead of the whole app (see `RoomBloc`'s
 /// own doc for why). This replaces `PlaceholderHomePage` wholesale,
-/// exactly as that file's own doc comment anticipated (F-R01-T3).
+/// exactly as that file's own doc comment anticipated.
 ///
 /// [createRoomUseCase] is threaded through to `CreateRoomPage`
 /// (`AppRoutes.createRoom`), mirroring [registerUseCase]/[loginUseCase].
@@ -175,7 +178,7 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 ///
 /// [deleteRoomUseCase] is threaded through to `RoomDetailPage`, which
 /// provides the resulting `DeleteRoomCubit` for its own owner-gated
-/// delete button and confirmation dialog (F-R04-T3).
+/// delete button and confirmation dialog.
 ///
 /// [joinRoomUseCase] is threaded through to construct a `JoinRoomCubit`
 /// shared by every `RoomCard` on the `/` route (`HomePage`) and,
@@ -184,8 +187,7 @@ String? resolveRedirect(AuthState authState, String matchedLocation) {
 /// to support joining from both screens.
 ///
 /// [leaveRoomUseCase] is threaded through to `RoomDetailPage` the same
-/// way, providing `LeaveRoomCubit` for its non-owner-only leave button
-/// (F-R06-T3).
+/// way, providing `LeaveRoomCubit` for its non-owner-only leave button.
 GoRouter buildAppRouter({
   required AuthBloc authBloc,
   required RegisterUseCase registerUseCase,
@@ -197,6 +199,10 @@ GoRouter buildAppRouter({
   required DeleteRoomUseCase deleteRoomUseCase,
   required JoinRoomUseCase joinRoomUseCase,
   required LeaveRoomUseCase leaveRoomUseCase,
+  required GetVideoSessionUseCase getVideoSessionUseCase,
+  required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
+  required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
+  required UpdatePlaybackStateUseCase updatePlaybackStateUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -271,6 +277,10 @@ GoRouter buildAppRouter({
           deleteRoomUseCase: deleteRoomUseCase,
           joinRoomUseCase: joinRoomUseCase,
           leaveRoomUseCase: leaveRoomUseCase,
+          getVideoSessionUseCase: getVideoSessionUseCase,
+          getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
+          subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
+          updatePlaybackStateUseCase: updatePlaybackStateUseCase,
         ),
       ),
     ],
