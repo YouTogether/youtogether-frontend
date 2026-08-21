@@ -1,77 +1,132 @@
+import 'dart:async';
+
+import 'package:either_dart/either.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/error/failures.dart';
+import '../../domain/entities/video_session_entity.dart';
+import '../../domain/usecases/get_current_playback_state_usecase.dart';
+import '../../domain/usecases/get_video_session_usecase.dart';
+import '../../domain/usecases/subscribe_to_playback_state_usecase.dart';
 import '../../domain/usecases/update_playback_state_params.dart';
 import '../../domain/usecases/update_playback_state_usecase.dart';
 import '../../domain/value_objects/playback_timestamp.dart';
 import 'video_sync_event.dart';
 import 'video_sync_state.dart';
 
-/// Bloc driving playback commands for a single room's video session.
+/// Bloc driving playback synchronisation for a single room's video
+/// session.
 ///
-/// Mirrors `RoomBloc` structurally (a `Bloc<Event, State>` wrapping use
-/// cases per handled event), constructed fresh and scoped to one room,
-/// mirroring how `RoomDetailCubit` is constructed fresh per
+/// Mirrors `RoomBloc` structurally, constructed fresh and scoped to one
+/// room, mirroring how `RoomDetailCubit` is constructed fresh per
 /// `RoomDetailPage` visit rather than registered as an app-wide
 /// singleton.
 ///
-/// ## Construction-time context, and the gap
-/// [roomId], [isLeader], and [durationSeconds] are fixed for this
-/// bloc's whole lifetime, passed at construction rather than resolved
-/// from a `sessionJoined` event: `sessionJoined` (which will fetch the
-/// current playback state via `GetCurrentPlaybackStateUseCase` and open
-/// the live Firebase subscription) is not
-/// yet implemented. Until that lands, [initialPosition] and
-/// [initialIsPlaying] must be supplied by the caller from whatever
-/// video-session data it already has — and as of this ticket, no
-/// existing use case actually loads a room's video session on the
-/// frontend at all (`GetRoomByIdUseCase`/`RoomEntity` carry no
-/// `videoId`/`durationSeconds`/`leaderId` fields;
-/// `POST /rooms/:id/video-session` response is never fetched back by
-/// any frontend use case). That is a genuine backlog gap, not papered
-/// over here: this bloc is complete and tested for the play/pause/seek
-/// commands is scoped to, but wiring a real instance into
-/// `RoomDetailView` needs a preceding ticket that fetches a room's
-/// video session and exposes `durationSeconds`/`leaderId` to the
-/// widget tree. Flagged rather than worked around with invented fields,
-/// per this project's "no fabricated evidence" standard.
+/// ## Construction-time context (revised, F-V03-T2)
+/// [roomId] and [currentUserId] are fixed for this bloc's whole
+/// lifetime. Unlike the revision of this file, `isLeader` and
+/// `durationSeconds` are **no longer constructor parameters** — they
+/// are populated by [_onSessionJoined], derived from
+/// [GetVideoSessionUseCase] (`durationSeconds`, from PostgreSQL via
+/// `B-V02`) and [GetCurrentPlaybackStateUseCase] (`leaderId`, from
+/// Firebase, compared against [currentUserId]). This closes the gap
+/// flagged when first shipped `LeaderControls`/`VideoSyncBloc`
+/// with no use case to supply that data — see
+/// `sprint-3-videosync-frontend-commit-flow.md`, Task 7's gap note and
+/// Task 8's reassignment.
+///
+/// ## sessionJoined sequencing
+/// [_onSessionJoined] runs three steps in strict order:
+/// 1. [GetVideoSessionUseCase] — the room's cached metadata
+///    (`durationSeconds`, needed by every seek validated against
+///    [PlaybackTimestamp]).
+/// 2. [GetCurrentPlaybackStateUseCase] — a single Firebase read,
+///    settling the bloc into [VideoSyncState.ready] with the position/
+///    isPlaying the player should seek to on first paint, and deriving
+///    `isLeader`.
+/// 3. [SubscribeToPlaybackStateUseCase] — opens the live subscription
+///    for ongoing updates, forwarded internally as
+///    `VideoSyncEvent.sessionUpdated`.
+///
+/// A metadata or initial-fetch failure short-circuits the sequence
+/// (steps 2/3, or 3, never run) and emits [VideoSyncState.failure]
+/// directly.
+///
+/// ## Disconnect handling
+/// A `Left(FirebaseFailure)` value forwarded via `sessionUpdated` (the
+/// live subscription's own convention for surfacing a stream error as
+/// a data event rather than an actual stream error — see
+/// `VideoSyncRepositoryImpl.subscribeToPlaybackState`'s own doc
+/// comment) emits [VideoSyncState.failure]. `SyncFailureBanner`
+/// dispatches [VideoSyncEvent.retryRequested] to re-run the whole
+/// `sessionJoined` sequence from scratch.
 ///
 /// ## Leader-only gating
-/// Every handler below checks [isLeader] first and returns without
-/// emitting or calling [_updatePlaybackStateUseCase] at all when it is
-/// `false` — this is the first of the two enforcement points named in
-/// `YouTubePlayerWidget`'s own doc comment (native controls hidden);
-/// `LeaderControls` (this same ticket) is the second, disabling its
-/// buttons outright so a non-leader's tap never reaches this bloc in
-/// the first place. Firebase security rules remain the actual
-/// server-side authority — this and the disabled buttons are
-/// defence in depth against a modified client, not the source of
-/// truth.
+/// Unchanged from: every command handler checks `_isLeader`
+/// first and returns without emitting or writing at all when it is
+/// `false` — the first of the two enforcement points named in
+/// `YouTubePlayerWidget`'s own doc comment; `LeaderControls` is the
+/// second.
 class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   VideoSyncBloc({
     required String roomId,
-    required bool isLeader,
-    required int durationSeconds,
+    required String currentUserId,
+    required GetVideoSessionUseCase getVideoSessionUseCase,
+    required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
+    required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
     required UpdatePlaybackStateUseCase updatePlaybackStateUseCase,
-    Duration initialPosition = Duration.zero,
-    bool initialIsPlaying = false,
   }) : _roomId = roomId,
-       _isLeader = isLeader,
-       _durationSeconds = durationSeconds,
+       _currentUserId = currentUserId,
+       _getVideoSessionUseCase = getVideoSessionUseCase,
+       _getCurrentPlaybackStateUseCase = getCurrentPlaybackStateUseCase,
+       _subscribeToPlaybackStateUseCase = subscribeToPlaybackStateUseCase,
        _updatePlaybackStateUseCase = updatePlaybackStateUseCase,
-       super(
-         initialIsPlaying
-             ? VideoSyncState.playing(position: initialPosition)
-             : VideoSyncState.paused(position: initialPosition),
-       ) {
+       super(const VideoSyncState.initial()) {
+    on<VideoSyncSessionJoined>(_onSessionJoined);
+    on<VideoSyncSessionUpdated>(_onSessionUpdated);
+    on<VideoSyncRetryRequested>(_onRetryRequested);
     on<VideoSyncPlayRequested>(_onPlayRequested);
     on<VideoSyncPauseRequested>(_onPauseRequested);
     on<VideoSyncSeekRequested>(_onSeekRequested);
   }
 
   final String _roomId;
-  final bool _isLeader;
-  final int _durationSeconds;
+  final String _currentUserId;
+  final GetVideoSessionUseCase _getVideoSessionUseCase;
+  final GetCurrentPlaybackStateUseCase _getCurrentPlaybackStateUseCase;
+  final SubscribeToPlaybackStateUseCase _subscribeToPlaybackStateUseCase;
   final UpdatePlaybackStateUseCase _updatePlaybackStateUseCase;
+
+  bool _isLeader = false;
+  int _durationSeconds = 0;
+  String _youtubeVideoId = '';
+  StreamSubscription<Either<Failure, VideoSessionEntity>>? _liveSubscription;
+
+  /// Whether the current user is this room's leader, derived by
+  /// [_onSessionJoined]. `false` before the first successful
+  /// `sessionJoined`/`retryRequested` completes.
+  ///
+  /// Exposed as a plain getter rather than part of [VideoSyncState]:
+  /// `RoomDetailView` needs this,
+  /// `_durationSeconds`, and `_youtubeVideoId` to construct
+  /// `LeaderControls`/`YouTubePlayerWidget`, but none of the three ever
+  /// changes independently of a full `VideoSyncState` transition
+  /// (`ready`, at minimum, always precedes any state that depends on
+  /// them) — so a `BlocBuilder` already rebuilds at the right time
+  /// without these needing to be state fields of their own.
+  bool get isLeader => _isLeader;
+
+  /// This session's total video duration in seconds, fetched via
+  /// [GetVideoSessionUseCase]. `0` before the first successful
+  /// `sessionJoined`/`retryRequested` completes.
+  int get durationSeconds => _durationSeconds;
+
+  /// The YouTube video id currently loaded, from Firebase's live copy
+  /// (see this class's own top-level doc comment for why Firebase's
+  /// copy is preferred over the REST-cached one once both are known).
+  /// Empty before the first successful `sessionJoined`/`retryRequested`
+  /// completes.
+  String get youtubeVideoId => _youtubeVideoId;
 
   Duration get _currentPosition => switch (state) {
     VideoSyncPlaying(:final position) => position,
@@ -81,6 +136,69 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     VideoSyncLoading() ||
     VideoSyncFailure() => Duration.zero,
   };
+
+  Future<void> _onSessionJoined(
+    VideoSyncSessionJoined event,
+    Emitter<VideoSyncState> emit,
+  ) {
+    return _performSessionJoin(emit);
+  }
+
+  Future<void> _performSessionJoin(Emitter<VideoSyncState> emit) async {
+    emit(const VideoSyncState.loading());
+
+    final metadataResult = await _getVideoSessionUseCase(_roomId);
+    if (metadataResult.isLeft) {
+      emit(VideoSyncState.failure(metadataResult.left));
+      return;
+    }
+    _durationSeconds = metadataResult.right.durationSeconds;
+
+    final initialStateResult = await _getCurrentPlaybackStateUseCase(_roomId);
+    if (initialStateResult.isLeft) {
+      emit(VideoSyncState.failure(initialStateResult.left));
+      return;
+    }
+    final initialSession = initialStateResult.right;
+    _isLeader = initialSession.leaderId == _currentUserId;
+    _youtubeVideoId = initialSession.youtubeVideoId;
+
+    emit(
+      VideoSyncState.ready(
+        position: initialSession.currentPosition,
+        isPlaying: initialSession.isPlaying,
+      ),
+    );
+
+    await _liveSubscription?.cancel();
+    _liveSubscription = _subscribeToPlaybackStateUseCase(_roomId).listen((
+      result,
+    ) {
+      add(VideoSyncEvent.sessionUpdated(result));
+    });
+  }
+
+  Future<void> _onSessionUpdated(
+    VideoSyncSessionUpdated event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    event.result.fold((failure) => emit(VideoSyncState.failure(failure)), (
+      session,
+    ) {
+      emit(
+        session.isPlaying
+            ? VideoSyncState.playing(position: session.currentPosition)
+            : VideoSyncState.paused(position: session.currentPosition),
+      );
+    });
+  }
+
+  Future<void> _onRetryRequested(
+    VideoSyncRetryRequested event,
+    Emitter<VideoSyncState> emit,
+  ) {
+    return _performSessionJoin(emit);
+  }
 
   Future<void> _write({
     required bool isPlaying,
@@ -143,5 +261,11 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
       position: validated.position,
       emit: emit,
     );
+  }
+
+  @override
+  Future<void> close() async {
+    await _liveSubscription?.cancel();
+    return super.close();
   }
 }

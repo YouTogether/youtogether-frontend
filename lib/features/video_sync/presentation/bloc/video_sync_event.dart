@@ -1,4 +1,8 @@
+import 'package:either_dart/either.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import '../../../../core/error/failures.dart';
+import '../../domain/entities/video_session_entity.dart';
 
 part 'video_sync_event.freezed.dart';
 
@@ -6,15 +10,37 @@ part 'video_sync_event.freezed.dart';
 ///
 /// Declared `@freezed` as a sealed union, mirroring `RoomEvent`.
 ///
-/// Only the leader-command events (`playRequested`, `pauseRequested`,
-/// `seekRequested`) are handled. `sessionJoined` and
-/// `sessionUpdated` — needed for the initial-sync and real-time viewer
-/// listener behaviour;
-/// declaring the full event set upfront was considered and rejected
-/// here (unlike `VideoSyncState`, see that file's own doc comment for
-/// why states differ).
+/// `sessionJoined`, `sessionUpdated`, and `retryRequested` are added
+/// here — the previous revision of this file
+/// documented these as deliberately deferred rather than declared
+/// upfront unused; that reasoning still holds for events genuinely out
+/// of scope, so they belong here now, not as placeholders.
 @freezed
 sealed class VideoSyncEvent with _$VideoSyncEvent {
+  /// Dispatched once on room entry. Fetches the room's video session
+  /// metadata (`GetVideoSessionUseCase`, `durationSeconds`), then the
+  /// current Firebase playback state (`GetCurrentPlaybackStateUseCase`),
+  /// derives `isLeader` by comparing the fetched `leaderId` to
+  /// [currentUserId], and opens the live subscription
+  /// (`SubscribeToPlaybackStateUseCase`). See
+  /// `VideoSyncBloc._onSessionJoined`'s own doc comment for the full
+  /// sequencing.
+  const factory VideoSyncEvent.sessionJoined() = VideoSyncSessionJoined;
+
+  /// Internal event: forwards each value emitted by the live Firebase
+  /// subscription opened by `sessionJoined`. Never dispatched directly
+  /// by UI code — only `VideoSyncBloc` itself calls
+  /// `add(VideoSyncEvent.sessionUpdated(...))`, from the subscription's
+  /// listener callback.
+  const factory VideoSyncEvent.sessionUpdated(
+    Either<Failure, VideoSessionEntity> result,
+  ) = VideoSyncSessionUpdated;
+
+  /// Dispatched when the user taps the retry action on
+  /// `SyncFailureBanner` after a `VideoSyncState.failure` (VS-SYN-06).
+  /// Re-runs the full `sessionJoined` flow from scratch.
+  const factory VideoSyncEvent.retryRequested() = VideoSyncRetryRequested;
+
   /// Leader command: start playback from the bloc's current position.
   /// No-op if the bloc's `isLeader` flag is `false` (VS-SYN-05).
   const factory VideoSyncEvent.playRequested() = VideoSyncPlayRequested;
