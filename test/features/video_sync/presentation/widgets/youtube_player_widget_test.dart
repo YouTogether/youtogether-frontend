@@ -40,6 +40,15 @@ class FakeYoutubePlayerControllerAdapter
   @override
   Future<void> seekTo(Duration position) async => calls.add('seekTo:$position');
 
+  /// Test-controllable value returned by [getCurrentSample].
+  PlayerSample sample = const PlayerSample(
+    position: Duration.zero,
+    state: PlayerAdapterState.unstarted,
+  );
+
+  @override
+  Future<PlayerSample> getCurrentSample() async => sample;
+
   @override
   void dispose() => disposed = true;
 
@@ -189,5 +198,32 @@ void main() {
 
       expect(capturedController.disposed, isTrue);
     });
+
+    testWidgets(
+      'should invoke onControllerReady once with the constructed controller (F-V04)',
+      (tester) async {
+        YoutubePlayerControllerAdapter? received;
+
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: YouTubePlayerWidget(
+              videoId: 'dQw4w9WgXcQ',
+              isLeader: true,
+              onControllerReady: (controller) => received = controller,
+              controllerFactory:
+                  ({required videoId, required showNativeControls}) {
+                    return FakeYoutubePlayerControllerAdapter(
+                      videoId: videoId,
+                      showNativeControls: showNativeControls,
+                    );
+                  },
+            ),
+          ),
+        );
+
+        expect(received, isA<FakeYoutubePlayerControllerAdapter>());
+      },
+    );
   });
 }

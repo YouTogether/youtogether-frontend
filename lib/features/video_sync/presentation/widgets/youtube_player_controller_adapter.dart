@@ -46,7 +46,28 @@ abstract class YoutubePlayerControllerAdapter {
   Future<void> pause();
   Future<void> seekTo(Duration position);
 
+  /// Reads the player's current playback position
+  /// (`getCurrentTime()`), and its current [PlayerAdapterState].
+  ///
+  /// Added for F-V04's `PlayerReconciliation`: `SyncEngine.detectAd`
+  /// needs periodic samples of both together (Section 5.1's detection
+  /// heuristic checks the player state *and* timestamp progression
+  /// jointly), and the two must come from a single read — sampling
+  /// `getCurrentTime()` and the last `onStateChange` value separately,
+  /// moments apart, could observe a state transition between the two
+  /// reads and misclassify a sample.
+  Future<PlayerSample> getCurrentSample();
+
   /// Releases any platform resources (the underlying WebView) held by
   /// this controller. Called from `_YouTubePlayerWidgetState.dispose()`.
   void dispose();
+}
+
+/// A single joint (position, state) reading from a player, returned by
+/// [YoutubePlayerControllerAdapter.getCurrentSample].
+class PlayerSample {
+  const PlayerSample({required this.position, required this.state});
+
+  final Duration position;
+  final PlayerAdapterState state;
 }

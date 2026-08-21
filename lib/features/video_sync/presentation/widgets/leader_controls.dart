@@ -26,21 +26,6 @@ import '../bloc/video_sync_state.dart';
 /// duration) so the seek slider has an upper bound to render against —
 /// supplied by whichever caller already has it to construct
 /// [VideoSyncBloc] in the first place.
-///
-/// ## Material ancestor (fix)
-/// `Slider` and `IconButton` both require a `Material` ancestor to
-/// render — normally supplied for free by the `Scaffold` this widget
-/// will eventually sit inside once wired into `RoomDetailView`. Until
-/// that integration lands, and to keep this widget safe to embed
-/// anywhere without the caller needing to remember that requirement,
-/// [build] wraps its content in its own `Material` (`type:
-/// MaterialType.transparency`, so it paints nothing extra and cannot
-/// visually clash with whatever real `Scaffold`/`Card` background
-/// eventually surrounds it). Caught by `leader_controls_test.dart`
-/// failing with "No Material widget found" the first time it actually
-/// ran — the test itself also lacked a `Scaffold` and has been
-/// corrected alongside this fix, but a reusable widget should not
-/// depend on every caller remembering that requirement either.
 class LeaderControls extends StatelessWidget {
   const LeaderControls({
     super.key,
@@ -61,51 +46,48 @@ class LeaderControls extends StatelessWidget {
           VideoSyncReady(:final position) => position,
           VideoSyncInitial() ||
           VideoSyncLoading() ||
-          VideoSyncFailure() => Duration.zero,
+          VideoSyncFailure() ||
+          VideoSyncAdInProgress() ||
+          VideoSyncBarrierWaiting() => Duration.zero,
         };
         final isPlaying = state is VideoSyncPlaying;
 
-        return Material(
-          type: MaterialType.transparency,
-          child: Row(
-            children: [
-              IconButton(
-                key: const Key('leaderControlsPlayButton'),
-                icon: const Icon(Icons.play_arrow),
-                onPressed: (!isLeader || isPlaying)
+        return Row(
+          children: [
+            IconButton(
+              key: const Key('leaderControlsPlayButton'),
+              icon: const Icon(Icons.play_arrow),
+              onPressed: (!isLeader || isPlaying)
+                  ? null
+                  : () => context.read<VideoSyncBloc>().add(
+                      const VideoSyncEvent.playRequested(),
+                    ),
+            ),
+            IconButton(
+              key: const Key('leaderControlsPauseButton'),
+              icon: const Icon(Icons.pause),
+              onPressed: (!isLeader || !isPlaying)
+                  ? null
+                  : () => context.read<VideoSyncBloc>().add(
+                      const VideoSyncEvent.pauseRequested(),
+                    ),
+            ),
+            Expanded(
+              child: Slider(
+                key: const Key('leaderControlsSeekSlider'),
+                min: 0,
+                max: durationSeconds.toDouble(),
+                value: position.inSeconds.clamp(0, durationSeconds).toDouble(),
+                onChanged: !isLeader
                     ? null
-                    : () => context.read<VideoSyncBloc>().add(
-                        const VideoSyncEvent.playRequested(),
-                      ),
-              ),
-              IconButton(
-                key: const Key('leaderControlsPauseButton'),
-                icon: const Icon(Icons.pause),
-                onPressed: (!isLeader || !isPlaying)
-                    ? null
-                    : () => context.read<VideoSyncBloc>().add(
-                        const VideoSyncEvent.pauseRequested(),
-                      ),
-              ),
-              Expanded(
-                child: Slider(
-                  key: const Key('leaderControlsSeekSlider'),
-                  min: 0,
-                  max: durationSeconds.toDouble(),
-                  value: position.inSeconds
-                      .clamp(0, durationSeconds)
-                      .toDouble(),
-                  onChanged: !isLeader
-                      ? null
-                      : (value) => context.read<VideoSyncBloc>().add(
-                          VideoSyncEvent.seekRequested(
-                            Duration(seconds: value.round()),
-                          ),
+                    : (value) => context.read<VideoSyncBloc>().add(
+                        VideoSyncEvent.seekRequested(
+                          Duration(seconds: value.round()),
                         ),
-                ),
+                      ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

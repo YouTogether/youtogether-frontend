@@ -51,6 +51,7 @@ class YouTubePlayerWidget extends StatefulWidget {
     this.onReady,
     this.onStateChange,
     this.onError,
+    this.onControllerReady,
     this.controllerFactory =
         default_factory.createYoutubePlayerControllerAdapter,
   });
@@ -71,6 +72,15 @@ class YouTubePlayerWidget extends StatefulWidget {
 
   /// Invoked when the player reports an error.
   final ValueChanged<String>? onError;
+
+  /// Invoked exactly once, synchronously in `initState`, with the
+  /// controller this widget constructed — so
+  /// `PlayerReconciliation` can be given the *same* controller instance
+  /// this widget drives internally, rather than constructing a second,
+  /// disconnected one. `RoomDetailView`'s integration wraps this widget
+  /// in `PlayerReconciliation`, capturing the controller here and
+  /// passing it down.
+  final ValueChanged<YoutubePlayerControllerAdapter>? onControllerReady;
 
   /// Constructs the controller backing this widget. Overridable for
   /// tests — see [YoutubePlayerControllerFactory]'s own doc comment.
@@ -96,6 +106,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           ..onReady = widget.onReady
           ..onStateChange = widget.onStateChange
           ..onError = widget.onError;
+
+    widget.onControllerReady?.call(_controller);
   }
 
   @override
