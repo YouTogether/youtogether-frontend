@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_metadata_entity.dart';
+import 'package:youtogether/features/video_sync/domain/repositories/i_presence_repository.dart';
+import 'package:youtogether/features/video_sync/domain/repositories/i_sync_barrier_repository.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
@@ -27,6 +30,11 @@ class MockSubscribeToPlaybackStateUseCase extends Mock
 class MockUpdatePlaybackStateUseCase extends Mock
     implements UpdatePlaybackStateUseCase {}
 
+class MockSyncBarrierRepository extends Mock
+    implements ISyncBarrierRepository {}
+
+class MockPresenceRepository extends Mock implements IPresenceRepository {}
+
 /// Unit tests for [VideoSyncBloc].
 ///
 /// Uses `bloc_test`'s `blocTest`, mirroring `room_bloc_test.dart`.
@@ -39,12 +47,14 @@ class MockUpdatePlaybackStateUseCase extends Mock
 /// `sessionJoined`).
 ///
 /// @competency Unit test harness, TDD cycle.
-/// @competency Test scenarios VS-SYN-02 through.
+/// @competency Test scenarios VS-SYN-01 through VS-SYN-06.
 void main() {
   late MockGetVideoSessionUseCase getVideoSessionUseCase;
   late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
   late MockUpdatePlaybackStateUseCase updatePlaybackStateUseCase;
+  late MockSyncBarrierRepository syncBarrierRepository;
+  late MockPresenceRepository presenceRepository;
 
   const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
   const leaderId = '550e8400-e29b-41d4-a716-446655440000';
@@ -83,6 +93,7 @@ void main() {
         position: Duration.zero,
       ),
     );
+    registerFallbackValue(Duration.zero);
   });
 
   setUp(() {
@@ -90,6 +101,42 @@ void main() {
     getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
     subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
     updatePlaybackStateUseCase = MockUpdatePlaybackStateUseCase();
+    syncBarrierRepository = MockSyncBarrierRepository();
+    presenceRepository = MockPresenceRepository();
+
+    when(
+      () =>
+          presenceRepository.subscribeToPresence(roomId: any(named: 'roomId')),
+    ).thenAnswer((_) => const Stream.empty());
+    when(
+      () => syncBarrierRepository.subscribeToBarrier(
+        roomId: any(named: 'roomId'),
+      ),
+    ).thenAnswer((_) => const Stream.empty());
+    when(
+      () => syncBarrierRepository.createBarrier(
+        roomId: any(named: 'roomId'),
+        targetTimestamp: any(named: 'targetTimestamp'),
+        totalCount: any(named: 'totalCount'),
+      ),
+    ).thenAnswer((_) async => const Right(null));
+    when(
+      () => syncBarrierRepository.updateTotalCount(
+        roomId: any(named: 'roomId'),
+        totalCount: any(named: 'totalCount'),
+      ),
+    ).thenAnswer((_) async => const Right(null));
+    when(
+      () => syncBarrierRepository.incrementReadyCount(
+        roomId: any(named: 'roomId'),
+      ),
+    ).thenAnswer((_) async => const Right(null));
+    when(
+      () => syncBarrierRepository.setAllReady(roomId: any(named: 'roomId')),
+    ).thenAnswer((_) async => const Right(null));
+    when(
+      () => syncBarrierRepository.deleteBarrier(roomId: any(named: 'roomId')),
+    ).thenAnswer((_) async => const Right(null));
   });
 
   VideoSyncBloc buildBloc({required String currentUserId}) {
@@ -100,6 +147,8 @@ void main() {
       getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
       subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
       updatePlaybackStateUseCase: updatePlaybackStateUseCase,
+      syncBarrierRepository: syncBarrierRepository,
+      presenceRepository: presenceRepository,
     );
   }
 
@@ -320,9 +369,19 @@ void main() {
   });
 
   group('VideoSyncEvent.playRequested (leader) — VS-SYN-02', () {
+    // NOTE: the leader's *first* playRequested no longer writes
+    // playback state directly — it opens the ready gate instead
+    // (`YouTogether_Ad_Synchronisation_Strategy.docx`, Section 4). The
+    // original F-V02 version of this test asserted a direct write on
+    // the first play and would now be asserting behaviour that no
+    // longer exists, so it was rewritten rather than left passing
+    // against a stale expectation. Both halves of the new behaviour are
+    // covered: the gate itself in
+    // `video_sync_bloc_ready_gate_test.dart`, and the direct-write path
+    // for subsequent plays here.
     blocTest<VideoSyncBloc, VideoSyncState>(
-      'writes isPlaying: true at the current position via '
-      'UpdatePlaybackStateUseCase and emits VideoSyncState.playing on success',
+      'the first playRequested opens the ready gate rather than writing '
+      'playback state directly',
       build: () {
         when(
           () => getVideoSessionUseCase(roomId),
@@ -339,8 +398,22 @@ void main() {
           () => subscribeToPlaybackStateUseCase(roomId),
         ).thenAnswer((_) => const Stream.empty());
         when(
-          () => updatePlaybackStateUseCase(any()),
+          () => presenceRepository.subscribeToPresence(
+            roomId: any(named: 'roomId'),
+          ),
+        ).thenAnswer((_) => Stream.value(const Right(<PresenceEntity>[])));
+        when(
+          () => syncBarrierRepository.createBarrier(
+            roomId: any(named: 'roomId'),
+            targetTimestamp: any(named: 'targetTimestamp'),
+            totalCount: any(named: 'totalCount'),
+          ),
         ).thenAnswer((_) async => const Right(null));
+        when(
+          () => syncBarrierRepository.subscribeToBarrier(
+            roomId: any(named: 'roomId'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return buildBloc(currentUserId: leaderId);
       },
       act: (bloc) async {
@@ -348,24 +421,16 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         bloc.add(const VideoSyncEvent.playRequested());
       },
-      expect: () => [
-        const VideoSyncState.loading(),
-        const VideoSyncState.ready(
-          position: Duration(seconds: 42),
-          isPlaying: false,
-        ),
-        const VideoSyncState.playing(position: Duration(seconds: 42)),
-      ],
+      wait: const Duration(milliseconds: 10),
       verify: (_) {
         verify(
-          () => updatePlaybackStateUseCase(
-            const UpdatePlaybackStateParams(
-              roomId: roomId,
-              isPlaying: true,
-              position: Duration(seconds: 42),
-            ),
+          () => syncBarrierRepository.createBarrier(
+            roomId: roomId,
+            targetTimestamp: const Duration(seconds: 42),
+            totalCount: 0,
           ),
         ).called(1);
+        verifyNever(() => updatePlaybackStateUseCase(any()));
       },
     );
   });

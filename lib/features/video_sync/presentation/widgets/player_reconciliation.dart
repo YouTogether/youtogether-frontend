@@ -70,6 +70,7 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
   Timer? _timer;
   Duration? _previousPosition;
   bool _adInProgress = false;
+  bool _readySignalled = false;
 
   @override
   void initState() {
@@ -117,6 +118,17 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
       bloc.add(const VideoSyncEvent.adEnded());
       _reconcile(bloc, sample, adInProgress: false);
     } else if (!isAdNow) {
+      // while the ready gate is open, confirmed
+      // *content* progression (not an ad) is exactly the signal that
+      // this participant is past its pre-roll. Signalled once per
+      // barrier — `_readySignalled` guards against re-incrementing
+      // `ready_count` on every subsequent tick, which would otherwise
+      // drive the count past `total_count` on its own and resolve the
+      // barrier spuriously.
+      if (bloc.state is VideoSyncBarrierWaiting && !_readySignalled) {
+        _readySignalled = true;
+        bloc.add(const VideoSyncEvent.readySignalled());
+      }
       _reconcile(bloc, sample, adInProgress: false);
     }
 

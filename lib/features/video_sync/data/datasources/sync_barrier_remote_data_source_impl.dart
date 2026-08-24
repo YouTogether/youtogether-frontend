@@ -53,6 +53,14 @@ class SyncBarrierRemoteDataSourceImpl implements ISyncBarrierRemoteDataSource {
   }
 
   @override
+  Future<void> updateTotalCount({
+    required String roomId,
+    required int totalCount,
+  }) {
+    return _barrierRef(roomId).update({'total_count': totalCount});
+  }
+
+  @override
   Future<void> setAllReady({required String roomId}) {
     return _barrierRef(roomId).update({'all_ready': true});
   }

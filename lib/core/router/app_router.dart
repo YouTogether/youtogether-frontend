@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
+import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
@@ -203,6 +205,8 @@ GoRouter buildAppRouter({
   required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
   required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
   required UpdatePlaybackStateUseCase updatePlaybackStateUseCase,
+  required SyncBarrierRepositoryImpl syncBarrierRepository,
+  required PresenceRepositoryImpl presenceRepository,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -281,6 +285,8 @@ GoRouter buildAppRouter({
           getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
           subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
           updatePlaybackStateUseCase: updatePlaybackStateUseCase,
+          syncBarrierRepository: syncBarrierRepository,
+          presenceRepository: presenceRepository,
         ),
       ),
     ],

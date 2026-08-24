@@ -4,8 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/sync_barrier_entity.dart';
 
 /// Domain port for the `sync_barrier` Firebase node (ready-gate
-/// mechanism), per `YouTogether_Ad_Synchronisation_Strategy.docx`,
-/// Sections 3.1 and 4.
+/// mechanism).
 ///
 /// Kept as its own interface rather than folded into
 /// [IVideoSyncRepository]: `sync_barrier` is a distinct Firebase node
@@ -31,12 +30,21 @@ abstract class ISyncBarrierRepository {
   /// participants become ready at nearly the same instant.
   Future<Either<Failure, void>> incrementReadyCount({required String roomId});
 
-  /// Sets `all_ready = true` (Section 4.1 step 5, or a leader-forced
-  /// timeout per Section 4.2).
+  /// Updates `total_count` (leader only): when a
+  /// participant disconnects mid-barrier, the online count drops, and
+  /// the barrier must reflect that — otherwise `ready_count >=
+  /// total_count` could never be satisfied, leaving every remaining
+  /// participant waiting on someone who has already left.
+  Future<Either<Failure, void>> updateTotalCount({
+    required String roomId,
+    required int totalCount,
+  });
+
+  /// Sets `all_ready = true` (or a leader-forced
+  /// timeout).
   Future<Either<Failure, void>> setAllReady({required String roomId});
 
-  /// Deletes the barrier node (leader, after `all_ready`), Section 4.1
-  /// step 6.
+  /// Deletes the barrier node (leader, after `all_ready`).
   Future<Either<Failure, void>> deleteBarrier({required String roomId});
 
   /// Live stream of the barrier's current state, so every participant

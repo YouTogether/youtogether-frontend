@@ -22,6 +22,8 @@ import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase
 import 'package:youtogether/features/room/domain/usecases/join_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/leave_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/update_room_usecase.dart';
+import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
+import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
@@ -59,6 +61,11 @@ class MockSubscribeToPlaybackStateUseCase extends Mock
 
 class MockUpdatePlaybackStateUseCase extends Mock
     implements UpdatePlaybackStateUseCase {}
+
+class MockSyncBarrierRepository extends Mock
+    implements SyncBarrierRepositoryImpl {}
+
+class MockPresenceRepository extends Mock implements PresenceRepositoryImpl {}
 
 /// Widget tests verifying that `/profile` is actually wired into the
 /// route table built by [buildAppRouter] (closing the remaining part of
@@ -109,6 +116,8 @@ void main() {
   late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
   late MockUpdatePlaybackStateUseCase updatePlaybackStateUseCase;
+  late MockSyncBarrierRepository syncBarrierRepository;
+  late MockPresenceRepository presenceRepository;
 
   final user = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -133,6 +142,8 @@ void main() {
     getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
     subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
     updatePlaybackStateUseCase = MockUpdatePlaybackStateUseCase();
+    syncBarrierRepository = MockSyncBarrierRepository();
+    presenceRepository = MockPresenceRepository();
 
     // buildAppRouter always sets initialLocation to AppRoutes.home, so
     // the '/' route (and the RoomBloc it constructs, which immediately
@@ -162,6 +173,8 @@ void main() {
       getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
       subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
       updatePlaybackStateUseCase: updatePlaybackStateUseCase,
+      syncBarrierRepository: syncBarrierRepository,
+      presenceRepository: presenceRepository,
     );
 
     await tester.pumpWidget(

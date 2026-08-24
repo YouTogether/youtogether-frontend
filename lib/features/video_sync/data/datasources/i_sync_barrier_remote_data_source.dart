@@ -18,6 +18,11 @@ abstract class ISyncBarrierRemoteDataSource {
   /// comment for the exact mechanism.
   Future<void> incrementReadyCount({required String roomId});
 
+  Future<void> updateTotalCount({
+    required String roomId,
+    required int totalCount,
+  });
+
   Future<void> setAllReady({required String roomId});
 
   Future<void> deleteBarrier({required String roomId});

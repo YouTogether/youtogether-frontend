@@ -59,6 +59,22 @@ class SyncBarrierRepositoryImpl implements ISyncBarrierRepository {
   }
 
   @override
+  Future<Either<Failure, void>> updateTotalCount({
+    required String roomId,
+    required int totalCount,
+  }) async {
+    try {
+      await _remoteDataSource.updateTotalCount(
+        roomId: roomId,
+        totalCount: totalCount,
+      );
+      return const Right(null);
+    } on FirebaseException catch (exception) {
+      return Left(_toFailure(exception));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> setAllReady({required String roomId}) async {
     try {
       await _remoteDataSource.setAllReady(roomId: roomId);

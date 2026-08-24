@@ -4,7 +4,13 @@ import 'package:either_dart/either.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../domain/entities/presence_entity.dart';
+import '../../domain/entities/sync_barrier_entity.dart';
 import '../../domain/entities/video_session_entity.dart';
+import '../../domain/repositories/i_presence_repository.dart';
+import '../../domain/repositories/i_sync_barrier_repository.dart';
+import '../../domain/services/sync_engine.dart';
+import '../../domain/value_objects/ready_gate_result.dart';
 import '../../domain/usecases/get_current_playback_state_usecase.dart';
 import '../../domain/usecases/get_video_session_usecase.dart';
 import '../../domain/usecases/subscribe_to_playback_state_usecase.dart';
@@ -75,12 +81,18 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
     required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
     required UpdatePlaybackStateUseCase updatePlaybackStateUseCase,
+    required ISyncBarrierRepository syncBarrierRepository,
+    required IPresenceRepository presenceRepository,
+    SyncEngine? syncEngine,
   }) : _roomId = roomId,
        _currentUserId = currentUserId,
        _getVideoSessionUseCase = getVideoSessionUseCase,
        _getCurrentPlaybackStateUseCase = getCurrentPlaybackStateUseCase,
        _subscribeToPlaybackStateUseCase = subscribeToPlaybackStateUseCase,
        _updatePlaybackStateUseCase = updatePlaybackStateUseCase,
+       _syncBarrierRepository = syncBarrierRepository,
+       _presenceRepository = presenceRepository,
+       _syncEngine = syncEngine ?? SyncEngine(),
        super(const VideoSyncState.initial()) {
     on<VideoSyncSessionJoined>(_onSessionJoined);
     on<VideoSyncSessionUpdated>(_onSessionUpdated);
@@ -90,6 +102,10 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     on<VideoSyncSeekRequested>(_onSeekRequested);
     on<VideoSyncAdDetected>(_onAdDetected);
     on<VideoSyncAdEnded>(_onAdEnded);
+    on<VideoSyncBarrierUpdated>(_onBarrierUpdated);
+    on<VideoSyncPresenceCountUpdated>(_onPresenceCountUpdated);
+    on<VideoSyncReadySignalled>(_onReadySignalled);
+    on<VideoSyncForceStartRequested>(_onForceStartRequested);
   }
 
   final String _roomId;
@@ -98,11 +114,33 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   final GetCurrentPlaybackStateUseCase _getCurrentPlaybackStateUseCase;
   final SubscribeToPlaybackStateUseCase _subscribeToPlaybackStateUseCase;
   final UpdatePlaybackStateUseCase _updatePlaybackStateUseCase;
+  final ISyncBarrierRepository _syncBarrierRepository;
+  final IPresenceRepository _presenceRepository;
+  final SyncEngine _syncEngine;
 
   bool _isLeader = false;
   int _durationSeconds = 0;
   String _youtubeVideoId = '';
   StreamSubscription<Either<Failure, VideoSessionEntity>>? _liveSubscription;
+  StreamSubscription<Either<Failure, SyncBarrierEntity>>? _barrierSubscription;
+  StreamSubscription<Either<Failure, List<PresenceEntity>>>?
+  _presenceSubscription;
+
+  /// When the currently open barrier was created, for
+  /// [SyncEngine.evaluateReadyGate]'s timeout comparison. `null`
+  /// whenever no barrier is open.
+  DateTime? _barrierCreatedAt;
+
+  /// Whether the room's initial collective start has already happened.
+  ///
+  /// The ready gate is used **only** for that first start — per
+  /// `YouTogether_Ad_Synchronisation_Strategy.docx`, Section 7.3
+  /// ("No ready gate is triggered for late joins; the gate is only used
+  /// for the initial collective start"). Every subsequent
+  /// play/pause/seek is an ordinary direct Firebase write, so this flag
+  /// is what keeps a mid-session pause-then-play from re-opening a
+  /// barrier and making every participant wait again.
+  bool _initialStartDone = false;
 
   /// The most recent session received via `sessionUpdated`, kept so
   /// `_onAdEnded` (F-V04) can re-emit the correct playing/paused state
@@ -163,6 +201,25 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     return _performSessionJoin(emit);
   }
 
+  /// Actual `sessionJoined` sequencing logic (see this class's own doc
+  /// comment), extracted from [_onSessionJoined] so [_onRetryRequested]
+  /// can re-run it without constructing a `VideoSyncSessionJoined`
+  /// instance to pass around.
+  ///
+  /// A freezed sealed union's generative factory constructor
+  /// (`VideoSyncEvent.sessionJoined()`) has the *supertype*
+  /// `VideoSyncEvent` as its static return type, even though the
+  /// runtime object is a `VideoSyncSessionJoined` — passing it to a
+  /// function whose parameter type is the narrower
+  /// `VideoSyncSessionJoined` therefore fails static type checking
+  /// (`flutter analyze`: `argument_type_not_assignable`), regardless of
+  /// what the object actually is at runtime. Neither `on<E>()`'s own
+  /// handler signature (which must accept exactly
+  /// `VideoSyncSessionJoined` to type-check against
+  /// `on<VideoSyncSessionJoined>(...)`) nor a runtime cast are the
+  /// right fix — extracting the shared body to a method with no event
+  /// parameter at all removes the mismatch entirely, since neither
+  /// caller actually reads any field off the event.
   Future<void> _performSessionJoin(Emitter<VideoSyncState> emit) async {
     emit(const VideoSyncState.loading());
 
@@ -268,7 +325,170 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     Emitter<VideoSyncState> emit,
   ) async {
     if (!_isLeader) return;
+
+    if (!_initialStartDone) {
+      await _startReadyGate(emit);
+      return;
+    }
+
     await _write(isPlaying: true, position: _currentPosition, emit: emit);
+  }
+
+  /// Opens the ready gate for the room's initial collective start.
+  ///
+  /// The online-participant count is taken from the *first* value the
+  /// presence stream yields, rather than from a separate one-shot read:
+  /// `IPresenceRepository` exposes no one-shot count method, and the
+  /// same subscription is needed anyway to keep `total_count` current
+  /// while the barrier is open — so opening it once and using
+  /// its first value serves both purposes without a redundant read.
+  Future<void> _startReadyGate(Emitter<VideoSyncState> emit) async {
+    final target = _currentPosition;
+
+    final firstPresence = await _presenceRepository
+        .subscribeToPresence(roomId: _roomId)
+        .first;
+    if (firstPresence.isLeft) {
+      emit(VideoSyncState.failure(firstPresence.left));
+      return;
+    }
+    final totalCount = firstPresence.right.where((p) => p.isOnline).length;
+
+    final created = await _syncBarrierRepository.createBarrier(
+      roomId: _roomId,
+      targetTimestamp: target,
+      totalCount: totalCount,
+    );
+    if (created.isLeft) {
+      emit(VideoSyncState.failure(created.left));
+      return;
+    }
+
+    _barrierCreatedAt = DateTime.now().toUtc();
+    emit(VideoSyncState.barrierWaiting(readyCount: 0, totalCount: totalCount));
+
+    await _barrierSubscription?.cancel();
+    _barrierSubscription = _syncBarrierRepository
+        .subscribeToBarrier(roomId: _roomId)
+        .listen((result) => add(VideoSyncEvent.barrierUpdated(result)));
+
+    await _presenceSubscription?.cancel();
+    _presenceSubscription = _presenceRepository
+        .subscribeToPresence(roomId: _roomId)
+        .listen((result) {
+          if (result.isRight) {
+            add(
+              VideoSyncEvent.presenceCountUpdated(
+                result.right.where((p) => p.isOnline).length,
+              ),
+            );
+          }
+        });
+  }
+
+  Future<void> _onBarrierUpdated(
+    VideoSyncBarrierUpdated event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    if (event.result.isLeft) {
+      emit(VideoSyncState.failure(event.result.left));
+      return;
+    }
+    final barrier = event.result.right;
+
+    if (barrier.allReady) {
+      // Section 4.1, step 5: every participant (leader included) seeks
+      // to the target and resumes. The seek itself is
+      // PlayerReconciliation's job, driven by this state transition —
+      // this handler only settles the bloc's own state and, on the
+      // leader, tidies up.
+      _initialStartDone = true;
+      _barrierCreatedAt = null;
+      await _barrierSubscription?.cancel();
+      _barrierSubscription = null;
+      await _presenceSubscription?.cancel();
+      _presenceSubscription = null;
+
+      emit(VideoSyncState.playing(position: barrier.targetTimestamp));
+
+      if (_isLeader) {
+        // Step 6, then the actual playback_state write that every
+        // viewer's own live subscription reacts to. Ordering matters:
+        // the barrier is deleted first so a late-arriving barrier event
+        // cannot re-trigger this branch after the write.
+        await _syncBarrierRepository.deleteBarrier(roomId: _roomId);
+        await _updatePlaybackStateUseCase(
+          UpdatePlaybackStateParams(
+            roomId: _roomId,
+            isPlaying: true,
+            position: barrier.targetTimestamp,
+          ),
+        );
+      }
+      return;
+    }
+
+    emit(
+      VideoSyncState.barrierWaiting(
+        readyCount: barrier.readyCount,
+        totalCount: barrier.totalCount,
+      ),
+    );
+
+    if (!_isLeader) return;
+
+    final gate = _syncEngine.evaluateReadyGate(
+      readyCount: barrier.readyCount,
+      totalCount: barrier.totalCount,
+      elapsedSinceCreated: _barrierCreatedAt == null
+          ? Duration.zero
+          : DateTime.now().toUtc().difference(_barrierCreatedAt!),
+    );
+
+    // Only `allReady` acts automatically. `timedOut` deliberately does
+    // not force-start on its own: Section 4.2 specifies the leader is
+    // *offered* the choice ("the leader may force-start"), with the UI
+    // showing current readiness — auto-forcing would take that decision
+    // away. `VideoSyncEvent.forceStartRequested` is the leader's own
+    // opt-in.
+    if (gate == ReadyGateResult.allReady) {
+      await _syncBarrierRepository.setAllReady(roomId: _roomId);
+    }
+  }
+
+  Future<void> _onPresenceCountUpdated(
+    VideoSyncPresenceCountUpdated event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    // Section 4.1, step 4 — leader-only, and only while a barrier is
+    // actually open.
+    if (!_isLeader || _barrierCreatedAt == null) return;
+
+    await _syncBarrierRepository.updateTotalCount(
+      roomId: _roomId,
+      totalCount: event.onlineCount,
+    );
+  }
+
+  Future<void> _onReadySignalled(
+    VideoSyncReadySignalled event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    // Section 4.1, step 3 — every participant signals its own
+    // readiness, leader included; this is deliberately not
+    // leader-gated.
+    if (_barrierCreatedAt == null && state is! VideoSyncBarrierWaiting) return;
+
+    await _syncBarrierRepository.incrementReadyCount(roomId: _roomId);
+  }
+
+  Future<void> _onForceStartRequested(
+    VideoSyncForceStartRequested event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    if (!_isLeader) return;
+
+    await _syncBarrierRepository.setAllReady(roomId: _roomId);
   }
 
   Future<void> _onPauseRequested(
@@ -307,6 +527,8 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   @override
   Future<void> close() async {
     await _liveSubscription?.cancel();
+    await _barrierSubscription?.cancel();
+    await _presenceSubscription?.cancel();
     return super.close();
   }
 }
