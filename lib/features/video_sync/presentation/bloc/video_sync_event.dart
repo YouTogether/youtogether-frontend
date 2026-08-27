@@ -38,7 +38,7 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
   ) = VideoSyncSessionUpdated;
 
   /// Dispatched when the user taps the retry action on
-  /// `SyncFailureBanner` after a `VideoSyncState.failure` (VS-SYN-06).
+  /// `SyncStatusBanner` after a `VideoSyncState.failure`.
   /// Re-runs the full `sessionJoined` flow from scratch.
   const factory VideoSyncEvent.retryRequested() = VideoSyncRetryRequested;
 
@@ -79,20 +79,20 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
 
   /// Internal event: forwards the online-participant count from the
   /// live presence subscription, used by the leader to keep the
-  /// barrier's `total_count` current while it is open (Section 4.1,
-  /// step 4). Never dispatched directly by UI code.
+  /// barrier's `total_count` current while it is open.
+  /// Never dispatched directly by UI code.
   const factory VideoSyncEvent.presenceCountUpdated(int onlineCount) =
       VideoSyncPresenceCountUpdated;
 
   /// Dispatched by `PlayerReconciliation` when this participant's own
   /// player is confirmed to be progressing through *content* (not an
   /// advertisement) while the ready gate is open — i.e. this
-  /// participant is past its pre-roll (Section 4.1, step 3). Increments
+  /// participant is past its pre-roll. Increments
   /// `ready_count` atomically.
   const factory VideoSyncEvent.readySignalled() = VideoSyncReadySignalled;
 
   /// Dispatched when the leader taps "force start" after the ready gate
-  /// has timed out (Section 4.2). Leader-only; a no-op otherwise.
+  /// has timed out. Leader-only; a no-op otherwise.
   const factory VideoSyncEvent.forceStartRequested() =
       VideoSyncForceStartRequested;
 }

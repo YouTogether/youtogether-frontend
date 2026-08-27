@@ -37,9 +37,7 @@ import 'video_sync_state.dart';
 /// `B-V02`) and [GetCurrentPlaybackStateUseCase] (`leaderId`, from
 /// Firebase, compared against [currentUserId]). This closes the gap
 /// flagged when first shipped `LeaderControls`/`VideoSyncBloc`
-/// with no use case to supply that data — see
-/// `sprint-3-videosync-frontend-commit-flow.md`, Task 7's gap note and
-/// Task 8's reassignment.
+/// with no use case to supply that data.
 ///
 /// ## sessionJoined sequencing
 /// [_onSessionJoined] runs three steps in strict order:
@@ -63,7 +61,7 @@ import 'video_sync_state.dart';
 /// live subscription's own convention for surfacing a stream error as
 /// a data event rather than an actual stream error — see
 /// `VideoSyncRepositoryImpl.subscribeToPlaybackState`'s own doc
-/// comment) emits [VideoSyncState.failure]. `SyncFailureBanner`
+/// comment) emits [VideoSyncState.failure]. `SyncStatusBanner`
 /// dispatches [VideoSyncEvent.retryRequested] to re-run the whole
 /// `sessionJoined` sequence from scratch.
 ///
@@ -336,12 +334,22 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
 
   /// Opens the ready gate for the room's initial collective start.
   ///
-  /// The online-participant count is taken from the *first* value the
-  /// presence stream yields, rather than from a separate one-shot read:
-  /// `IPresenceRepository` exposes no one-shot count method, and the
-  /// same subscription is needed anyway to keep `total_count` current
-  /// while the barrier is open — so opening it once and using
-  /// its first value serves both purposes without a redundant read.
+  /// The online-participant count is taken from the first value of a
+  /// presence stream, since `IPresenceRepository` exposes no one-shot
+  /// count method.
+  ///
+  /// [IPresenceRepository.subscribeToPresence] is deliberately called
+  /// **twice** — once to read that initial count, once for the ongoing
+  /// `total_count` maintenance subscription — rather than
+  /// calling it once and using `.first` followed by `.listen` on the
+  /// same returned object. The streams it returns are
+  /// single-subscription (`PresenceRepositoryImpl.subscribeToPresence`
+  /// is an `async*` generator), so `.first` consumes the only
+  /// subscription that stream will ever grant and the subsequent
+  /// `.listen` throws `Bad state: Stream has already been listened to`.
+  /// Each call returns a fresh stream, so two calls is the correct
+  /// shape here; the cost is one extra short-lived Firebase listener
+  /// during barrier creation.
   Future<void> _startReadyGate(Emitter<VideoSyncState> emit) async {
     final target = _currentPosition;
 
