@@ -22,6 +22,9 @@ import 'package:youtogether/features/room/presentation/cubit/leave_room_state.da
 import 'package:youtogether/features/room/presentation/cubit/room_detail_cubit.dart';
 import 'package:youtogether/features/room/presentation/cubit/room_detail_state.dart';
 import 'package:youtogether/features/room/presentation/pages/room_detail_view.dart';
+import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
+import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
+import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockRoomDetailCubit extends MockCubit<RoomDetailState>
@@ -38,6 +41,35 @@ class MockLeaveRoomCubit extends MockCubit<LeaveRoomState>
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 
+/// Stub for the [VideoSyncBloc] `RoomDetailView` now reads via
+/// `RoomVideoSection` (F-V04).
+///
+/// [youtubeVideoId] is deliberately empty and the seeded state is
+/// [VideoSyncState.ready] (see `setUp`): that combination makes
+/// `RoomVideoSection` fall through to `SyncStatusBanner`, which renders
+/// `SizedBox.shrink()` for `ready` — so nothing at all is added to the
+/// tree here.
+///
+/// Seeding [VideoSyncState.loading] instead would render a
+/// `CircularProgressIndicator`, whose animation never completes and
+/// makes every `pumpAndSettle` in this file time out. Seeding a state
+/// with a non-empty video id would mount the real `YouTubePlayerWidget`,
+/// which needs a platform WebView unavailable under `flutter test`.
+/// `RoomVideoSection`'s own behaviour is covered by
+/// `room_video_section_test.dart`; this file only needs the provider to
+/// exist so `RoomDetailView`'s own assertions still run.
+class MockVideoSyncBloc extends MockBloc<VideoSyncEvent, VideoSyncState>
+    implements VideoSyncBloc {
+  @override
+  bool get isLeader => false;
+
+  @override
+  String get youtubeVideoId => '';
+
+  @override
+  int get durationSeconds => 0;
+}
+
 /// Widget tests for [RoomDetailView].
 ///
 /// @competency Unit/widget test harness, TDD cycle.
@@ -49,6 +81,7 @@ void main() {
   late MockJoinRoomCubit joinRoomCubit;
   late MockLeaveRoomCubit leaveRoomCubit;
   late MockAuthBloc authBloc;
+  late MockVideoSyncBloc videoSyncBloc;
 
   final ownerUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -80,6 +113,15 @@ void main() {
     joinRoomCubit = MockJoinRoomCubit();
     leaveRoomCubit = MockLeaveRoomCubit();
     authBloc = MockAuthBloc();
+    videoSyncBloc = MockVideoSyncBloc();
+    whenListen(
+      videoSyncBloc,
+      const Stream<VideoSyncState>.empty(),
+      initialState: const VideoSyncState.ready(
+        position: Duration.zero,
+        isPlaying: false,
+      ),
+    );
   });
 
   Widget wrap(RoomDetailState roomState, AuthState authState) {
@@ -116,6 +158,7 @@ void main() {
         BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
         BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
         BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
+        BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(
@@ -422,6 +465,7 @@ void main() {
               BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
               BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
               BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
+              BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
             ],
             child: MaterialApp.router(
               routerConfig: GoRouter(
@@ -546,6 +590,7 @@ void main() {
               BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
               BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
               BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
+              BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
             ],
             child: MaterialApp.router(
               routerConfig: GoRouter(
@@ -660,6 +705,7 @@ void main() {
             BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
             BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
             BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
+            BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -717,6 +763,7 @@ void main() {
             BlocProvider<DeleteRoomCubit>.value(value: deleteRoomCubit),
             BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
             BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
+            BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

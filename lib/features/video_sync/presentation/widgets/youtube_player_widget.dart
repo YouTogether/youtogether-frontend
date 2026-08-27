@@ -44,6 +44,13 @@ typedef YoutubePlayerControllerFactory =
 /// @see YoutubePlayerControllerAdapter — the abstraction this widget
 ///   depends on
 class YouTubePlayerWidget extends StatefulWidget {
+  /// The production controller factory, exposed as a named constant so
+  /// callers that forward an *optional* factory of their own
+  /// (`RoomVideoSection`) can fall back to it explicitly rather than
+  /// duplicating the `default_factory.` import path.
+  static const YoutubePlayerControllerFactory defaultControllerFactory =
+      default_factory.createYoutubePlayerControllerAdapter;
+
   const YouTubePlayerWidget({
     super.key,
     required this.videoId,
@@ -52,8 +59,7 @@ class YouTubePlayerWidget extends StatefulWidget {
     this.onStateChange,
     this.onError,
     this.onControllerReady,
-    this.controllerFactory =
-        default_factory.createYoutubePlayerControllerAdapter,
+    this.controllerFactory = defaultControllerFactory,
   });
 
   /// The YouTube video id to load.
