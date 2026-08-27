@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localizations.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -102,10 +103,11 @@ class _RegisterViewState extends State<RegisterView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.profilePageTitle),
+        title: Text(l10n.registerPageTitle),
         leading: IconButton(
-          key: const Key('profileBackToHomeButton'),
+          key: const Key('registerBackToHomeButton'),
           icon: const Icon(Icons.arrow_back),
+          tooltip: l10n.commonBackToHomeTooltip,
           onPressed: () => context.go(AppRoutes.home),
         ),
       ),
@@ -165,9 +167,12 @@ class _RegisterViewState extends State<RegisterView> {
                   ),
                   const SizedBox(height: 24),
                   if (isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        key: Key('registerLoadingIndicator'),
+                    Center(
+                      child: Semantics(
+                        label: l10n.commonLoadingLabel,
+                        child: const CircularProgressIndicator(
+                          key: Key('registerLoadingIndicator'),
+                        ),
                       ),
                     )
                   else
@@ -191,22 +196,31 @@ class _RegisterViewState extends State<RegisterView> {
     );
   }
 
-  /// Maps a non-[ValidationFailure] to a localised, user-safe message.
+  /// Maps a non-[ValidationFailure] to a localised, user-safe message,
+  /// via the shared [localizeFailure] resolver.
   ///
-  /// Every subtype is handled explicitly (Dart's exhaustiveness checking
-  /// on the sealed [Failure] class enforces this at compile time), even
-  /// the ones `RegisterUseCase` is not expected to produce in practice
-  /// ([AuthFailure], [NotFoundFailure], [FirebaseFailure]) — defensive
-  /// UI code should never crash on an unreachable-in-practice case.
+  /// Two overrides carry wording the shared defaults cannot:
+  /// - [AppLocalizations.registerErrorServer] mentions that the email
+  ///   may already be registered, which is the overwhelmingly common
+  ///   cause of a rejected registration and far more actionable than
+  ///   `failureServerMessage`.
+  /// - [AppLocalizations.registerErrorCache] explains the situation
+  ///   specific to `register()`: the account *was* created server-side,
+  ///   and only local session persistence failed, so the user should log
+  ///   in manually rather than register again.
+  ///
+  /// No `validation` callback is passed: on this form
+  /// [ValidationFailure] never reaches here at all — the `BlocListener`
+  /// above filters it out (`when failure is! ValidationFailure`) and it
+  /// is rendered inline via `errorText` instead. Should one somehow
+  /// arrive, the generic message is the right fallback, not field text
+  /// crammed into a `SnackBar`.
   String _failureMessage(AppLocalizations l10n, Failure failure) {
-    return switch (failure) {
-      ServerFailure() => l10n.registerErrorServer,
-      NetworkFailure() => l10n.registerErrorNetwork,
-      CacheFailure() => l10n.registerErrorCache,
-      AuthFailure() ||
-      NotFoundFailure() ||
-      FirebaseFailure() => l10n.registerErrorGeneric,
-      ValidationFailure() => l10n.registerErrorGeneric,
-    };
+    return localizeFailure(
+      l10n,
+      failure,
+      server: l10n.registerErrorServer,
+      cache: l10n.registerErrorCache,
+    );
   }
 }

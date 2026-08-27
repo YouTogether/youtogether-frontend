@@ -1,116 +1,73 @@
 {
   "@@locale": "en",
-
   "appTitle": "YouTogether",
   "@appTitle": {
     "description": "Application name shown in the OS task switcher and window title. Used by MaterialApp.title once the app shell exists."
   },
-
   "registerPageTitle": "Create your account",
   "@registerPageTitle": {
     "description": "AppBar title on the registration screen (F-A01-T5)."
   },
-
   "registerEmailLabel": "Email",
   "@registerEmailLabel": {
     "description": "Label for the email field on the registration form."
   },
-
   "registerPasswordLabel": "Password",
   "@registerPasswordLabel": {
     "description": "Label for the password field on the registration form."
   },
-
   "registerUsernameLabel": "Username",
   "@registerUsernameLabel": {
     "description": "Label for the username field on the registration form."
   },
-
   "registerSubmitButton": "Sign up",
   "@registerSubmitButton": {
     "description": "Submit button label on the registration form."
   },
-
   "registerLoginLinkLabel": "Already have an account? Log in",
   "@registerLoginLinkLabel": {
     "description": "Navigation link from RegisterPage to LoginPage."
   },
-
   "registerErrorServer": "This email may already be registered, or the server rejected the request. Please check your details and try again.",
   "@registerErrorServer": {
     "description": "SnackBar message for RegisterState.failure(ServerFailure). Deliberately generic per the Failure internationalisation convention (core/error/failures.dart) — never renders the raw ServerFailure.message."
   },
-
-  "registerErrorNetwork": "No internet connection. Please check your network and try again.",
-  "@registerErrorNetwork": {
-    "description": "SnackBar message for RegisterState.failure(NetworkFailure)."
-  },
-
   "registerErrorCache": "Your account was created, but we could not save your session on this device. Please log in manually.",
   "@registerErrorCache": {
     "description": "SnackBar message for RegisterState.failure(CacheFailure) — specific to register(), where a cache failure means the account was already created server-side before local token persistence failed (see AuthRepositoryImpl.register, F-A01-T2)."
   },
-
-  "registerErrorGeneric": "Something went wrong. Please try again.",
-  "@registerErrorGeneric": {
-    "description": "Fallback SnackBar message for any other Failure subtype (AuthFailure, NotFoundFailure, FirebaseFailure) that register() is not expected to produce in practice, but which the exhaustive switch must still handle."
-  },
-
   "loginPageTitle": "Log in",
   "@loginPageTitle": {
     "description": "AppBar title on the login screen (F-A02-T3)."
   },
-
   "loginEmailLabel": "Email",
   "@loginEmailLabel": {
     "description": "Label for the email field on the login form."
   },
-
   "loginPasswordLabel": "Password",
   "@loginPasswordLabel": {
     "description": "Label for the password field on the login form."
   },
-
   "loginSubmitButton": "Log in",
   "@loginSubmitButton": {
     "description": "Submit button label on the login form."
   },
-
   "loginRegisterLinkLabel": "Don't have an account? Sign up",
   "@loginRegisterLinkLabel": {
     "description": "Navigation link from LoginPage to RegisterPage."
   },
-
   "loginErrorAuth": "Invalid email or password.",
   "@loginErrorAuth": {
     "description": "SnackBar message for LoginState.failure(AuthFailure), i.e. HTTP 401. Deliberately generic and identical regardless of whether the email or the password was wrong (OWASP A07:2021)."
   },
-
-  "loginErrorServer": "The server rejected the request. Please try again.",
-  "@loginErrorServer": {
-    "description": "SnackBar message for LoginState.failure(ServerFailure) — never renders the raw ServerFailure.message."
-  },
-
-  "loginErrorNetwork": "No internet connection. Please check your network and try again.",
-  "@loginErrorNetwork": {
-    "description": "SnackBar message for LoginState.failure(NetworkFailure)."
-  },
-
   "loginErrorCache": "You are logged in, but we could not save your session on this device. Please try again.",
   "@loginErrorCache": {
     "description": "SnackBar message for LoginState.failure(CacheFailure) — a cache failure here means the credentials were valid server-side but local token persistence failed (see AuthRepositoryImpl.login, F-A02-T2)."
   },
-
-  "loginErrorGeneric": "Something went wrong. Please try again.",
-  "@loginErrorGeneric": {
-    "description": "Fallback SnackBar message for any other Failure subtype (NotFoundFailure, FirebaseFailure) that login() is not expected to produce in practice, but which the exhaustive switch must still handle."
-  },
-
   "profilePageTitle": "Profile",
   "@profilePageTitle": {
     "description": "AppBar title on the profile screen (F-A05-T1)."
   },
-
   "profileMemberSince": "Member since {date}",
   "@profileMemberSince": {
     "description": "Displays the account creation date on the profile screen.",
@@ -120,37 +77,26 @@
       }
     }
   },
-
   "profileRoleRegistered": "Registered",
   "@profileRoleRegistered": {
     "description": "Role badge label for UserRole.registered."
   },
-
   "profileRoleGuest": "Guest",
   "@profileRoleGuest": {
     "description": "Role badge label for UserRole.guest."
   },
-
   "profileLogoutButton": "Log out",
   "@profileLogoutButton": {
     "description": "Logout button label on the profile screen."
   },
-
   "homeEmptyStateMessage": "No public rooms available right now. Be the first to create one!",
   "@homeEmptyStateMessage": {
     "description": "Displayed on HomePage when RoomState.loaded(rooms) has an empty list (F-R01-T3)."
   },
-
   "homeErrorMessage": "We couldn't load the room list. Please try again.",
   "@homeErrorMessage": {
     "description": "Displayed on HomePage for RoomState.failure(any Failure subtype). Deliberately generic per the Failure internationalisation convention — never renders the raw Failure.message."
   },
-
-  "homeRetryButtonLabel": "Retry",
-  "@homeRetryButtonLabel": {
-    "description": "Retry button label shown alongside homeErrorMessage on HomePage."
-  },
-
   "homeRoomCardMemberCount": "{count, plural, =0{No members} =1{1 member} other{{count} members}}",
   "@homeRoomCardMemberCount": {
     "description": "Member count shown on RoomCard (HomePage) and RoomDetailPage.",
@@ -161,167 +107,90 @@
       }
     }
   },
-
   "createRoomPageTitle": "Create a room",
   "@createRoomPageTitle": {
     "description": "AppBar title on the room creation screen (F-R02-T3)."
   },
-
-  "createRoomNameFieldLabel": "Room name",
-  "@createRoomNameFieldLabel": {
-    "description": "Label for the name field on the room creation form."
-  },
-
-  "createRoomDescriptionFieldLabel": "Description (optional)",
-  "@createRoomDescriptionFieldLabel": {
-    "description": "Label for the optional description field on the room creation form."
-  },
-
   "createRoomIsPublicLabel": "Public room",
   "@createRoomIsPublicLabel": {
     "description": "Label for the isPublic switch on the room creation form. Defaults to true."
   },
-
   "createRoomSubmitButtonLabel": "Create room",
   "@createRoomSubmitButtonLabel": {
     "description": "Submit button label on the room creation form."
   },
-
-  "createRoomNetworkErrorMessage": "No internet connection. Please check your network and try again.",
-  "@createRoomNetworkErrorMessage": {
-    "description": "SnackBar message for CreateRoomState.failure(NetworkFailure)."
-  },
-
-  "createRoomServerErrorMessage": "The server rejected the request. Please try again.",
-  "@createRoomServerErrorMessage": {
-    "description": "SnackBar message for CreateRoomState.failure(ServerFailure) — never renders the raw ServerFailure.message."
-  },
-
   "createRoomAuthErrorMessage": "You must be signed in to create a room.",
   "@createRoomAuthErrorMessage": {
     "description": "SnackBar message for CreateRoomState.failure(AuthFailure)."
   },
-
-  "createRoomNotFoundErrorMessage": "Something went wrong. Please try again.",
-  "@createRoomNotFoundErrorMessage": {
-    "description": "SnackBar message for CreateRoomState.failure(NotFoundFailure) — not expected in practice for a creation request, but the exhaustive switch must still handle it."
-  },
-
-  "createRoomGenericErrorMessage": "Something went wrong. Please try again.",
-  "@createRoomGenericErrorMessage": {
-    "description": "Fallback SnackBar message for any other Failure subtype (ValidationFailure reaching the SnackBar branch, CacheFailure, FirebaseFailure) that createRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
-  },
-
   "roomDetailOwnerBadgeLabel": "Owner",
   "@roomDetailOwnerBadgeLabel": {
     "description": "Badge label shown on RoomDetailPage when the current authenticated user owns the room."
   },
-
   "roomDetailErrorMessage": "We couldn't load this room. Please try again.",
   "@roomDetailErrorMessage": {
     "description": "Displayed on RoomDetailPage for RoomDetailState.failure(any Failure subtype), including a non-existent or deleted room (NotFoundFailure). Deliberately generic — never renders the raw Failure.message."
   },
-
-  "roomDetailRetryButtonLabel": "Retry",
-  "@roomDetailRetryButtonLabel": {
-    "description": "Retry button label shown alongside roomDetailErrorMessage on RoomDetailPage."
-  },
-
-  "roomDetailBackButtonTooltip": "Back to room list",
-  "@roomDetailBackButtonTooltip": {
-    "description": "Tooltip/semantic label for the back button on RoomDetailPage's AppBar, present in every state (loading, loaded, failure)."
-  },
-
   "roomDetailBackButtonTooltip": "Back to room list",
   "@roomDetailBackButtonTooltip": {
     "description": "Tooltip for the back button in RoomDetailPage's AppBar (navigation via context.go, no automatic back arrow)."
   },
-
   "roomDetailEditButtonTooltip": "Edit room",
   "@roomDetailEditButtonTooltip": {
     "description": "Tooltip for the owner-only edit icon button in RoomDetailPage's AppBar (F-R03-T3)."
   },
-
   "editRoomPageTitle": "Edit room",
   "@editRoomPageTitle": {
     "description": "AppBar title on the room edit screen (F-R03-T3)."
   },
-
   "editRoomSubmitButtonLabel": "Save changes",
   "@editRoomSubmitButtonLabel": {
     "description": "Submit button label on the room edit form."
   },
-
   "editRoomCancelButtonLabel": "Cancel",
-    "@editRoomCancelButtonLabel": {
-      "description": "Cancel button label below the submit button on the room edit form. Discards the edit and returns to the room detail view without a confirmation dialog."
-    },
-
-  "editRoomNetworkErrorMessage": "No internet connection. Please check your network and try again.",
-  "@editRoomNetworkErrorMessage": {
-    "description": "SnackBar message for EditRoomState.failure(NetworkFailure)."
+  "@editRoomCancelButtonLabel": {
+    "description": "Cancel button label below the submit button on the room edit form. Discards the edit and returns to the room detail view without a confirmation dialog."
   },
-
-  "editRoomServerErrorMessage": "The server rejected the request. Please try again.",
-  "@editRoomServerErrorMessage": {
-    "description": "SnackBar message for EditRoomState.failure(ServerFailure) — never renders the raw ServerFailure.message."
-  },
-
   "editRoomAuthErrorMessage": "Only the room owner can make this change.",
   "@editRoomAuthErrorMessage": {
     "description": "SnackBar message for EditRoomState.failure(AuthFailure), i.e. a 403 from a non-owner request that reached the cubit despite the edit button being hidden for non-owners."
   },
-
   "editRoomNotFoundErrorMessage": "This room no longer exists.",
   "@editRoomNotFoundErrorMessage": {
     "description": "SnackBar message for EditRoomState.failure(NotFoundFailure) — the room was deleted between opening the edit form and submitting it."
   },
-
-  "editRoomGenericErrorMessage": "Something went wrong. Please try again.",
-  "@editRoomGenericErrorMessage": {
-    "description": "Fallback SnackBar message for any other Failure subtype (ValidationFailure reaching the SnackBar branch, CacheFailure, FirebaseFailure) that updateRoom() is not expected to produce in practice, but which the exhaustive switch must still handle."
-  },
-
   "roomDetailDeleteButtonTooltip": "Delete room",
   "@roomDetailDeleteButtonTooltip": {
     "description": "Tooltip for the owner-only delete icon button in RoomDetailPage's AppBar (F-R04-T3)."
   },
-
   "roomDetailDeleteConfirmTitle": "Delete this room?",
   "@roomDetailDeleteConfirmTitle": {
     "description": "Title of the AlertDialog shown before deleting a room."
   },
-
   "roomDetailDeleteConfirmMessage": "This will remove the room from the public listing. This action cannot be undone.",
   "@roomDetailDeleteConfirmMessage": {
     "description": "Body text of the deletion confirmation AlertDialog."
   },
-
   "roomDetailDeleteCancelButtonLabel": "Cancel",
   "@roomDetailDeleteCancelButtonLabel": {
     "description": "Cancel button label on the deletion confirmation AlertDialog."
   },
-
   "roomDetailDeleteConfirmButtonLabel": "Delete",
   "@roomDetailDeleteConfirmButtonLabel": {
     "description": "Confirm button label on the deletion confirmation AlertDialog."
   },
-
   "roomDetailDeleteErrorMessage": "We couldn't delete this room. Please try again.",
   "@roomDetailDeleteErrorMessage": {
     "description": "SnackBar message for DeleteRoomState.failure(any Failure subtype), including a 403 from a non-owner request that reached the cubit despite the delete button being hidden for non-owners. Deliberately generic — never renders the raw Failure.message."
   },
-
   "homeRoomCardJoinButtonLabel": "Join",
   "@homeRoomCardJoinButtonLabel": {
     "description": "Label for the join button on each RoomCard in HomePage's listing (F-R05-T3)."
   },
-
   "homeJoinErrorMessage": "We couldn't join this room. Please try again.",
   "@homeJoinErrorMessage": {
     "description": "SnackBar message shown on HomePage for JoinRoomState.failure(any Failure subtype), including a 409 (already an active member) or 404 (room deleted between listing and join). Deliberately generic — never renders the raw Failure.message."
   },
-
   "roomDetailJoinButtonTooltip": "Join room",
   "@roomDetailJoinButtonTooltip": {
     "description": "Tooltip for the non-owner-only join icon button in RoomDetailPage's AppBar (F-R05-T3)."
@@ -341,5 +210,114 @@
   "roomDetailLeaveErrorMessage": "We couldn't leave this room. Please try again.",
   "@roomDetailLeaveErrorMessage": {
     "description": "SnackBar message for LeaveRoomState.failure(any Failure subtype), including a 403 fallback if the owner-cannot-leave invariant is somehow bypassed, or a 404 if the caller already has no active membership. Deliberately generic — never renders the raw Failure.message."
+  },
+  "videoSyncRealtimeErrorMessage": "Lost the live connection to this room. Playback may be out of sync. Tap retry to reconnect.",
+  "@videoSyncRealtimeErrorMessage": {
+    "description": "Shown in the video synchronisation status banner when the realtime (Firebase) connection fails or drops mid-session."
+  },
+  "videoSyncNotFoundErrorMessage": "No video has been added to this room yet.",
+  "@videoSyncNotFoundErrorMessage": {
+    "description": "Shown in the video synchronisation status banner when the room exists but has no video session."
+  },
+  "videoSyncReadyGateMessage": "Waiting for everyone to be ready — {readyCount}/{totalCount} ready",
+  "@videoSyncReadyGateMessage": {
+    "description": "Shown while the ready gate is open, before collective playback starts. readyCount is how many participants have signalled they are past their pre-roll advertisement; totalCount is how many are currently online.",
+    "placeholders": {
+      "readyCount": {
+        "type": "int"
+      },
+      "totalCount": {
+        "type": "int"
+      }
+    }
+  },
+  "videoSyncForceStartButtonLabel": "Start now",
+  "@videoSyncForceStartButtonLabel": {
+    "description": "Leader-only action in the ready-gate banner. Starts playback without waiting for every participant."
+  },
+  "videoSyncAdInProgressMessage": "An advertisement is playing. Playback will resync automatically once it ends.",
+  "@videoSyncAdInProgressMessage": {
+    "description": "Shown while an advertisement is detected on this participant's player."
+  },
+  "videoSyncLoadingLabel": "Loading the video session",
+  "@videoSyncLoadingLabel": {
+    "description": "Accessibility label for the progress indicator shown while the video session is being fetched."
+  },
+  "videoSyncPlayButtonTooltip": "Play for everyone",
+  "@videoSyncPlayButtonTooltip": {
+    "description": "Tooltip and accessibility label of the leader-only play button. Wording stresses that the action affects every participant, not just this device."
+  },
+  "videoSyncPauseButtonTooltip": "Pause for everyone",
+  "@videoSyncPauseButtonTooltip": {
+    "description": "Tooltip and accessibility label of the leader-only pause button."
+  },
+  "videoSyncSeekSliderLabel": "Playback position",
+  "@videoSyncSeekSliderLabel": {
+    "description": "Accessibility label of the leader-only seek slider."
+  },
+  "failureNetworkMessage": "No internet connection. Please check your network and try again.",
+  "@failureNetworkMessage": {
+    "description": "Default user-facing message for a NetworkFailure, used across every feature unless a call site overrides it with something more specific."
+  },
+  "failureServerMessage": "The server rejected the request. Please try again.",
+  "@failureServerMessage": {
+    "description": "Default user-facing message for a ServerFailure."
+  },
+  "failureAuthMessage": "You are not allowed to do this. Please check you are signed in with the right account.",
+  "@failureAuthMessage": {
+    "description": "Default user-facing message for an AuthFailure."
+  },
+  "failureNotFoundMessage": "We could not find what you were looking for.",
+  "@failureNotFoundMessage": {
+    "description": "Default user-facing message for a NotFoundFailure."
+  },
+  "failureCacheMessage": "We could not save data on this device. Please try again.",
+  "@failureCacheMessage": {
+    "description": "Default user-facing message for a CacheFailure."
+  },
+  "failureRealtimeMessage": "Lost the live connection. Please try again.",
+  "@failureRealtimeMessage": {
+    "description": "Default user-facing message for a FirebaseFailure (realtime connection)."
+  },
+  "failureGenericMessage": "Something went wrong. Please try again.",
+  "@failureGenericMessage": {
+    "description": "Fallback user-facing message for any Failure variant with no specific mapping. Deliberately actionable rather than technical."
+  },
+  "commonBackToHomeTooltip": "Back to home",
+  "@commonBackToHomeTooltip": {
+    "description": "Tooltip and accessibility label for the AppBar back button on every screen that returns to the room listing."
+  },
+  "commonLoadingLabel": "Loading",
+  "@commonLoadingLabel": {
+    "description": "Accessibility label for progress indicators that have no more specific label."
+  },
+  "homeProfileButtonTooltip": "Your profile",
+  "@homeProfileButtonTooltip": {
+    "description": "Tooltip and accessibility label of the profile action in the home AppBar."
+  },
+  "homeCreateRoomButtonTooltip": "Create a room",
+  "@homeCreateRoomButtonTooltip": {
+    "description": "Tooltip and accessibility label of the create-room floating action button."
+  },
+  "homeRoomCardJoiningLabel": "Joining {roomName}",
+  "@homeRoomCardJoiningLabel": {
+    "description": "Accessibility label for the per-card progress indicator shown while a join request is in flight.",
+    "placeholders": {
+      "roomName": {
+        "type": "String"
+      }
+    }
+  },
+  "roomNameFieldLabel": "Room name",
+  "@roomNameFieldLabel": {
+    "description": "Label of the room name field, shared by the create and edit forms."
+  },
+  "roomDescriptionFieldLabel": "Description (optional)",
+  "@roomDescriptionFieldLabel": {
+    "description": "Label of the room description field, shared by the create and edit forms."
+  },
+  "commonRetryButtonLabel": "Retry",
+  "@commonRetryButtonLabel": {
+    "description": "Label of every retry action in the application (home listing, room detail, video sync banner). Consolidated from three byte-identical keys."
   }
 }

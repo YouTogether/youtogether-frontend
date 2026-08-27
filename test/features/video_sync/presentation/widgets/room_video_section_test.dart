@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/l10n/generated/app_localizations.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
@@ -83,6 +84,8 @@ void main() {
     whenListen(bloc, const Stream<VideoSyncState>.empty(), initialState: state);
 
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: BlocProvider<VideoSyncBloc>.value(
           value: bloc,

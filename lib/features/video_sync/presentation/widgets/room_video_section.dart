@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
+
 import '../bloc/video_sync_bloc.dart';
 import '../bloc/video_sync_state.dart';
 import 'leader_controls.dart';
@@ -35,13 +37,12 @@ import 'youtube_player_widget.dart';
 /// subtree from rebuilding on every `VideoSyncState` transition.
 ///
 /// ## Localisation
-/// This widget and its children use hard-coded English strings rather
-/// than `AppLocalizations`, unlike the rest of `RoomDetailView`. Every
-/// video-sync string introduced across F-V01 to F-V04 is new, and the
-/// ARB files were not available to add keys to when these widgets were
-/// written — adding `l10n.` references to keys that do not exist would
-/// not compile. These strings need extracting into the ARB files before
-/// this ships; flagged rather than silently left inconsistent.
+/// Every user-facing string in this subtree comes from
+/// `AppLocalizations` (`videoSync*` keys), like the rest of
+/// `RoomDetailView`. Failure text specifically is resolved by
+/// `videoSyncFailureMessage`, which localises the failure *variant*
+/// rather than surfacing the technical `message` a `FirebaseException`
+/// or `DioException` carried up — see that function's own doc comment.
 class RoomVideoSection extends StatefulWidget {
   const RoomVideoSection({super.key, this.controllerFactory});
 
@@ -79,11 +80,17 @@ class _RoomVideoSectionState extends State<RoomVideoSection> {
         // Before `sessionJoined` resolves there is no video id to load,
         // and no duration to bound the seek bar with.
         if (state is VideoSyncInitial || state is VideoSyncLoading) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: CircularProgressIndicator(
-                key: Key('roomVideoSectionLoadingIndicator'),
+              // A bare CircularProgressIndicator is announced as an
+              // unlabelled progress bar; the label states what is
+              // loading (WCAG 2.1, 4.1.2).
+              child: Semantics(
+                label: AppLocalizations.of(context).videoSyncLoadingLabel,
+                child: const CircularProgressIndicator(
+                  key: Key('roomVideoSectionLoadingIndicator'),
+                ),
               ),
             ),
           );

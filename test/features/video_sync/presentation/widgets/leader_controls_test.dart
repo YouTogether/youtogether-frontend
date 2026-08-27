@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:youtogether/l10n/generated/app_localizations.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
@@ -40,6 +41,8 @@ void main() {
     // a missing-Material regression in the widget itself go undetected
     // — see LeaderControls' own doc comment on the fix.
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: BlocProvider<VideoSyncBloc>.value(
           value: bloc,

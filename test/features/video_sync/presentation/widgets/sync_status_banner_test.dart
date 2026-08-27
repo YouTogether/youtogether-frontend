@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/l10n/generated/app_localizations.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
@@ -35,6 +36,8 @@ void main() {
     whenListen(bloc, const Stream<VideoSyncState>.empty(), initialState: state);
 
     return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: BlocProvider<VideoSyncBloc>.value(
           value: bloc,
@@ -120,7 +123,7 @@ void main() {
     );
   });
 
-  group('Ready-gate state', () {
+  group('Ready-gate state (Section 4.2)', () {
     testWidgets('shows the readiness progress as "n/m ready"', (tester) async {
       await tester.pumpWidget(
         wrap(

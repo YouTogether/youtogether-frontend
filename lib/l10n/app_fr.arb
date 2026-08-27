@@ -1,8 +1,6 @@
 {
   "@@locale": "fr",
-
   "appTitle": "YouTogether",
-
   "registerPageTitle": "Créer votre compte",
   "registerEmailLabel": "E-mail",
   "registerPasswordLabel": "Mot de passe",
@@ -10,30 +8,21 @@
   "registerSubmitButton": "S'inscrire",
   "registerLoginLinkLabel": "Vous avez déjà un compte ? Se connecter",
   "registerErrorServer": "Cette adresse e-mail est peut-être déjà enregistrée, ou le serveur a rejeté la demande. Veuillez vérifier vos informations et réessayer.",
-  "registerErrorNetwork": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
   "registerErrorCache": "Votre compte a été créé, mais nous n'avons pas pu enregistrer votre session sur cet appareil. Veuillez vous connecter manuellement.",
-  "registerErrorGeneric": "Une erreur est survenue. Veuillez réessayer.",
-
   "loginPageTitle": "Se connecter",
   "loginEmailLabel": "E-mail",
   "loginPasswordLabel": "Mot de passe",
   "loginSubmitButton": "Se connecter",
   "loginRegisterLinkLabel": "Vous n'avez pas de compte ? S'inscrire",
   "loginErrorAuth": "E-mail ou mot de passe invalide.",
-  "loginErrorServer": "Le serveur a rejeté la demande. Veuillez réessayer.",
-  "loginErrorNetwork": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
   "loginErrorCache": "Vous êtes connecté, mais nous n'avons pas pu enregistrer votre session sur cet appareil. Veuillez réessayer.",
-  "loginErrorGeneric": "Une erreur est survenue. Veuillez réessayer.",
-
   "profilePageTitle": "Profil",
   "profileMemberSince": "Membre depuis {date}",
   "profileRoleRegistered": "Inscrit",
   "profileRoleGuest": "Invité",
   "profileLogoutButton": "Se déconnecter",
-
   "homeEmptyStateMessage": "Aucune room publique disponible pour le moment. Soyez le premier à en créer une !",
   "homeErrorMessage": "Impossible de charger les rooms. Veuillez réessayer.",
-  "homeRetryButtonLabel": "Réessayer",
   "homeRoomCardMemberCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}",
   "@homeRoomCardMemberCount": {
     "placeholders": {
@@ -42,35 +31,19 @@
       }
     }
   },
-
   "createRoomPageTitle": "Créer une room",
-  "createRoomNameFieldLabel": "Nom de la room",
-  "createRoomDescriptionFieldLabel": "Description (facultatif)",
   "createRoomIsPublicLabel": "Room publique",
   "createRoomSubmitButtonLabel": "Créer la room",
-  "createRoomNetworkErrorMessage": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
-  "createRoomServerErrorMessage": "Le serveur a rejeté la demande. Veuillez réessayer.",
   "createRoomAuthErrorMessage": "Vous devez être connecté pour créer une room.",
-  "createRoomNotFoundErrorMessage": "Une erreur est survenue. Veuillez réessayer.",
-  "createRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer.",
-
   "roomDetailOwnerBadgeLabel": "Propriétaire",
   "roomDetailErrorMessage": "Impossible de charger cette room. Veuillez réessayer.",
-  "roomDetailRetryButtonLabel": "Réessayer",
-  "roomDetailBackButtonTooltip": "Retour à la liste des rooms",
-
   "roomDetailBackButtonTooltip": "Retour à la liste des rooms",
   "roomDetailEditButtonTooltip": "Modifier la room",
-
   "editRoomPageTitle": "Modifier la room",
   "editRoomSubmitButtonLabel": "Enregistrer les modifications",
   "editRoomCancelButtonLabel": "Annuler",
-  "editRoomNetworkErrorMessage": "Aucune connexion Internet. Veuillez vérifier votre réseau et réessayer.",
-  "editRoomServerErrorMessage": "Le serveur a rejeté la demande. Veuillez réessayer.",
   "editRoomAuthErrorMessage": "Seul le propriétaire de la room peut effectuer cette modification.",
   "editRoomNotFoundErrorMessage": "Cette room n'existe plus.",
-  "editRoomGenericErrorMessage": "Une erreur est survenue. Veuillez réessayer.",
-
   "roomDetailDeleteButtonTooltip": "Supprimer la room",
   "roomDetailDeleteConfirmTitle": "Supprimer cette room ?",
   "roomDetailDeleteConfirmMessage": "Cette action retirera la room de la liste publique et est irréversible.",
@@ -83,5 +56,29 @@
   "roomDetailJoinSuccessMessage": "Vous avez rejoint cette room.",
   "roomDetailJoinErrorMessage": "Impossible de rejoindre cette room. Veuillez réessayer.",
   "roomDetailLeaveButtonTooltip": "Quitter la room",
-  "roomDetailLeaveErrorMessage": "Impossible de quitter cette room. Veuillez réessayer."
+  "roomDetailLeaveErrorMessage": "Impossible de quitter cette room. Veuillez réessayer.",
+  "videoSyncRealtimeErrorMessage": "Connexion en temps réel perdue avec cette room. La lecture est peut-être désynchronisée. Appuyez sur Réessayer pour vous reconnecter.",
+  "videoSyncNotFoundErrorMessage": "Aucune vidéo n’a encore été ajoutée à cette room.",
+  "videoSyncReadyGateMessage": "En attente de tous les participants — {readyCount}/{totalCount} prêts",
+  "videoSyncForceStartButtonLabel": "Démarrer maintenant",
+  "videoSyncAdInProgressMessage": "Une publicité est en cours. La lecture se resynchronisera automatiquement à la fin.",
+  "videoSyncLoadingLabel": "Chargement de la session vidéo",
+  "videoSyncPlayButtonTooltip": "Lancer la lecture pour tous",
+  "videoSyncPauseButtonTooltip": "Mettre en pause pour tous",
+  "videoSyncSeekSliderLabel": "Position de lecture",
+  "failureNetworkMessage": "Aucune connexion Internet. Vérifiez votre réseau et réessayez.",
+  "failureServerMessage": "Le serveur a rejeté la requête. Veuillez réessayer.",
+  "failureAuthMessage": "Vous n’êtes pas autorisé à effectuer cette action. Vérifiez que vous êtes connecté avec le bon compte.",
+  "failureNotFoundMessage": "Nous n’avons pas trouvé l’élément recherché.",
+  "failureCacheMessage": "Impossible d’enregistrer les données sur cet appareil. Veuillez réessayer.",
+  "failureRealtimeMessage": "Connexion en temps réel perdue. Veuillez réessayer.",
+  "failureGenericMessage": "Un problème est survenu. Veuillez réessayer.",
+  "commonBackToHomeTooltip": "Retour à l’accueil",
+  "commonLoadingLabel": "Chargement",
+  "homeProfileButtonTooltip": "Votre profil",
+  "homeCreateRoomButtonTooltip": "Créer une room",
+  "homeRoomCardJoiningLabel": "Connexion à {roomName}",
+  "roomNameFieldLabel": "Nom de la room",
+  "roomDescriptionFieldLabel": "Description (facultative)",
+  "commonRetryButtonLabel": "Réessayer"
 }

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/error/failure_localizations.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../bloc/video_sync_bloc.dart';
 import '../bloc/video_sync_event.dart';
 import '../bloc/video_sync_state.dart';
 
 /// Single inline status banner for the room's video synchronisation
-/// state, consolidating what were previously two separate concerns
-/// (F-V04 commit 10).
+/// state, consolidating what were previously two separate concerns.
 ///
-/// Replaces `SyncFailureBanner` (F-V03-T2), which handled only
+/// Replaces `SyncFailureBanner`, which handled only
 /// [VideoSyncState.failure]. That widget could not cover the ready gate
 /// when it was written — [VideoSyncState.barrierWaiting] did not carry
 /// `readyCount`/`totalCount` until the ready-gate orchestration pass —
@@ -20,11 +21,16 @@ import '../bloc/video_sync_state.dart';
 ///
 /// Renders per state:
 /// - [VideoSyncState.failure] — error styling, **Retry**
-///   ([VideoSyncEvent.retryRequested]).
+///   ([VideoSyncEvent.retryRequested]). The message comes from
+///   [localizeFailure], which maps the failure *variant* to a localised
+///   string rather than displaying the failure's own technical
+///   `message` field — see that function's own doc comment. Two
+///   overrides are passed: a dropped realtime connection and a room with
+///   no video session both mean something specific here that the core
+///   defaults cannot express.
 /// - [VideoSyncState.barrierWaiting] — "`n/m ready`" progress, plus
 ///   **Start now** ([VideoSyncEvent.forceStartRequested]) for the leader
-///   only, per `YouTogether_Ad_Synchronisation_Strategy.docx`, Section
-///   4.2. The button is always offered to the leader rather than only
+///   only. The button is always offered to the leader rather than only
 ///   after `readyGateTimeout` elapses: `VideoSyncBloc` deliberately does
 ///   not auto-force-start on timeout (see `_onBarrierUpdated`'s own
 ///   comment), and this widget has no timer of its own to know when the
@@ -39,41 +45,39 @@ class SyncStatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return BlocBuilder<VideoSyncBloc, VideoSyncState>(
       builder: (context, state) {
         return switch (state) {
-          VideoSyncFailure() => _Banner(
-            // NOTE: a fixed, generic message rather than
-            // `state.failure`'s own text — `Failure`'s exact per-variant
-            // fields (whether every variant exposes a uniform `message`
-            // getter) could not be verified against the real
-            // `core/error/failures.dart` in the environment this was
-            // written in. Carried over unchanged from `SyncFailureBanner`;
-            // replace with the real message once verified.
-            message: 'Connection lost. Tap retry to reconnect.',
+          VideoSyncFailure(:final failure) => _Banner(
+            message: localizeFailure(
+              l10n,
+              failure,
+              realtime: l10n.videoSyncRealtimeErrorMessage,
+              notFound: l10n.videoSyncNotFoundErrorMessage,
+            ),
             isError: true,
             action: _BannerAction(
               key: const Key('syncStatusBannerRetryButton'),
-              label: 'Retry',
+              label: l10n.commonRetryButtonLabel,
               event: const VideoSyncEvent.retryRequested(),
             ),
           ),
           VideoSyncBarrierWaiting(:final readyCount, :final totalCount) =>
             _Banner(
-              message:
-                  'Waiting for everyone to be ready — $readyCount/$totalCount ready',
+              message: l10n.videoSyncReadyGateMessage(readyCount, totalCount),
               isError: false,
               action: context.read<VideoSyncBloc>().isLeader
-                  ? const _BannerAction(
-                      key: Key('syncStatusBannerForceStartButton'),
-                      label: 'Start now',
-                      event: VideoSyncEvent.forceStartRequested(),
+                  ? _BannerAction(
+                      key: const Key('syncStatusBannerForceStartButton'),
+                      label: l10n.videoSyncForceStartButtonLabel,
+                      event: const VideoSyncEvent.forceStartRequested(),
                     )
                   : null,
             ),
-          VideoSyncAdInProgress() => const _Banner(
-            message:
-                'An advertisement is playing — playback will resync automatically.',
+          VideoSyncAdInProgress() => _Banner(
+            message: l10n.videoSyncAdInProgressMessage,
             isError: false,
             action: null,
           ),
@@ -132,7 +136,15 @@ class _Banner extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(message, style: TextStyle(color: foreground)),
+              // liveRegion: assistive technologies announce the banner
+              // when it appears or its text changes, rather than the
+              // user discovering a connection loss or a moving ready
+              // count only by exploring the screen (WCAG 2.1, 4.1.3
+              // Status Messages).
+              child: Semantics(
+                liveRegion: true,
+                child: Text(message, style: TextStyle(color: foreground)),
+              ),
             ),
             if (bannerAction != null)
               TextButton(

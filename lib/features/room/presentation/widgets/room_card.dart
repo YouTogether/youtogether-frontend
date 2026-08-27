@@ -86,7 +86,10 @@ class RoomCard extends StatelessWidget {
                   key: Key('roomCardJoinLoadingIndicator_${room.id}'),
                   width: 20,
                   height: 20,
-                  child: const CircularProgressIndicator(strokeWidth: 2),
+                  child: Semantics(
+                    label: l10n.homeRoomCardJoiningLabel(room.name),
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 )
               else
                 TextButton(

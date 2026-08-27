@@ -48,6 +48,7 @@ class ProfilePage extends StatelessWidget {
         leading: IconButton(
           key: const Key('profileBackToHomeButton'),
           icon: const Icon(Icons.arrow_back),
+          tooltip: l10n.commonBackToHomeTooltip,
           onPressed: () => context.go(AppRoutes.home),
         ),
       ),
@@ -58,9 +59,12 @@ class ProfilePage extends StatelessWidget {
             AuthInitial() ||
             AuthLoading() ||
             AuthUnauthenticated() ||
-            AuthOperationFailure() => const Center(
-              child: CircularProgressIndicator(
-                key: Key('profileLoadingIndicator'),
+            AuthOperationFailure() => Center(
+              child: Semantics(
+                label: l10n.commonLoadingLabel,
+                child: const CircularProgressIndicator(
+                  key: Key('profileLoadingIndicator'),
+                ),
               ),
             ),
           };

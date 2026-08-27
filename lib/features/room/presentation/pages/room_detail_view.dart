@@ -235,14 +235,19 @@ class RoomDetailView extends StatelessWidget {
                               joinState.roomId == state.room.id;
 
                           if (isJoiningThisRoom) {
-                            return const Padding(
-                              padding: EdgeInsets.all(12),
+                            return Padding(
+                              padding: const EdgeInsets.all(12),
                               child: SizedBox(
-                                key: Key('roomDetailJoinLoadingIndicator'),
+                                key: const Key(
+                                  'roomDetailJoinLoadingIndicator',
+                                ),
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  semanticsLabel: l10n.homeRoomCardJoiningLabel(
+                                    state.room.name,
+                                  ),
                                 ),
                               ),
                             );
@@ -289,9 +294,10 @@ class RoomDetailView extends StatelessWidget {
               ],
             ),
             body: switch (state) {
-              RoomDetailInitial() || RoomDetailLoading() => const Center(
+              RoomDetailInitial() || RoomDetailLoading() => Center(
                 child: CircularProgressIndicator(
-                  key: Key('roomDetailLoadingIndicator'),
+                  key: const Key('roomDetailLoadingIndicator'),
+                  semanticsLabel: l10n.commonLoadingLabel,
                 ),
               ),
               RoomDetailLoaded(:final room) => SingleChildScrollView(
@@ -349,16 +355,19 @@ class RoomDetailView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      l10n.roomDetailErrorMessage,
-                      key: const Key('roomDetailErrorMessage'),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        l10n.roomDetailErrorMessage,
+                        key: const Key('roomDetailErrorMessage'),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton(
                       key: const Key('roomDetailRetryButton'),
                       onPressed: () =>
                           context.read<RoomDetailCubit>().fetchRoom(roomId),
-                      child: Text(l10n.roomDetailRetryButtonLabel),
+                      child: Text(l10n.commonRetryButtonLabel),
                     ),
                   ],
                 ),
