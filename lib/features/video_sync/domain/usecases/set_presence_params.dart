@@ -15,5 +15,10 @@ sealed class SetPresenceParams with _$SetPresenceParams {
     required String roomId,
     required String userId,
     required String username,
+
+    /// Whether this participant is viewing without an account — see
+    /// [PresenceEntity.isAnonymous] for why the distinction has to be
+    /// written rather than derived later.
+    required bool isAnonymous,
   }) = _SetPresenceParams;
 }

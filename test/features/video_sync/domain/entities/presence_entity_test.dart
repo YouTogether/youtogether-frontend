@@ -17,6 +17,7 @@ void main() {
       username: 'Alice',
       isOnline: true,
       lastSeen: lastSeen,
+      isAnonymous: false,
     );
 
     test('should construct with all required fields', () {
@@ -26,6 +27,7 @@ void main() {
       expect(presence.username, 'Alice');
       expect(presence.isOnline, true);
       expect(presence.lastSeen, lastSeen);
+      expect(presence.isAnonymous, false);
     });
 
     test('should support value equality (freezed)', () {
@@ -37,10 +39,12 @@ void main() {
 
     test('copyWith should not mutate the original instance', () {
       final original = buildPresence();
-      final offline = original.copyWith(isOnline: false);
+      final offline = original.copyWith(isOnline: false, isAnonymous: true);
 
       expect(original.isOnline, true);
+      expect(original.isAnonymous, false);
       expect(offline.isOnline, false);
+      expect(offline.isAnonymous, true);
     });
   });
 }

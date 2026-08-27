@@ -29,6 +29,7 @@ void main() {
     username: 'Alice',
     isOnline: true,
     lastSeen: DateTime.utc(2026, 1, 5),
+    isAnonymous: false,
   );
 
   setUp(() {
@@ -43,6 +44,7 @@ void main() {
           roomId: any(named: 'roomId'),
           userId: any(named: 'userId'),
           username: any(named: 'username'),
+          isAnonymous: any(named: 'isAnonymous'),
         ),
       ).thenAnswer((_) async {});
 
@@ -50,6 +52,7 @@ void main() {
         roomId: roomId,
         userId: userId,
         username: 'Alice',
+        isAnonymous: false,
       );
 
       expect(result.isRight, isTrue);
@@ -61,6 +64,7 @@ void main() {
           roomId: any(named: 'roomId'),
           userId: any(named: 'userId'),
           username: any(named: 'username'),
+          isAnonymous: false,
         ),
       ).thenThrow(
         FirebaseException(plugin: 'firebase_database', message: 'denied'),
@@ -70,6 +74,7 @@ void main() {
         roomId: roomId,
         userId: userId,
         username: 'Alice',
+        isAnonymous: false,
       );
 
       expect(result.isLeft, isTrue);

@@ -87,6 +87,7 @@ void main() {
       username: 'User $i',
       isOnline: true,
       lastSeen: DateTime.utc(2026, 1, 5),
+      isAnonymous: false,
     ),
   );
 

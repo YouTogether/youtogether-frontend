@@ -28,6 +28,7 @@ void main() {
       username: 'Alice',
       isOnline: true,
       lastSeen: DateTime.utc(2026, 1, 5, 12, 30),
+      isAnonymous: false,
     ),
   ];
 

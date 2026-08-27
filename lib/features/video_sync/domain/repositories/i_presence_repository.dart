@@ -24,6 +24,7 @@ abstract class IPresenceRepository {
     required String roomId,
     required String userId,
     required String username,
+    required bool isAnonymous,
   });
 
   /// Clears this participant's presence node on an explicit, graceful

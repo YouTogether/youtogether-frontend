@@ -15,6 +15,19 @@ part 'presence_entity.freezed.dart';
 /// - [isOnline] <-> `is_online`
 /// - [lastSeen] <-> `last_seen`
 ///
+/// [isAnonymous] was added while implementing F-V05-T3 and is a
+/// deliberate correction to this entity as first delivered (F-V05-T1).
+/// Without it the combined member count required by
+/// `decision-anonymous-room-join.md` cannot be computed correctly: a
+/// registered member who is *currently present* appears both in the
+/// Postgres `memberCount` and in this presence list, so
+/// `registeredCount + presenceList.length` double-counts them. The
+/// decision note's actual requirement is registered members **plus
+/// anonymous viewers present** — which needs the two kinds
+/// distinguished at the source, since the frontend holds only a
+/// `memberCount` integer and never the list of registered member ids to
+/// diff against.
+///
 /// [userId] deliberately covers both registered and anonymous viewers:
 /// per `decision-anonymous-room-join.md`, presence is the mechanism by
 /// which an anonymous viewer is counted at all, so this field is not
@@ -35,6 +48,11 @@ sealed class PresenceEntity with _$PresenceEntity {
 
     /// Whether this participant is currently connected to the room.
     required bool isOnline,
+
+    /// Whether this participant is viewing without an account. `false`
+    /// for a registered member — see this class's own doc comment for
+    /// why the distinction has to be stored rather than derived.
+    required bool isAnonymous,
 
     /// Timestamp of the last keep-alive signal.
     required DateTime lastSeen,

@@ -28,6 +28,7 @@ class PresenceRemoteDataSourceImpl implements IPresenceRemoteDataSource {
     required String roomId,
     required String userId,
     required String username,
+    required bool isAnonymous,
   }) async {
     final ref = _presenceRef(roomId, userId);
 
@@ -47,6 +48,7 @@ class PresenceRemoteDataSourceImpl implements IPresenceRemoteDataSource {
         userId: userId,
         username: username,
         isOnline: true,
+        isAnonymous: isAnonymous,
         lastSeen: DateTime.now().toUtc(),
       ).toJson(),
     );

@@ -28,6 +28,7 @@ abstract class IPresenceRemoteDataSource {
     required String roomId,
     required String userId,
     required String username,
+    required bool isAnonymous,
   });
 
   /// Clears this participant's presence node on a graceful room exit,
