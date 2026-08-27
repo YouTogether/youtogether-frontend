@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localizations.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -76,8 +77,9 @@ class _CreateRoomViewState extends State<CreateRoomView> {
       appBar: AppBar(
         title: Text(l10n.createRoomPageTitle),
         leading: IconButton(
-          key: const Key('loginBackToHomeButton'),
+          key: const Key('createRoomBackToHomeButton'),
           icon: const Icon(Icons.arrow_back),
+          tooltip: l10n.commonBackToHomeTooltip,
           onPressed: () => context.go(AppRoutes.home),
         ),
       ),
@@ -110,7 +112,7 @@ class _CreateRoomViewState extends State<CreateRoomView> {
                     controller: _nameController,
                     enabled: !isLoading,
                     decoration: InputDecoration(
-                      labelText: l10n.createRoomNameFieldLabel,
+                      labelText: l10n.roomNameFieldLabel,
                       errorText: nameError,
                     ),
                   ),
@@ -121,7 +123,7 @@ class _CreateRoomViewState extends State<CreateRoomView> {
                     enabled: !isLoading,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      labelText: l10n.createRoomDescriptionFieldLabel,
+                      labelText: l10n.roomDescriptionFieldLabel,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -135,9 +137,12 @@ class _CreateRoomViewState extends State<CreateRoomView> {
                   ),
                   const SizedBox(height: 24),
                   if (isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        key: Key('createRoomLoadingIndicator'),
+                    Center(
+                      child: Semantics(
+                        label: l10n.commonLoadingLabel,
+                        child: const CircularProgressIndicator(
+                          key: Key('createRoomLoadingIndicator'),
+                        ),
                       ),
                     )
                   else
@@ -163,16 +168,19 @@ class _CreateRoomViewState extends State<CreateRoomView> {
   }
 
   /// Maps a non-validation [Failure] to a localised message for the
-  /// `SnackBar` — mirroring `RegisterView._failureMessage` exhaustively,
-  /// so no raw backend diagnostic text is ever rendered.
+  /// `SnackBar`, via the shared [localizeFailure] resolver.
+  ///
+  /// Only `auth` is overridden: "You must be signed in to create a
+  /// room." names the action, which the shared default cannot. The old
+  /// `createRoomNetworkErrorMessage`, `createRoomServerErrorMessage`,
+  /// `createRoomNotFoundErrorMessage`, and
+  /// `createRoomGenericErrorMessage` keys were byte-identical to the
+  /// shared defaults and are removed.
   String _failureMessage(AppLocalizations l10n, Failure failure) {
-    return switch (failure) {
-      NetworkFailure() => l10n.createRoomNetworkErrorMessage,
-      ServerFailure() => l10n.createRoomServerErrorMessage,
-      AuthFailure() => l10n.createRoomAuthErrorMessage,
-      NotFoundFailure() => l10n.createRoomNotFoundErrorMessage,
-      CacheFailure() || FirebaseFailure() => l10n.createRoomGenericErrorMessage,
-      ValidationFailure() => l10n.createRoomGenericErrorMessage,
-    };
+    return localizeFailure(
+      l10n,
+      failure,
+      auth: l10n.createRoomAuthErrorMessage,
+    );
   }
 }

@@ -2,6 +2,7 @@ import 'package:either_dart/either.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../domain/entities/sync_barrier_entity.dart';
 import '../../domain/entities/video_session_entity.dart';
 
 part 'video_sync_event.freezed.dart';
@@ -37,7 +38,7 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
   ) = VideoSyncSessionUpdated;
 
   /// Dispatched when the user taps the retry action on
-  /// `SyncFailureBanner` after a `VideoSyncState.failure` (VS-SYN-06).
+  /// `SyncStatusBanner` after a `VideoSyncState.failure`.
   /// Re-runs the full `sessionJoined` flow from scratch.
   const factory VideoSyncEvent.retryRequested() = VideoSyncRetryRequested;
 
@@ -56,4 +57,42 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
   /// bloc's `isLeader` flag is `false`.
   const factory VideoSyncEvent.seekRequested(Duration target) =
       VideoSyncSeekRequested;
+
+  /// Internal event: dispatched by `PlayerReconciliation` when
+  /// `SyncEngine.detectAd` transitions from `false` to `true` — the
+  /// local player is believed to have entered an advertisement.
+  /// Never dispatched by other UI code.
+  const factory VideoSyncEvent.adDetected() = VideoSyncAdDetected;
+
+  /// Internal event: dispatched by `PlayerReconciliation` once
+  /// `SyncEngine.detectAd` reports progression has resumed — the
+  /// advertisement is believed to have ended. Never dispatched by other
+  /// UI code.
+  const factory VideoSyncEvent.adEnded() = VideoSyncAdEnded;
+
+  /// Internal event: forwards each value emitted by the live
+  /// `sync_barrier` subscription opened when the ready gate starts.
+  /// Never dispatched directly by UI code.
+  const factory VideoSyncEvent.barrierUpdated(
+    Either<Failure, SyncBarrierEntity> result,
+  ) = VideoSyncBarrierUpdated;
+
+  /// Internal event: forwards the online-participant count from the
+  /// live presence subscription, used by the leader to keep the
+  /// barrier's `total_count` current while it is open.
+  /// Never dispatched directly by UI code.
+  const factory VideoSyncEvent.presenceCountUpdated(int onlineCount) =
+      VideoSyncPresenceCountUpdated;
+
+  /// Dispatched by `PlayerReconciliation` when this participant's own
+  /// player is confirmed to be progressing through *content* (not an
+  /// advertisement) while the ready gate is open — i.e. this
+  /// participant is past its pre-roll. Increments
+  /// `ready_count` atomically.
+  const factory VideoSyncEvent.readySignalled() = VideoSyncReadySignalled;
+
+  /// Dispatched when the leader taps "force start" after the ready gate
+  /// has timed out. Leader-only; a no-op otherwise.
+  const factory VideoSyncEvent.forceStartRequested() =
+      VideoSyncForceStartRequested;
 }

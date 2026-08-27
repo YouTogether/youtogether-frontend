@@ -7,6 +7,7 @@ import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../video_sync/presentation/widgets/room_video_section.dart';
 import '../cubit/delete_room_cubit.dart';
 import '../cubit/delete_room_state.dart';
 import '../cubit/join_room_cubit.dart';
@@ -79,6 +80,24 @@ import '../cubit/room_detail_state.dart';
 /// reversible (rejoin at any time). A second [BlocListener] alongside
 /// the deletion one reacts to [LeaveRoomState.success] the same way:
 /// `context.go(AppRoutes.home)`.
+///
+/// ## Video synchronisation
+/// [RoomVideoSection] carries the entire video-sync UI (status banner,
+/// embedded player, playback reconciliation, leader controls) and is
+/// rendered above the room's own description/member count in the
+/// [RoomDetailLoaded] branch — the video is what a participant is here
+/// for, and the ready-gate/failure banner it carries needs to be the
+/// first thing seen when something is wrong.
+///
+/// That section reads its own `VideoSyncBloc` from an ancestor
+/// `BlocProvider` (supplied by `RoomDetailPage`, exactly like
+/// [RoomDetailCubit] and the three room cubits above), so this view
+/// needs no new constructor parameters for it.
+///
+/// The body is wrapped in a [SingleChildScrollView] as of this
+/// addition: a 16:9 player plus controls, banner, description, and
+/// member count overflows a short viewport where the previous
+/// text-only body never could.
 class RoomDetailView extends StatelessWidget {
   const RoomDetailView({required this.roomId, super.key});
 
@@ -216,14 +235,19 @@ class RoomDetailView extends StatelessWidget {
                               joinState.roomId == state.room.id;
 
                           if (isJoiningThisRoom) {
-                            return const Padding(
-                              padding: EdgeInsets.all(12),
+                            return Padding(
+                              padding: const EdgeInsets.all(12),
                               child: SizedBox(
-                                key: Key('roomDetailJoinLoadingIndicator'),
+                                key: const Key(
+                                  'roomDetailJoinLoadingIndicator',
+                                ),
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  semanticsLabel: l10n.homeRoomCardJoiningLabel(
+                                    state.room.name,
+                                  ),
                                 ),
                               ),
                             );
@@ -270,67 +294,80 @@ class RoomDetailView extends StatelessWidget {
               ],
             ),
             body: switch (state) {
-              RoomDetailInitial() || RoomDetailLoading() => const Center(
+              RoomDetailInitial() || RoomDetailLoading() => Center(
                 child: CircularProgressIndicator(
-                  key: Key('roomDetailLoadingIndicator'),
+                  key: const Key('roomDetailLoadingIndicator'),
+                  semanticsLabel: l10n.commonLoadingLabel,
                 ),
               ),
-              RoomDetailLoaded(:final room) => Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, authState) {
-                        final isOwner = switch (authState) {
-                          AuthAuthenticated(:final user) =>
-                            user.id == room.ownerId,
-                          AuthInitial() ||
-                          AuthLoading() ||
-                          AuthUnauthenticated() ||
-                          AuthOperationFailure() => false,
-                        };
+              RoomDetailLoaded(:final room) => SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      BlocBuilder<AuthBloc, AuthState>(
+                        builder: (context, authState) {
+                          final isOwner = switch (authState) {
+                            AuthAuthenticated(:final user) =>
+                              user.id == room.ownerId,
+                            AuthInitial() ||
+                            AuthLoading() ||
+                            AuthUnauthenticated() ||
+                            AuthOperationFailure() => false,
+                          };
 
-                        if (!isOwner) {
-                          return const SizedBox.shrink();
-                        }
+                          if (!isOwner) {
+                            return const SizedBox.shrink();
+                          }
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Chip(
-                            key: const Key('roomDetailOwnerBadge'),
-                            label: Text(l10n.roomDetailOwnerBadgeLabel),
-                          ),
-                        );
-                      },
-                    ),
-                    if (room.description != null)
-                      Text(
-                        room.description!,
-                        key: const Key('roomDetailDescription'),
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Chip(
+                              key: const Key('roomDetailOwnerBadge'),
+                              label: Text(l10n.roomDetailOwnerBadgeLabel),
+                            ),
+                          );
+                        },
                       ),
-                    const SizedBox(height: 12),
-                    Text(
-                      l10n.homeRoomCardMemberCount(room.memberCount),
-                      key: const Key('roomDetailMemberCount'),
-                    ),
-                  ],
+                      // Video synchronisation UI,
+                      // placed above the room's own metadata: the video
+                      // is what a participant is here for, and the
+                      // ready-gate/failure banner it carries needs to be
+                      // the first thing seen when something is wrong.
+                      const RoomVideoSection(),
+                      const SizedBox(height: 12),
+                      if (room.description != null)
+                        Text(
+                          room.description!,
+                          key: const Key('roomDetailDescription'),
+                        ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.homeRoomCardMemberCount(room.memberCount),
+                        key: const Key('roomDetailMemberCount'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               RoomDetailFailure() => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      l10n.roomDetailErrorMessage,
-                      key: const Key('roomDetailErrorMessage'),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        l10n.roomDetailErrorMessage,
+                        key: const Key('roomDetailErrorMessage'),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton(
                       key: const Key('roomDetailRetryButton'),
                       onPressed: () =>
                           context.read<RoomDetailCubit>().fetchRoom(roomId),
-                      child: Text(l10n.roomDetailRetryButtonLabel),
+                      child: Text(l10n.commonRetryButtonLabel),
                     ),
                   ],
                 ),

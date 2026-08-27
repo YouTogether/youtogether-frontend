@@ -44,6 +44,13 @@ typedef YoutubePlayerControllerFactory =
 /// @see YoutubePlayerControllerAdapter — the abstraction this widget
 ///   depends on
 class YouTubePlayerWidget extends StatefulWidget {
+  /// The production controller factory, exposed as a named constant so
+  /// callers that forward an *optional* factory of their own
+  /// (`RoomVideoSection`) can fall back to it explicitly rather than
+  /// duplicating the `default_factory.` import path.
+  static const YoutubePlayerControllerFactory defaultControllerFactory =
+      default_factory.createYoutubePlayerControllerAdapter;
+
   const YouTubePlayerWidget({
     super.key,
     required this.videoId,
@@ -51,8 +58,8 @@ class YouTubePlayerWidget extends StatefulWidget {
     this.onReady,
     this.onStateChange,
     this.onError,
-    this.controllerFactory =
-        default_factory.createYoutubePlayerControllerAdapter,
+    this.onControllerReady,
+    this.controllerFactory = defaultControllerFactory,
   });
 
   /// The YouTube video id to load.
@@ -71,6 +78,15 @@ class YouTubePlayerWidget extends StatefulWidget {
 
   /// Invoked when the player reports an error.
   final ValueChanged<String>? onError;
+
+  /// Invoked exactly once, synchronously in `initState`, with the
+  /// controller this widget constructed — so
+  /// `PlayerReconciliation` can be given the *same* controller instance
+  /// this widget drives internally, rather than constructing a second,
+  /// disconnected one. `RoomDetailView`'s integration wraps this widget
+  /// in `PlayerReconciliation`, capturing the controller here and
+  /// passing it down.
+  final ValueChanged<YoutubePlayerControllerAdapter>? onControllerReady;
 
   /// Constructs the controller backing this widget. Overridable for
   /// tests — see [YoutubePlayerControllerFactory]'s own doc comment.
@@ -96,6 +112,8 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
           ..onReady = widget.onReady
           ..onStateChange = widget.onStateChange
           ..onError = widget.onError;
+
+    widget.onControllerReady?.call(_controller);
   }
 
   @override

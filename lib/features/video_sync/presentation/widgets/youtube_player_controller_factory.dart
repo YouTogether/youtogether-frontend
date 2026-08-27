@@ -69,6 +69,7 @@ class _YoutubePlayerControllerAdapterImpl
   ValueChanged<String>? onError;
 
   bool _readyFired = false;
+  PlayerAdapterState _lastState = PlayerAdapterState.unstarted;
 
   void _handlePlayerValue(YoutubePlayerValue value) {
     if (!_readyFired && value.playerState != PlayerState.unknown) {
@@ -76,7 +77,8 @@ class _YoutubePlayerControllerAdapterImpl
       onReady?.call();
     }
 
-    onStateChange?.call(_mapState(value.playerState));
+    _lastState = _mapState(value.playerState);
+    onStateChange?.call(_lastState);
 
     if (value.hasError) {
       onError?.call(value.error.toString());
@@ -111,6 +113,21 @@ class _YoutubePlayerControllerAdapterImpl
     return _controller.seekTo(
       seconds: position.inMilliseconds / 1000,
       allowSeekAhead: true,
+    );
+  }
+
+  /// NOTE: `getCurrentTime()` is exposed by `YoutubePlayerController` as
+  /// a `Future<double>` `currentTime` getter per the package's
+  /// published API. Like the corrections already noted above for
+  /// `playVideo`/`pauseVideo`, this could not be re-verified against a live
+  /// `pub.dev` fetch in this offline environment — confirm the exact getter
+  /// name against the pinned version before this compiles for real.
+  @override
+  Future<PlayerSample> getCurrentSample() async {
+    final seconds = await _controller.currentTime;
+    return PlayerSample(
+      position: Duration(milliseconds: (seconds * 1000).round()),
+      state: _lastState,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/error/failure_localizations.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/entities/room_entity.dart';
@@ -109,7 +110,7 @@ class _EditRoomViewState extends State<EditRoomView> {
                     controller: _nameController,
                     enabled: !isLoading,
                     decoration: InputDecoration(
-                      labelText: l10n.createRoomNameFieldLabel,
+                      labelText: l10n.roomNameFieldLabel,
                       errorText: nameError,
                     ),
                   ),
@@ -120,14 +121,17 @@ class _EditRoomViewState extends State<EditRoomView> {
                     enabled: !isLoading,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      labelText: l10n.createRoomDescriptionFieldLabel,
+                      labelText: l10n.roomDescriptionFieldLabel,
                     ),
                   ),
                   const SizedBox(height: 24),
                   if (isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        key: Key('editRoomLoadingIndicator'),
+                    Center(
+                      child: Semantics(
+                        label: l10n.commonLoadingLabel,
+                        child: const CircularProgressIndicator(
+                          key: Key('editRoomLoadingIndicator'),
+                        ),
                       ),
                     )
                   else ...[
@@ -158,14 +162,19 @@ class _EditRoomViewState extends State<EditRoomView> {
     );
   }
 
+  /// Maps a non-validation [Failure] to a localised message for the
+  /// `SnackBar`, via the shared [localizeFailure] resolver.
+  ///
+  /// Two overrides survive because they say more than the shared
+  /// defaults: "Only the room owner can make this change." and "This
+  /// room no longer exists." — both name the specific reason an edit was
+  /// refused. Network, server, cache, and generic inherit.
   String _failureMessage(AppLocalizations l10n, Failure failure) {
-    return switch (failure) {
-      NetworkFailure() => l10n.editRoomNetworkErrorMessage,
-      ServerFailure() => l10n.editRoomServerErrorMessage,
-      AuthFailure() => l10n.editRoomAuthErrorMessage,
-      NotFoundFailure() => l10n.editRoomNotFoundErrorMessage,
-      CacheFailure() || FirebaseFailure() => l10n.editRoomGenericErrorMessage,
-      ValidationFailure() => l10n.editRoomGenericErrorMessage,
-    };
+    return localizeFailure(
+      l10n,
+      failure,
+      auth: l10n.editRoomAuthErrorMessage,
+      notFound: l10n.editRoomNotFoundErrorMessage,
+    );
   }
 }

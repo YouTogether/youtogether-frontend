@@ -55,6 +55,7 @@ class HomePage extends StatelessWidget {
             IconButton(
               key: const Key('homeProfileButton'),
               icon: const Icon(Icons.person),
+              tooltip: l10n.homeProfileButtonTooltip,
               onPressed: () => context.go(AppRoutes.profile),
             ),
           ],
@@ -76,6 +77,7 @@ class HomePage extends StatelessWidget {
 
             return FloatingActionButton(
               key: const Key('homeCreateRoomButton'),
+              tooltip: l10n.homeCreateRoomButtonTooltip,
               onPressed: () => context.go(AppRoutes.createRoom),
               child: const Icon(Icons.add),
             );
@@ -84,9 +86,12 @@ class HomePage extends StatelessWidget {
         body: BlocBuilder<RoomBloc, RoomState>(
           builder: (context, state) {
             return switch (state) {
-              RoomInitial() || RoomLoading() => const Center(
-                child: CircularProgressIndicator(
-                  key: Key('homeLoadingIndicator'),
+              RoomInitial() || RoomLoading() => Center(
+                child: Semantics(
+                  label: l10n.commonLoadingLabel,
+                  child: const CircularProgressIndicator(
+                    key: Key('homeLoadingIndicator'),
+                  ),
                 ),
               ),
               RoomLoaded(:final rooms) when rooms.isEmpty => Center(
@@ -207,14 +212,20 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(l10n.homeErrorMessage, key: const Key('homeErrorMessage')),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              l10n.homeErrorMessage,
+              key: const Key('homeErrorMessage'),
+            ),
+          ),
           const SizedBox(height: 8),
           ElevatedButton(
             key: const Key('homeRetryButton'),
             onPressed: () => context.read<RoomBloc>().add(
               const RoomEvent.fetchPublicRooms(),
             ),
-            child: Text(l10n.homeRetryButtonLabel),
+            child: Text(l10n.commonRetryButtonLabel),
           ),
         ],
       ),

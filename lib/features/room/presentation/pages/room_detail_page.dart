@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
+import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -52,6 +54,8 @@ class RoomDetailPage extends StatelessWidget {
     required this.getCurrentPlaybackStateUseCase,
     required this.subscribeToPlaybackStateUseCase,
     required this.updatePlaybackStateUseCase,
+    required this.syncBarrierRepository,
+    required this.presenceRepository,
     super.key,
   });
 
@@ -64,6 +68,8 @@ class RoomDetailPage extends StatelessWidget {
   final GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   final SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
   final UpdatePlaybackStateUseCase updatePlaybackStateUseCase;
+  final SyncBarrierRepositoryImpl syncBarrierRepository;
+  final PresenceRepositoryImpl presenceRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +94,8 @@ class RoomDetailPage extends StatelessWidget {
             getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
             subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
             updatePlaybackStateUseCase: updatePlaybackStateUseCase,
+            syncBarrierRepository: syncBarrierRepository,
+            presenceRepository: presenceRepository,
           )..add(const VideoSyncEvent.sessionJoined()),
         ),
       ],
