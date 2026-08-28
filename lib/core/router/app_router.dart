@@ -1,10 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
-import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/increment_ready_count_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/remove_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_all_ready_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_presence_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 
 import '../../features/auth/domain/usecases/login_usecase.dart';
@@ -30,6 +36,7 @@ import '../../features/room/presentation/pages/create_room_page.dart';
 import '../../features/room/presentation/pages/edit_room_page.dart';
 import '../../features/room/presentation/pages/home_page.dart';
 import '../../features/room/presentation/pages/room_detail_page.dart';
+import '../../features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
 import 'go_router_refresh_stream.dart';
 
 /// Route paths, centralised to avoid string-literal drift between the
@@ -205,8 +212,15 @@ GoRouter buildAppRouter({
   required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
   required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
   required UpdatePlaybackStateUseCase updatePlaybackStateUseCase,
-  required SyncBarrierRepositoryImpl syncBarrierRepository,
-  required PresenceRepositoryImpl presenceRepository,
+  required CreateSyncBarrierUseCase createSyncBarrierUseCase,
+  required SubscribeToSyncBarrierUseCase subscribeToSyncBarrierUseCase,
+  required IncrementReadyCountUseCase incrementReadyCountUseCase,
+  required UpdateBarrierTotalCountUseCase updateBarrierTotalCountUseCase,
+  required SetAllReadyUseCase setAllReadyUseCase,
+  required DeleteSyncBarrierUseCase deleteSyncBarrierUseCase,
+  required SetPresenceUseCase setPresenceUseCase,
+  required RemovePresenceUseCase removePresenceUseCase,
+  required SubscribeToPresenceUseCase subscribeToPresenceUseCase,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.home,
@@ -285,8 +299,15 @@ GoRouter buildAppRouter({
           getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
           subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
           updatePlaybackStateUseCase: updatePlaybackStateUseCase,
-          syncBarrierRepository: syncBarrierRepository,
-          presenceRepository: presenceRepository,
+          createSyncBarrierUseCase: createSyncBarrierUseCase,
+          subscribeToSyncBarrierUseCase: subscribeToSyncBarrierUseCase,
+          incrementReadyCountUseCase: incrementReadyCountUseCase,
+          updateBarrierTotalCountUseCase: updateBarrierTotalCountUseCase,
+          setAllReadyUseCase: setAllReadyUseCase,
+          deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
+          setPresenceUseCase: setPresenceUseCase,
+          removePresenceUseCase: removePresenceUseCase,
+          subscribeToPresenceUseCase: subscribeToPresenceUseCase,
         ),
       ),
     ],

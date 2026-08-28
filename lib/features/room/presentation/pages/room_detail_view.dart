@@ -7,6 +7,7 @@ import '../../../../l10n/generated/app_localizations.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../video_sync/presentation/widgets/online_participants_indicator.dart';
 import '../../../video_sync/presentation/widgets/room_video_section.dart';
 import '../cubit/delete_room_cubit.dart';
 import '../cubit/delete_room_state.dart';
@@ -98,6 +99,17 @@ import '../cubit/room_detail_state.dart';
 /// addition: a 16:9 player plus controls, banner, description, and
 /// member count overflows a short viewport where the previous
 /// text-only body never could.
+///
+/// ## Two distinct member figures (F-V05-T3)
+/// The body renders both, adjacently and deliberately unmerged:
+/// - `RoomEntity.memberCount` — registered members from Postgres
+///   `room_memberships`: how many people have joined this room.
+/// - [OnlineMembers] — live Firebase presence: who is actually in the
+///   room right now, which is legitimately zero when nobody is
+///   watching, regardless of how many members the room has.
+///
+/// Summing them would answer neither question. See `PresenceCubit`'s
+/// own doc comment.
 class RoomDetailView extends StatelessWidget {
   const RoomDetailView({required this.roomId, super.key});
 
@@ -235,19 +247,14 @@ class RoomDetailView extends StatelessWidget {
                               joinState.roomId == state.room.id;
 
                           if (isJoiningThisRoom) {
-                            return Padding(
-                              padding: const EdgeInsets.all(12),
+                            return const Padding(
+                              padding: EdgeInsets.all(12),
                               child: SizedBox(
-                                key: const Key(
-                                  'roomDetailJoinLoadingIndicator',
-                                ),
+                                key: Key('roomDetailJoinLoadingIndicator'),
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  semanticsLabel: l10n.homeRoomCardJoiningLabel(
-                                    state.room.name,
-                                  ),
                                 ),
                               ),
                             );
@@ -294,10 +301,9 @@ class RoomDetailView extends StatelessWidget {
               ],
             ),
             body: switch (state) {
-              RoomDetailInitial() || RoomDetailLoading() => Center(
+              RoomDetailInitial() || RoomDetailLoading() => const Center(
                 child: CircularProgressIndicator(
-                  key: const Key('roomDetailLoadingIndicator'),
-                  semanticsLabel: l10n.commonLoadingLabel,
+                  key: Key('roomDetailLoadingIndicator'),
                 ),
               ),
               RoomDetailLoaded(:final room) => SingleChildScrollView(
@@ -347,6 +353,13 @@ class RoomDetailView extends StatelessWidget {
                         l10n.homeRoomCardMemberCount(room.memberCount),
                         key: const Key('roomDetailMemberCount'),
                       ),
+                      const SizedBox(height: 12),
+                      // Live participants (Firebase presence) — who is
+                      // actually in the room right now. A deliberately
+                      // separate figure from the count just above, and
+                      // legitimately zero when nobody is watching; see
+                      // `PresenceCubit`'s own doc comment.
+                      const OnlineParticipantsIndicator(),
                     ],
                   ),
                 ),
@@ -355,12 +368,9 @@ class RoomDetailView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        l10n.roomDetailErrorMessage,
-                        key: const Key('roomDetailErrorMessage'),
-                      ),
+                    Text(
+                      l10n.roomDetailErrorMessage,
+                      key: const Key('roomDetailErrorMessage'),
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton(

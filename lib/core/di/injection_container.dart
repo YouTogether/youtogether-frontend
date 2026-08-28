@@ -26,6 +26,37 @@ import '../../features/room/domain/usecases/get_room_by_id_usecase.dart';
 import '../../features/room/domain/usecases/join_room_usecase.dart';
 import '../../features/room/domain/usecases/leave_room_usecase.dart';
 import '../../features/room/domain/usecases/update_room_usecase.dart';
+import 'package:firebase_database/firebase_database.dart';
+
+import '../../features/video_sync/data/datasources/i_presence_remote_data_source.dart';
+import '../../features/video_sync/data/datasources/i_sync_barrier_remote_data_source.dart';
+import '../../features/video_sync/data/datasources/i_video_session_remote_data_source.dart';
+import '../../features/video_sync/data/datasources/i_video_sync_remote_data_source.dart';
+import '../../features/video_sync/data/datasources/presence_remote_data_source_impl.dart';
+import '../../features/video_sync/data/datasources/sync_barrier_remote_data_source_impl.dart';
+import '../../features/video_sync/data/datasources/video_session_remote_data_source_impl.dart';
+import '../../features/video_sync/data/datasources/video_sync_remote_data_source_impl.dart';
+import '../../features/video_sync/data/repositories/presence_repository_impl.dart';
+import '../../features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
+import '../../features/video_sync/data/repositories/video_session_repository_impl.dart';
+import '../../features/video_sync/data/repositories/video_sync_repository_impl.dart';
+import '../../features/video_sync/domain/repositories/i_presence_repository.dart';
+import '../../features/video_sync/domain/repositories/i_sync_barrier_repository.dart';
+import '../../features/video_sync/domain/repositories/i_video_session_repository.dart';
+import '../../features/video_sync/domain/repositories/i_video_sync_repository.dart';
+import '../../features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import '../../features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
+import '../../features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
+import '../../features/video_sync/domain/usecases/get_video_session_usecase.dart';
+import '../../features/video_sync/domain/usecases/increment_ready_count_usecase.dart';
+import '../../features/video_sync/domain/usecases/remove_presence_usecase.dart';
+import '../../features/video_sync/domain/usecases/set_all_ready_usecase.dart';
+import '../../features/video_sync/domain/usecases/set_presence_usecase.dart';
+import '../../features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
+import '../../features/video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
+import '../../features/video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import '../../features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
+import '../../features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 
 /// Application-wide service locator.
 ///
@@ -174,4 +205,78 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   sl.registerLazySingleton(() => DeleteRoomUseCase(sl()));
   sl.registerLazySingleton(() => JoinRoomUseCase(sl()));
   sl.registerLazySingleton(() => LeaveRoomUseCase(sl()));
+
+  // --- Video Synchronisation bounded context ---
+  //
+  // Two backends, deliberately: the metadata side (video session title,
+  // thumbnail, durationSeconds) is REST, reusing the same `Dio` singleton
+  // as Room and therefore the same `AuthInterceptor`; the live side
+  // (playback state, presence, ready gate) is Firebase Realtime Database
+  // and never touches Dio at all. Neither knows about the other — see
+  // `VideoSessionMetadataEntity`'s own doc comment for why the two are
+  // modelled as separate entities rather than merged.
+  //
+  // `FirebaseDatabase.instance` is resolved lazily, inside the factory
+  // rather than eagerly here: it requires `Firebase.initializeApp()` to
+  // have completed, which happens in `main.dart`. Registering it lazily
+  // means the ordering constraint is satisfied by construction, not by
+  // remembering to call things in the right order.
+  sl.registerLazySingleton<FirebaseDatabase>(() => FirebaseDatabase.instance);
+
+  // Data sources
+  sl.registerLazySingleton<IVideoSyncRemoteDataSource>(
+        () => VideoSyncRemoteDataSourceImpl(database: sl()),
+  );
+  sl.registerLazySingleton<IPresenceRemoteDataSource>(
+        () => PresenceRemoteDataSourceImpl(database: sl()),
+  );
+  sl.registerLazySingleton<ISyncBarrierRemoteDataSource>(
+        () => SyncBarrierRemoteDataSourceImpl(database: sl()),
+  );
+  sl.registerLazySingleton<IVideoSessionRemoteDataSource>(
+        () => VideoSessionRemoteDataSourceImpl(sl()),
+  );
+
+  // Repositories
+  sl.registerLazySingleton<IVideoSyncRepository>(
+        () => VideoSyncRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<IPresenceRepository>(
+        () => PresenceRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<ISyncBarrierRepository>(
+        () => SyncBarrierRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<IVideoSessionRepository>(
+        () => VideoSessionRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Use cases — video session metadata (B-V02)
+  sl.registerLazySingleton(() => GetVideoSessionUseCase(sl()));
+
+  // Use cases — playback state
+  sl.registerLazySingleton(() => GetCurrentPlaybackStateUseCase(sl()));
+  sl.registerLazySingleton(() => SubscribeToPlaybackStateUseCase(sl()));
+  sl.registerLazySingleton(() => UpdatePlaybackStateUseCase(sl()));
+
+  // Use cases — presence
+  sl.registerLazySingleton(() => SetPresenceUseCase(sl()));
+  sl.registerLazySingleton(() => RemovePresenceUseCase(sl()));
+  sl.registerLazySingleton(() => SubscribeToPresenceUseCase(sl()));
+
+  // Use cases — ready gate (F-V04)
+  sl.registerLazySingleton(() => CreateSyncBarrierUseCase(sl()));
+  sl.registerLazySingleton(() => SubscribeToSyncBarrierUseCase(sl()));
+  sl.registerLazySingleton(() => IncrementReadyCountUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateBarrierTotalCountUseCase(sl()));
+  sl.registerLazySingleton(() => SetAllReadyUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteSyncBarrierUseCase(sl()));
+
+  // `VideoSyncBloc` and `PresenceCubit` are deliberately NOT registered
+  // here, for the same reason as `RoomBloc`: both are scoped to a single
+  // room's page and must be constructed fresh per visit. `PresenceCubit`
+  // in particular relies on being disposed when the page's provider is —
+  // that disposal is what ends the participant's presence (see its own
+  // doc comment). An app-wide singleton would never be disposed, and the
+  // participant would appear to be watching forever.
 }

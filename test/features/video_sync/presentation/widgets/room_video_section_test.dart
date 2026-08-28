@@ -5,12 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
+import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/leader_controls.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/player_reconciliation.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/room_video_section.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/presence_cubit.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/presence_state.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/sync_status_banner.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/youtube_player_controller_adapter.dart';
 
@@ -35,6 +38,9 @@ class MockVideoSyncBloc extends MockBloc<VideoSyncEvent, VideoSyncState>
   @override
   int get durationSeconds => duration;
 }
+
+class MockPresenceCubit extends MockCubit<PresenceState>
+    implements PresenceCubit {}
 
 class FakeController implements YoutubePlayerControllerAdapter {
   FakeController({required this.videoId});
@@ -83,16 +89,28 @@ void main() {
   Widget wrap(MockVideoSyncBloc bloc, VideoSyncState state) {
     whenListen(bloc, const Stream<VideoSyncState>.empty(), initialState: state);
 
+    final presenceCubit = MockPresenceCubit();
+    whenListen(
+      presenceCubit,
+      const Stream<PresenceState>.empty(),
+      initialState: const PresenceState.loaded(<PresenceEntity>[]),
+    );
+
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: BlocProvider<VideoSyncBloc>.value(
-          value: bloc,
-          child: RoomVideoSection(
-            controllerFactory:
-                ({required videoId, required showNativeControls}) =>
-                    FakeController(videoId: videoId),
+        body: MultiBlocProvider(
+          providers: [
+            BlocProvider<VideoSyncBloc>.value(value: bloc),
+            BlocProvider<PresenceCubit>.value(value: presenceCubit),
+          ],
+          child: SingleChildScrollView(
+            child: RoomVideoSection(
+              controllerFactory:
+                  ({required videoId, required showNativeControls}) =>
+                      FakeController(videoId: videoId),
+            ),
           ),
         ),
       ),

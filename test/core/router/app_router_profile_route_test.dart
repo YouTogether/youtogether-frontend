@@ -22,11 +22,18 @@ import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase
 import 'package:youtogether/features/room/domain/usecases/join_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/leave_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/update_room_usecase.dart';
-import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
-import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/increment_ready_count_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/remove_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_all_ready_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_presence_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
@@ -62,10 +69,29 @@ class MockSubscribeToPlaybackStateUseCase extends Mock
 class MockUpdatePlaybackStateUseCase extends Mock
     implements UpdatePlaybackStateUseCase {}
 
-class MockSyncBarrierRepository extends Mock
-    implements SyncBarrierRepositoryImpl {}
+class MockCreateSyncBarrierUseCase extends Mock
+    implements CreateSyncBarrierUseCase {}
 
-class MockPresenceRepository extends Mock implements PresenceRepositoryImpl {}
+class MockSubscribeToSyncBarrierUseCase extends Mock
+    implements SubscribeToSyncBarrierUseCase {}
+
+class MockIncrementReadyCountUseCase extends Mock
+    implements IncrementReadyCountUseCase {}
+
+class MockUpdateBarrierTotalCountUseCase extends Mock
+    implements UpdateBarrierTotalCountUseCase {}
+
+class MockSetAllReadyUseCase extends Mock implements SetAllReadyUseCase {}
+
+class MockDeleteSyncBarrierUseCase extends Mock
+    implements DeleteSyncBarrierUseCase {}
+
+class MockSetPresenceUseCase extends Mock implements SetPresenceUseCase {}
+
+class MockRemovePresenceUseCase extends Mock implements RemovePresenceUseCase {}
+
+class MockSubscribeToPresenceUseCase extends Mock
+    implements SubscribeToPresenceUseCase {}
 
 /// Widget tests verifying that `/profile` is actually wired into the
 /// route table built by [buildAppRouter] (closing the remaining part of
@@ -116,8 +142,15 @@ void main() {
   late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
   late MockUpdatePlaybackStateUseCase updatePlaybackStateUseCase;
-  late MockSyncBarrierRepository syncBarrierRepository;
-  late MockPresenceRepository presenceRepository;
+  late MockCreateSyncBarrierUseCase createSyncBarrierUseCase;
+  late MockSubscribeToSyncBarrierUseCase subscribeToSyncBarrierUseCase;
+  late MockIncrementReadyCountUseCase incrementReadyCountUseCase;
+  late MockUpdateBarrierTotalCountUseCase updateBarrierTotalCountUseCase;
+  late MockSetAllReadyUseCase setAllReadyUseCase;
+  late MockDeleteSyncBarrierUseCase deleteSyncBarrierUseCase;
+  late MockSetPresenceUseCase setPresenceUseCase;
+  late MockRemovePresenceUseCase removePresenceUseCase;
+  late MockSubscribeToPresenceUseCase subscribeToPresenceUseCase;
 
   final user = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -142,8 +175,15 @@ void main() {
     getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
     subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
     updatePlaybackStateUseCase = MockUpdatePlaybackStateUseCase();
-    syncBarrierRepository = MockSyncBarrierRepository();
-    presenceRepository = MockPresenceRepository();
+    createSyncBarrierUseCase = MockCreateSyncBarrierUseCase();
+    subscribeToSyncBarrierUseCase = MockSubscribeToSyncBarrierUseCase();
+    incrementReadyCountUseCase = MockIncrementReadyCountUseCase();
+    updateBarrierTotalCountUseCase = MockUpdateBarrierTotalCountUseCase();
+    setAllReadyUseCase = MockSetAllReadyUseCase();
+    deleteSyncBarrierUseCase = MockDeleteSyncBarrierUseCase();
+    setPresenceUseCase = MockSetPresenceUseCase();
+    removePresenceUseCase = MockRemovePresenceUseCase();
+    subscribeToPresenceUseCase = MockSubscribeToPresenceUseCase();
 
     // buildAppRouter always sets initialLocation to AppRoutes.home, so
     // the '/' route (and the RoomBloc it constructs, which immediately
@@ -173,8 +213,15 @@ void main() {
       getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
       subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
       updatePlaybackStateUseCase: updatePlaybackStateUseCase,
-      syncBarrierRepository: syncBarrierRepository,
-      presenceRepository: presenceRepository,
+      createSyncBarrierUseCase: createSyncBarrierUseCase,
+      subscribeToSyncBarrierUseCase: subscribeToSyncBarrierUseCase,
+      incrementReadyCountUseCase: incrementReadyCountUseCase,
+      updateBarrierTotalCountUseCase: updateBarrierTotalCountUseCase,
+      setAllReadyUseCase: setAllReadyUseCase,
+      deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
+      setPresenceUseCase: setPresenceUseCase,
+      removePresenceUseCase: removePresenceUseCase,
+      subscribeToPresenceUseCase: subscribeToPresenceUseCase,
     );
 
     await tester.pumpWidget(

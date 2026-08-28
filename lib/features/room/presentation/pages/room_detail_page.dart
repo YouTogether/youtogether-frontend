@@ -1,7 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
-import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -9,8 +7,18 @@ import '../../../video_sync/domain/usecases/get_current_playback_state_usecase.d
 import '../../../video_sync/domain/usecases/get_video_session_usecase.dart';
 import '../../../video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
 import '../../../video_sync/domain/usecases/update_playback_state_usecase.dart';
+import '../../../video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import '../../../video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
+import '../../../video_sync/domain/usecases/increment_ready_count_usecase.dart';
+import '../../../video_sync/domain/usecases/remove_presence_usecase.dart';
+import '../../../video_sync/domain/usecases/set_all_ready_usecase.dart';
+import '../../../video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import '../../../video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
+import '../../../video_sync/domain/usecases/set_presence_usecase.dart';
+import '../../../video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
 import '../../../video_sync/presentation/bloc/video_sync_bloc.dart';
 import '../../../video_sync/presentation/bloc/video_sync_event.dart';
+import '../../../video_sync/presentation/cubit/presence_cubit.dart';
 import '../../domain/usecases/delete_room_usecase.dart';
 import '../../domain/usecases/get_room_by_id_usecase.dart';
 import '../../domain/usecases/join_room_usecase.dart';
@@ -54,8 +62,15 @@ class RoomDetailPage extends StatelessWidget {
     required this.getCurrentPlaybackStateUseCase,
     required this.subscribeToPlaybackStateUseCase,
     required this.updatePlaybackStateUseCase,
-    required this.syncBarrierRepository,
-    required this.presenceRepository,
+    required this.createSyncBarrierUseCase,
+    required this.subscribeToSyncBarrierUseCase,
+    required this.incrementReadyCountUseCase,
+    required this.updateBarrierTotalCountUseCase,
+    required this.setAllReadyUseCase,
+    required this.deleteSyncBarrierUseCase,
+    required this.setPresenceUseCase,
+    required this.removePresenceUseCase,
+    required this.subscribeToPresenceUseCase,
     super.key,
   });
 
@@ -68,8 +83,17 @@ class RoomDetailPage extends StatelessWidget {
   final GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   final SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
   final UpdatePlaybackStateUseCase updatePlaybackStateUseCase;
-  final SyncBarrierRepositoryImpl syncBarrierRepository;
-  final PresenceRepositoryImpl presenceRepository;
+
+  /// Ready-gate orchestration use cases, required by [VideoSyncBloc].
+  final CreateSyncBarrierUseCase createSyncBarrierUseCase;
+  final SubscribeToSyncBarrierUseCase subscribeToSyncBarrierUseCase;
+  final IncrementReadyCountUseCase incrementReadyCountUseCase;
+  final UpdateBarrierTotalCountUseCase updateBarrierTotalCountUseCase;
+  final SetAllReadyUseCase setAllReadyUseCase;
+  final DeleteSyncBarrierUseCase deleteSyncBarrierUseCase;
+  final SetPresenceUseCase setPresenceUseCase;
+  final RemovePresenceUseCase removePresenceUseCase;
+  final SubscribeToPresenceUseCase subscribeToPresenceUseCase;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +101,20 @@ class RoomDetailPage extends StatelessWidget {
     final currentUserId = authState is AuthAuthenticated
         ? authState.user.id
         : '';
+    // UserEntity exposes `displayName`, not `username` — the backend's
+    // `username` wire field is renamed at the data-layer boundary (see
+    // UserEntity's own class doc). PresenceModel writes it back out as
+    // `username` in Firebase, so the wire vocabulary is preserved
+    // there without the domain having to carry the backend's term.
+    final currentUsername = authState is AuthAuthenticated
+        ? authState.user.displayName
+        : 'Guest';
+    // Derived from the same condition as the username fallback above,
+    // deliberately: 'Guest' *is* the anonymous case, and writing that
+    // name without the flag would make an account-less viewer
+    // indistinguishable from a registered user who happens to be called
+    // Guest.
+    final isAnonymous = authState is! AuthAuthenticated;
 
     return MultiBlocProvider(
       providers: [
@@ -94,9 +132,34 @@ class RoomDetailPage extends StatelessWidget {
             getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
             subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
             updatePlaybackStateUseCase: updatePlaybackStateUseCase,
-            syncBarrierRepository: syncBarrierRepository,
-            presenceRepository: presenceRepository,
+            createSyncBarrierUseCase: createSyncBarrierUseCase,
+            subscribeToSyncBarrierUseCase: subscribeToSyncBarrierUseCase,
+            incrementReadyCountUseCase: incrementReadyCountUseCase,
+            updateBarrierTotalCountUseCase: updateBarrierTotalCountUseCase,
+            setAllReadyUseCase: setAllReadyUseCase,
+            deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
+            // Shared with PresenceCubit below — VideoSyncBloc reads it
+            // only to size and resize the ready gate, PresenceCubit to
+            // drive the participant list. Both observe the same node;
+            // neither owns it.
+            subscribeToPresenceUseCase: subscribeToPresenceUseCase,
           )..add(const VideoSyncEvent.sessionJoined()),
+        ),
+        // Presence is scoped to this provider's lifetime, which is
+        // exactly the lifetime of the page carrying the player. Entering
+        // the session on creation and PresenceCubit.close() clearing it
+        // on disposal is what makes participation follow the page rather
+        // than the leave button — see PresenceCubit's own doc comment.
+        BlocProvider(
+          create: (_) => PresenceCubit(
+            roomId: roomId,
+            userId: currentUserId,
+            username: currentUsername,
+            isAnonymous: isAnonymous,
+            setPresenceUseCase: setPresenceUseCase,
+            removePresenceUseCase: removePresenceUseCase,
+            subscribeToPresenceUseCase: subscribeToPresenceUseCase,
+          )..enterSession(),
         ),
       ],
       child: RoomDetailView(roomId: roomId),

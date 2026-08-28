@@ -17,21 +17,20 @@ class MockPresenceCubit extends MockCubit<PresenceState>
 /// @competency Unit/widget test harness.
 /// @competency Test scenarios.
 void main() {
-  late MockPresenceCubit cubit;
-
-  PresenceEntity participant(String id) => PresenceEntity(
-    userId: id,
-    username: 'User $id',
-    isOnline: true,
-    isAnonymous: false,
+  PresenceEntity participant(
+    String name, {
+    bool isOnline = true,
+    bool isAnonymous = false,
+  }) => PresenceEntity(
+    userId: name,
+    username: name,
+    isOnline: isOnline,
+    isAnonymous: isAnonymous,
     lastSeen: DateTime.utc(2026, 1, 5),
   );
 
-  setUp(() {
-    cubit = MockPresenceCubit();
-  });
-
   Widget wrap(PresenceState state) {
+    final cubit = MockPresenceCubit();
     whenListen(cubit, const Stream<PresenceState>.empty(), initialState: state);
 
     return MaterialApp(
@@ -44,61 +43,95 @@ void main() {
     );
   }
 
-  testWidgets('shows the live participant count', (tester) async {
+  testWidgets('shows a zero count when nobody is present', (tester) async {
+    await tester.pumpWidget(
+      wrap(const PresenceState.loaded(<PresenceEntity>[])),
+    );
+
+    expect(find.byKey(const Key('onlineParticipantsCount')), findsOneWidget);
+    expect(find.textContaining('0'), findsOneWidget);
+  });
+
+  testWidgets('shows the live count and every online participant\'s name', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(PresenceState.loaded([participant('Alice'), participant('Bob')])),
+    );
+
+    expect(find.textContaining('2'), findsOneWidget);
+    expect(find.text('Alice'), findsOneWidget);
+    expect(find.text('Bob'), findsOneWidget);
+  });
+
+  testWidgets(
+    'excludes participants flagged offline from both the count and the list — '
+    'onDisconnect clears is_online rather than deleting the node',
+    (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          PresenceState.loaded([
+            participant('Alice'),
+            participant('Ghost', isOnline: false),
+          ]),
+        ),
+      );
+
+      expect(find.textContaining('1'), findsOneWidget);
+      expect(find.text('Alice'), findsOneWidget);
+      expect(find.text('Ghost'), findsNothing);
+    },
+  );
+
+  testWidgets('lists anonymous participants alongside registered ones', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(
         PresenceState.loaded([
-          participant('a'),
-          participant('b'),
-          participant('c'),
+          participant('Alice'),
+          participant('Guest', isAnonymous: true),
         ]),
       ),
     );
 
-    expect(
-      find.byKey(const Key('onlineParticipantsIndicator')),
-      findsOneWidget,
-    );
-    expect(find.textContaining('3'), findsOneWidget);
+    expect(find.textContaining('2'), findsOneWidget);
+    expect(find.text('Guest'), findsOneWidget);
   });
 
-  testWidgets(
-    'shows zero when nobody is watching — a valid state, not an error',
-    (tester) async {
-      await tester.pumpWidget(
-        wrap(const PresenceState.loaded(<PresenceEntity>[])),
-      );
-
-      expect(
-        find.byKey(const Key('onlineParticipantsIndicator')),
-        findsOneWidget,
-      );
-      expect(find.textContaining('0'), findsOneWidget);
-    },
-  );
-
-  testWidgets('shows a placeholder while presence is still loading', (
+  testWidgets('shows a loading indicator while presence is being established', (
     tester,
   ) async {
     await tester.pumpWidget(wrap(const PresenceState.loading()));
 
     expect(
-      find.byKey(const Key('onlineParticipantsIndicatorLoading')),
+      find.byKey(const Key('onlineParticipantsLoadingIndicator')),
       findsOneWidget,
+    );
+    expect(find.byKey(const Key('onlineParticipantsCount')), findsNothing);
+  });
+
+  testWidgets('renders nothing in the initial state', (tester) async {
+    await tester.pumpWidget(wrap(const PresenceState.initial()));
+
+    expect(find.byKey(const Key('onlineParticipantsCount')), findsNothing);
+    expect(
+      find.byKey(const Key('onlineParticipantsLoadingIndicator')),
+      findsNothing,
     );
   });
 
-  testWidgets('renders nothing on failure rather than a misleading zero', (
+  testWidgets('shows an unavailable notice on failure, not a misleading zero', (
     tester,
   ) async {
     await tester.pumpWidget(
       wrap(const PresenceState.failure(Failure.firebase(message: 'lost'))),
     );
 
-    expect(find.byKey(const Key('onlineParticipantsIndicator')), findsNothing);
     expect(
-      find.byKey(const Key('onlineParticipantsIndicatorLoading')),
-      findsNothing,
+      find.byKey(const Key('onlineParticipantsUnavailable')),
+      findsOneWidget,
     );
+    expect(find.byKey(const Key('onlineParticipantsCount')), findsNothing);
   });
 }

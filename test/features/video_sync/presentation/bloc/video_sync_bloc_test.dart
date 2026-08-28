@@ -7,8 +7,15 @@ import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_metadata_entity.dart';
-import 'package:youtogether/features/video_sync/domain/repositories/i_presence_repository.dart';
-import 'package:youtogether/features/video_sync/domain/repositories/i_sync_barrier_repository.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_params.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/increment_ready_count_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_all_ready_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_params.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
@@ -30,10 +37,25 @@ class MockSubscribeToPlaybackStateUseCase extends Mock
 class MockUpdatePlaybackStateUseCase extends Mock
     implements UpdatePlaybackStateUseCase {}
 
-class MockSyncBarrierRepository extends Mock
-    implements ISyncBarrierRepository {}
+class MockCreateSyncBarrierUseCase extends Mock
+    implements CreateSyncBarrierUseCase {}
 
-class MockPresenceRepository extends Mock implements IPresenceRepository {}
+class MockSubscribeToSyncBarrierUseCase extends Mock
+    implements SubscribeToSyncBarrierUseCase {}
+
+class MockIncrementReadyCountUseCase extends Mock
+    implements IncrementReadyCountUseCase {}
+
+class MockUpdateBarrierTotalCountUseCase extends Mock
+    implements UpdateBarrierTotalCountUseCase {}
+
+class MockSetAllReadyUseCase extends Mock implements SetAllReadyUseCase {}
+
+class MockDeleteSyncBarrierUseCase extends Mock
+    implements DeleteSyncBarrierUseCase {}
+
+class MockSubscribeToPresenceUseCase extends Mock
+    implements SubscribeToPresenceUseCase {}
 
 /// Unit tests for [VideoSyncBloc].
 ///
@@ -53,8 +75,13 @@ void main() {
   late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
   late MockUpdatePlaybackStateUseCase updatePlaybackStateUseCase;
-  late MockSyncBarrierRepository syncBarrierRepository;
-  late MockPresenceRepository presenceRepository;
+  late MockCreateSyncBarrierUseCase createSyncBarrierUseCase;
+  late MockSubscribeToSyncBarrierUseCase subscribeToSyncBarrierUseCase;
+  late MockIncrementReadyCountUseCase incrementReadyCountUseCase;
+  late MockUpdateBarrierTotalCountUseCase updateBarrierTotalCountUseCase;
+  late MockSetAllReadyUseCase setAllReadyUseCase;
+  late MockDeleteSyncBarrierUseCase deleteSyncBarrierUseCase;
+  late MockSubscribeToPresenceUseCase subscribeToPresenceUseCase;
 
   const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
   const leaderId = '550e8400-e29b-41d4-a716-446655440000';
@@ -87,6 +114,16 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(
+      const CreateSyncBarrierParams(
+        roomId: roomId,
+        targetTimestamp: Duration.zero,
+        totalCount: 0,
+      ),
+    );
+    registerFallbackValue(
+      const UpdateBarrierTotalCountParams(roomId: roomId, totalCount: 0),
+    );
+    registerFallbackValue(
       const UpdatePlaybackStateParams(
         roomId: roomId,
         isPlaying: false,
@@ -101,41 +138,34 @@ void main() {
     getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
     subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
     updatePlaybackStateUseCase = MockUpdatePlaybackStateUseCase();
-    syncBarrierRepository = MockSyncBarrierRepository();
-    presenceRepository = MockPresenceRepository();
+    createSyncBarrierUseCase = MockCreateSyncBarrierUseCase();
+    subscribeToSyncBarrierUseCase = MockSubscribeToSyncBarrierUseCase();
+    incrementReadyCountUseCase = MockIncrementReadyCountUseCase();
+    updateBarrierTotalCountUseCase = MockUpdateBarrierTotalCountUseCase();
+    setAllReadyUseCase = MockSetAllReadyUseCase();
+    deleteSyncBarrierUseCase = MockDeleteSyncBarrierUseCase();
+    subscribeToPresenceUseCase = MockSubscribeToPresenceUseCase();
 
     when(
-      () =>
-          presenceRepository.subscribeToPresence(roomId: any(named: 'roomId')),
+      () => subscribeToPresenceUseCase(any()),
     ).thenAnswer((_) => const Stream.empty());
     when(
-      () => syncBarrierRepository.subscribeToBarrier(
-        roomId: any(named: 'roomId'),
-      ),
+      () => subscribeToSyncBarrierUseCase(any()),
     ).thenAnswer((_) => const Stream.empty());
     when(
-      () => syncBarrierRepository.createBarrier(
-        roomId: any(named: 'roomId'),
-        targetTimestamp: any(named: 'targetTimestamp'),
-        totalCount: any(named: 'totalCount'),
-      ),
+      () => createSyncBarrierUseCase(any()),
     ).thenAnswer((_) async => const Right(null));
     when(
-      () => syncBarrierRepository.updateTotalCount(
-        roomId: any(named: 'roomId'),
-        totalCount: any(named: 'totalCount'),
-      ),
+      () => updateBarrierTotalCountUseCase(any()),
     ).thenAnswer((_) async => const Right(null));
     when(
-      () => syncBarrierRepository.incrementReadyCount(
-        roomId: any(named: 'roomId'),
-      ),
+      () => incrementReadyCountUseCase(any()),
     ).thenAnswer((_) async => const Right(null));
     when(
-      () => syncBarrierRepository.setAllReady(roomId: any(named: 'roomId')),
+      () => setAllReadyUseCase(any()),
     ).thenAnswer((_) async => const Right(null));
     when(
-      () => syncBarrierRepository.deleteBarrier(roomId: any(named: 'roomId')),
+      () => deleteSyncBarrierUseCase(any()),
     ).thenAnswer((_) async => const Right(null));
   });
 
@@ -147,8 +177,13 @@ void main() {
       getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
       subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
       updatePlaybackStateUseCase: updatePlaybackStateUseCase,
-      syncBarrierRepository: syncBarrierRepository,
-      presenceRepository: presenceRepository,
+      createSyncBarrierUseCase: createSyncBarrierUseCase,
+      subscribeToSyncBarrierUseCase: subscribeToSyncBarrierUseCase,
+      incrementReadyCountUseCase: incrementReadyCountUseCase,
+      updateBarrierTotalCountUseCase: updateBarrierTotalCountUseCase,
+      setAllReadyUseCase: setAllReadyUseCase,
+      deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
+      subscribeToPresenceUseCase: subscribeToPresenceUseCase,
     );
   }
 
@@ -398,21 +433,13 @@ void main() {
           () => subscribeToPlaybackStateUseCase(roomId),
         ).thenAnswer((_) => const Stream.empty());
         when(
-          () => presenceRepository.subscribeToPresence(
-            roomId: any(named: 'roomId'),
-          ),
+          () => subscribeToPresenceUseCase(any()),
         ).thenAnswer((_) => Stream.value(const Right(<PresenceEntity>[])));
         when(
-          () => syncBarrierRepository.createBarrier(
-            roomId: any(named: 'roomId'),
-            targetTimestamp: any(named: 'targetTimestamp'),
-            totalCount: any(named: 'totalCount'),
-          ),
+          () => createSyncBarrierUseCase(any()),
         ).thenAnswer((_) async => const Right(null));
         when(
-          () => syncBarrierRepository.subscribeToBarrier(
-            roomId: any(named: 'roomId'),
-          ),
+          () => subscribeToSyncBarrierUseCase(any()),
         ).thenAnswer((_) => const Stream.empty());
         return buildBloc(currentUserId: leaderId);
       },
@@ -424,10 +451,12 @@ void main() {
       wait: const Duration(milliseconds: 10),
       verify: (_) {
         verify(
-          () => syncBarrierRepository.createBarrier(
-            roomId: roomId,
-            targetTimestamp: const Duration(seconds: 42),
-            totalCount: 0,
+          () => createSyncBarrierUseCase(
+            const CreateSyncBarrierParams(
+              roomId: roomId,
+              targetTimestamp: Duration(seconds: 42),
+              totalCount: 0,
+            ),
           ),
         ).called(1);
         verifyNever(() => updatePlaybackStateUseCase(any()));
