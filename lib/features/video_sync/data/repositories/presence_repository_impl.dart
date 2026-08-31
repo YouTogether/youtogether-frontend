@@ -36,12 +36,14 @@ class PresenceRepositoryImpl implements IPresenceRepository {
     required String roomId,
     required String userId,
     required String username,
+    required bool isAnonymous,
   }) async {
     try {
       await _remoteDataSource.setPresence(
         roomId: roomId,
         userId: userId,
         username: username,
+        isAnonymous: isAnonymous,
       );
       return const Right(null);
     } on FirebaseException catch (exception) {

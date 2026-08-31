@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "610294755672",
+    "firebase_url": "https://youtogether-94a46-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "youtogether-94a46",
+    "storage_bucket": "youtogether-94a46.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610294755672:android:9d2484ae65f37c748f352d",
+        "android_client_info": {
+          "package_name": "com.youtogether.youtogether"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwKHhGRZXWw_YPbdMqqbwHj1nIy8l3Bo4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

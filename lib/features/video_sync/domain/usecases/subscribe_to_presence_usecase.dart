@@ -12,12 +12,19 @@ import '../repositories/i_presence_repository.dart';
 /// Contains no business logic beyond delegating to
 /// `IPresenceRepository.subscribeToPresence()`.
 ///
-/// Combining this list's count with the Postgres-sourced registered
-/// member count is `PresenceCubit`'s concern, not this use case's: this
-/// layer only ever reports who is present in Firebase, never anything
-/// about `room_memberships`.
+/// This list is the *complete* answer to "who is currently in this
+/// room's broadcast session" — it is never combined with, or reconciled
+/// against, the Postgres-sourced `room_memberships` count. A previous
+/// revision of this comment said otherwise, citing
+/// `decision-anonymous-room-join.md`; that reading was corrected.
+/// Membership (a persisted, durable relationship: "I have
+/// joined this room") and presence (an ephemeral, real-time fact: "I am
+/// watching right now") are separate concepts that happen to both be
+/// counted — a room with fifty members has a presence count of zero
+/// when nobody is watching, and that zero is correct, not a bug.
 ///
 /// @see IPresenceRepository.subscribeToPresence — the delegated port method
+/// @see PresenceCubit — the consumer that turns this into a live count
 class SubscribeToPresenceUseCase
     extends StreamUseCase<List<PresenceEntity>, String> {
   SubscribeToPresenceUseCase(this._presenceRepository);

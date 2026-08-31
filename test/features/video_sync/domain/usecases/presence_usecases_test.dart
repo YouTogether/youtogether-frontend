@@ -23,6 +23,7 @@ void main() {
   const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
   const userId = '550e8400-e29b-41d4-a716-446655440000';
   const username = 'Alice';
+  const isAnonymous = false;
 
   setUp(() {
     presenceRepository = MockIPresenceRepository();
@@ -39,6 +40,7 @@ void main() {
       roomId: roomId,
       userId: userId,
       username: username,
+      isAnonymous: isAnonymous,
     );
 
     test('should delegate to IPresenceRepository.setPresence with the unpacked '
@@ -48,6 +50,7 @@ void main() {
           roomId: any(named: 'roomId'),
           userId: any(named: 'userId'),
           username: any(named: 'username'),
+          isAnonymous: any(named: 'isAnonymous'),
         ),
       ).thenAnswer((_) async => const Right(null));
 
@@ -58,6 +61,7 @@ void main() {
           roomId: roomId,
           userId: userId,
           username: username,
+          isAnonymous: isAnonymous,
         ),
       ).called(1);
     });
@@ -70,6 +74,7 @@ void main() {
             roomId: any(named: 'roomId'),
             userId: any(named: 'userId'),
             username: any(named: 'username'),
+            isAnonymous: any(named: 'isAnonymous'),
           ),
         ).thenAnswer(
           (_) async => const Left(Failure.firebase(message: 'write failed')),

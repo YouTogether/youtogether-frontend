@@ -25,6 +25,9 @@ import 'package:youtogether/features/room/presentation/pages/room_detail_view.da
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
+import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/presence_cubit.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/presence_state.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockRoomDetailCubit extends MockCubit<RoomDetailState>
@@ -40,6 +43,9 @@ class MockLeaveRoomCubit extends MockCubit<LeaveRoomState>
     implements LeaveRoomCubit {}
 
 class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
+
+class MockPresenceCubit extends MockCubit<PresenceState>
+    implements PresenceCubit {}
 
 /// Stub for the [VideoSyncBloc] `RoomDetailView` now reads via
 /// `RoomVideoSection` (F-V04).
@@ -82,6 +88,7 @@ void main() {
   late MockLeaveRoomCubit leaveRoomCubit;
   late MockAuthBloc authBloc;
   late MockVideoSyncBloc videoSyncBloc;
+  late MockPresenceCubit presenceCubit;
 
   final ownerUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -122,6 +129,12 @@ void main() {
         isPlaying: false,
       ),
     );
+    presenceCubit = MockPresenceCubit();
+    whenListen(
+      presenceCubit,
+      const Stream<PresenceState>.empty(),
+      initialState: const PresenceState.loaded(<PresenceEntity>[]),
+    );
   });
 
   Widget wrap(RoomDetailState roomState, AuthState authState) {
@@ -159,6 +172,7 @@ void main() {
         BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
         BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
         BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
+        BlocProvider<PresenceCubit>.value(value: presenceCubit),
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(
@@ -466,6 +480,7 @@ void main() {
               BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
               BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
               BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
+              BlocProvider<PresenceCubit>.value(value: presenceCubit),
             ],
             child: MaterialApp.router(
               routerConfig: GoRouter(
@@ -591,6 +606,7 @@ void main() {
               BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
               BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
               BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
+              BlocProvider<PresenceCubit>.value(value: presenceCubit),
             ],
             child: MaterialApp.router(
               routerConfig: GoRouter(
@@ -706,6 +722,7 @@ void main() {
             BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
             BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
             BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
+            BlocProvider<PresenceCubit>.value(value: presenceCubit),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -764,6 +781,7 @@ void main() {
             BlocProvider<JoinRoomCubit>.value(value: joinRoomCubit),
             BlocProvider<LeaveRoomCubit>.value(value: leaveRoomCubit),
             BlocProvider<VideoSyncBloc>.value(value: videoSyncBloc),
+            BlocProvider<PresenceCubit>.value(value: presenceCubit),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

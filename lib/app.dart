@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:youtogether/features/video_sync/data/repositories/presence_repository_impl.dart';
-import 'package:youtogether/features/video_sync/data/repositories/sync_barrier_repository_impl.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/increment_ready_count_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/remove_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_all_ready_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/set_presence_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 
 import 'l10n/generated/app_localizations.dart';
@@ -71,8 +78,15 @@ class _AppState extends State<App> {
       getCurrentPlaybackStateUseCase: sl<GetCurrentPlaybackStateUseCase>(),
       subscribeToPlaybackStateUseCase: sl<SubscribeToPlaybackStateUseCase>(),
       updatePlaybackStateUseCase: sl<UpdatePlaybackStateUseCase>(),
-      syncBarrierRepository: sl<SyncBarrierRepositoryImpl>(),
-      presenceRepository: sl<PresenceRepositoryImpl>(),
+      createSyncBarrierUseCase: sl<CreateSyncBarrierUseCase>(),
+      subscribeToSyncBarrierUseCase: sl<SubscribeToSyncBarrierUseCase>(),
+      incrementReadyCountUseCase: sl<IncrementReadyCountUseCase>(),
+      updateBarrierTotalCountUseCase: sl<UpdateBarrierTotalCountUseCase>(),
+      setAllReadyUseCase: sl<SetAllReadyUseCase>(),
+      deleteSyncBarrierUseCase: sl<DeleteSyncBarrierUseCase>(),
+      setPresenceUseCase: sl<SetPresenceUseCase>(),
+      removePresenceUseCase: sl<RemovePresenceUseCase>(),
+      subscribeToPresenceUseCase: sl<SubscribeToPresenceUseCase>(),
     );
   }
 

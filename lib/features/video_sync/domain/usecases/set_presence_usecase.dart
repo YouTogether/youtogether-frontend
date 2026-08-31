@@ -31,6 +31,7 @@ class SetPresenceUseCase extends UseCase<void, SetPresenceParams> {
       roomId: params.roomId,
       userId: params.userId,
       username: params.username,
+      isAnonymous: params.isAnonymous,
     );
   }
 }

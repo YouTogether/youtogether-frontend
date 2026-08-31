@@ -70,6 +70,7 @@ void main() {
         roomId: roomId,
         userId: userId,
         username: 'Alice',
+        isAnonymous: false,
       );
 
       expect(callOrder, ['onDisconnect.update', 'set']);
@@ -85,6 +86,7 @@ void main() {
           roomId: roomId,
           userId: userId,
           username: 'Alice',
+          isAnonymous: false,
         );
 
         final captured =
@@ -104,6 +106,7 @@ void main() {
           roomId: roomId,
           userId: userId,
           username: 'Alice',
+          isAnonymous: false,
         );
 
         final captured =
@@ -125,6 +128,7 @@ void main() {
           roomId: roomId,
           userId: userId,
           username: 'Alice',
+          isAnonymous: false,
         ),
         throwsA(isA<FirebaseException>()),
       );

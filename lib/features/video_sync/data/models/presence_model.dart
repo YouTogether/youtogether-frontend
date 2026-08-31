@@ -31,6 +31,7 @@ sealed class PresenceModel with _$PresenceModel {
     required String userId,
     required String username,
     required bool isOnline,
+    required bool isAnonymous,
     required DateTime lastSeen,
   }) = _PresenceModel;
 
@@ -47,6 +48,11 @@ sealed class PresenceModel with _$PresenceModel {
       userId: userId,
       username: json['username'] as String,
       isOnline: json['is_online'] as bool,
+      // Defaults to `false` rather than being required: presence nodes
+      // written before this field existed carry no `is_anonymous` key,
+      // and every one of those was written by an authenticated client
+      // (anonymous join did not exist yet).
+      isAnonymous: (json['is_anonymous'] as bool?) ?? false,
       lastSeen: DateTime.fromMillisecondsSinceEpoch(
         json['last_seen'] as int,
         isUtc: true,
@@ -63,6 +69,7 @@ sealed class PresenceModel with _$PresenceModel {
     return {
       'username': username,
       'is_online': isOnline,
+      'is_anonymous': isAnonymous,
       'last_seen': lastSeen.millisecondsSinceEpoch,
     };
   }
@@ -73,6 +80,7 @@ sealed class PresenceModel with _$PresenceModel {
       userId: userId,
       username: username,
       isOnline: isOnline,
+      isAnonymous: isAnonymous,
       lastSeen: lastSeen,
     );
   }

@@ -7,9 +7,16 @@ import '../../../../core/error/failures.dart';
 import '../../domain/entities/presence_entity.dart';
 import '../../domain/entities/sync_barrier_entity.dart';
 import '../../domain/entities/video_session_entity.dart';
-import '../../domain/repositories/i_presence_repository.dart';
-import '../../domain/repositories/i_sync_barrier_repository.dart';
 import '../../domain/services/sync_engine.dart';
+import '../../domain/usecases/create_sync_barrier_params.dart';
+import '../../domain/usecases/create_sync_barrier_usecase.dart';
+import '../../domain/usecases/delete_sync_barrier_usecase.dart';
+import '../../domain/usecases/increment_ready_count_usecase.dart';
+import '../../domain/usecases/set_all_ready_usecase.dart';
+import '../../domain/usecases/subscribe_to_presence_usecase.dart';
+import '../../domain/usecases/subscribe_to_sync_barrier_usecase.dart';
+import '../../domain/usecases/update_barrier_total_count_params.dart';
+import '../../domain/usecases/update_barrier_total_count_usecase.dart';
 import '../../domain/value_objects/ready_gate_result.dart';
 import '../../domain/usecases/get_current_playback_state_usecase.dart';
 import '../../domain/usecases/get_video_session_usecase.dart';
@@ -79,8 +86,13 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
     required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
     required UpdatePlaybackStateUseCase updatePlaybackStateUseCase,
-    required ISyncBarrierRepository syncBarrierRepository,
-    required IPresenceRepository presenceRepository,
+    required CreateSyncBarrierUseCase createSyncBarrierUseCase,
+    required SubscribeToSyncBarrierUseCase subscribeToSyncBarrierUseCase,
+    required IncrementReadyCountUseCase incrementReadyCountUseCase,
+    required UpdateBarrierTotalCountUseCase updateBarrierTotalCountUseCase,
+    required SetAllReadyUseCase setAllReadyUseCase,
+    required DeleteSyncBarrierUseCase deleteSyncBarrierUseCase,
+    required SubscribeToPresenceUseCase subscribeToPresenceUseCase,
     SyncEngine? syncEngine,
   }) : _roomId = roomId,
        _currentUserId = currentUserId,
@@ -88,8 +100,13 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
        _getCurrentPlaybackStateUseCase = getCurrentPlaybackStateUseCase,
        _subscribeToPlaybackStateUseCase = subscribeToPlaybackStateUseCase,
        _updatePlaybackStateUseCase = updatePlaybackStateUseCase,
-       _syncBarrierRepository = syncBarrierRepository,
-       _presenceRepository = presenceRepository,
+       _createSyncBarrierUseCase = createSyncBarrierUseCase,
+       _subscribeToSyncBarrierUseCase = subscribeToSyncBarrierUseCase,
+       _incrementReadyCountUseCase = incrementReadyCountUseCase,
+       _updateBarrierTotalCountUseCase = updateBarrierTotalCountUseCase,
+       _setAllReadyUseCase = setAllReadyUseCase,
+       _deleteSyncBarrierUseCase = deleteSyncBarrierUseCase,
+       _subscribeToPresenceUseCase = subscribeToPresenceUseCase,
        _syncEngine = syncEngine ?? SyncEngine(),
        super(const VideoSyncState.initial()) {
     on<VideoSyncSessionJoined>(_onSessionJoined);
@@ -112,8 +129,13 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   final GetCurrentPlaybackStateUseCase _getCurrentPlaybackStateUseCase;
   final SubscribeToPlaybackStateUseCase _subscribeToPlaybackStateUseCase;
   final UpdatePlaybackStateUseCase _updatePlaybackStateUseCase;
-  final ISyncBarrierRepository _syncBarrierRepository;
-  final IPresenceRepository _presenceRepository;
+  final CreateSyncBarrierUseCase _createSyncBarrierUseCase;
+  final SubscribeToSyncBarrierUseCase _subscribeToSyncBarrierUseCase;
+  final IncrementReadyCountUseCase _incrementReadyCountUseCase;
+  final UpdateBarrierTotalCountUseCase _updateBarrierTotalCountUseCase;
+  final SetAllReadyUseCase _setAllReadyUseCase;
+  final DeleteSyncBarrierUseCase _deleteSyncBarrierUseCase;
+  final SubscribeToPresenceUseCase _subscribeToPresenceUseCase;
   final SyncEngine _syncEngine;
 
   bool _isLeader = false;
@@ -353,19 +375,19 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   Future<void> _startReadyGate(Emitter<VideoSyncState> emit) async {
     final target = _currentPosition;
 
-    final firstPresence = await _presenceRepository
-        .subscribeToPresence(roomId: _roomId)
-        .first;
+    final firstPresence = await _subscribeToPresenceUseCase(_roomId).first;
     if (firstPresence.isLeft) {
       emit(VideoSyncState.failure(firstPresence.left));
       return;
     }
     final totalCount = firstPresence.right.where((p) => p.isOnline).length;
 
-    final created = await _syncBarrierRepository.createBarrier(
-      roomId: _roomId,
-      targetTimestamp: target,
-      totalCount: totalCount,
+    final created = await _createSyncBarrierUseCase(
+      CreateSyncBarrierParams(
+        roomId: _roomId,
+        targetTimestamp: target,
+        totalCount: totalCount,
+      ),
     );
     if (created.isLeft) {
       emit(VideoSyncState.failure(created.left));
@@ -376,22 +398,22 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     emit(VideoSyncState.barrierWaiting(readyCount: 0, totalCount: totalCount));
 
     await _barrierSubscription?.cancel();
-    _barrierSubscription = _syncBarrierRepository
-        .subscribeToBarrier(roomId: _roomId)
-        .listen((result) => add(VideoSyncEvent.barrierUpdated(result)));
+    _barrierSubscription = _subscribeToSyncBarrierUseCase(
+      _roomId,
+    ).listen((result) => add(VideoSyncEvent.barrierUpdated(result)));
 
     await _presenceSubscription?.cancel();
-    _presenceSubscription = _presenceRepository
-        .subscribeToPresence(roomId: _roomId)
-        .listen((result) {
-          if (result.isRight) {
-            add(
-              VideoSyncEvent.presenceCountUpdated(
-                result.right.where((p) => p.isOnline).length,
-              ),
-            );
-          }
-        });
+    _presenceSubscription = _subscribeToPresenceUseCase(_roomId).listen((
+      result,
+    ) {
+      if (result.isRight) {
+        add(
+          VideoSyncEvent.presenceCountUpdated(
+            result.right.where((p) => p.isOnline).length,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _onBarrierUpdated(
@@ -424,7 +446,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
         // viewer's own live subscription reacts to. Ordering matters:
         // the barrier is deleted first so a late-arriving barrier event
         // cannot re-trigger this branch after the write.
-        await _syncBarrierRepository.deleteBarrier(roomId: _roomId);
+        await _deleteSyncBarrierUseCase(_roomId);
         await _updatePlaybackStateUseCase(
           UpdatePlaybackStateParams(
             roomId: _roomId,
@@ -460,7 +482,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     // away. `VideoSyncEvent.forceStartRequested` is the leader's own
     // opt-in.
     if (gate == ReadyGateResult.allReady) {
-      await _syncBarrierRepository.setAllReady(roomId: _roomId);
+      await _setAllReadyUseCase(_roomId);
     }
   }
 
@@ -472,9 +494,11 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     // actually open.
     if (!_isLeader || _barrierCreatedAt == null) return;
 
-    await _syncBarrierRepository.updateTotalCount(
-      roomId: _roomId,
-      totalCount: event.onlineCount,
+    await _updateBarrierTotalCountUseCase(
+      UpdateBarrierTotalCountParams(
+        roomId: _roomId,
+        totalCount: event.onlineCount,
+      ),
     );
   }
 
@@ -487,7 +511,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     // leader-gated.
     if (_barrierCreatedAt == null && state is! VideoSyncBarrierWaiting) return;
 
-    await _syncBarrierRepository.incrementReadyCount(roomId: _roomId);
+    await _incrementReadyCountUseCase(_roomId);
   }
 
   Future<void> _onForceStartRequested(
@@ -496,7 +520,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   ) async {
     if (!_isLeader) return;
 
-    await _syncBarrierRepository.setAllReady(roomId: _roomId);
+    await _setAllReadyUseCase(_roomId);
   }
 
   Future<void> _onPauseRequested(
