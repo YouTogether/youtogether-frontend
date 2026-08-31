@@ -2,6 +2,8 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:either_dart/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:youtogether/features/room/domain/entities/room_entity.dart';
+import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
 
 import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/sync_barrier_entity.dart';
@@ -24,6 +26,8 @@ import 'package:youtogether/features/video_sync/domain/usecases/update_playback_
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
+
+class MockGetRoomByIdUseCase extends Mock implements GetRoomByIdUseCase {}
 
 class MockGetVideoSessionUseCase extends Mock
     implements GetVideoSessionUseCase {}
@@ -70,6 +74,7 @@ class MockSubscribeToPresenceUseCase extends Mock
 /// @competency Test scenarios T05, T06 (ready gate resolution and
 ///   timeout), VS-ADS-01.
 void main() {
+  late MockGetRoomByIdUseCase getRoomByIdUseCase;
   late MockGetVideoSessionUseCase getVideoSessionUseCase;
   late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
@@ -85,6 +90,17 @@ void main() {
   const roomId = '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
   const leaderId = '550e8400-e29b-41d4-a716-446655440000';
   const viewerId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+  final room = RoomEntity(
+    id: roomId,
+    name: 'Friday Movie Night',
+    description: 'Weekly watch party',
+    ownerId: leaderId,
+    isPublic: true,
+    memberCount: 2,
+    createdAt: DateTime.utc(2026, 1, 1),
+    updatedAt: DateTime.utc(2026, 1, 1),
+  );
 
   final metadata = VideoSessionMetadataEntity(
     id: 'session-uuid',
@@ -140,6 +156,7 @@ void main() {
   });
 
   setUp(() {
+    getRoomByIdUseCase = MockGetRoomByIdUseCase();
     getVideoSessionUseCase = MockGetVideoSessionUseCase();
     getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
     subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
@@ -152,6 +169,7 @@ void main() {
     deleteSyncBarrierUseCase = MockDeleteSyncBarrierUseCase();
     subscribeToPresenceUseCase = MockSubscribeToPresenceUseCase();
 
+    when(() => getRoomByIdUseCase(roomId)).thenAnswer((_) async => Right(room));
     when(
       () => getVideoSessionUseCase(roomId),
     ).thenAnswer((_) async => Right(metadata));
@@ -190,6 +208,7 @@ void main() {
   VideoSyncBloc buildBloc({required String currentUserId}) => VideoSyncBloc(
     roomId: roomId,
     currentUserId: currentUserId,
+    getRoomByIdUseCase: getRoomByIdUseCase,
     getVideoSessionUseCase: getVideoSessionUseCase,
     getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
     subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
