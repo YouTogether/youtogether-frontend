@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/features/room/domain/entities/room_entity.dart';
+import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_metadata_entity.dart';
@@ -24,6 +26,8 @@ import 'package:youtogether/features/video_sync/domain/usecases/update_playback_
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
+
+class MockGetRoomByIdUseCase extends Mock implements GetRoomByIdUseCase {}
 
 class MockGetVideoSessionUseCase extends Mock
     implements GetVideoSessionUseCase {}
@@ -71,6 +75,7 @@ class MockSubscribeToPresenceUseCase extends Mock
 /// @competency Unit test harness, TDD cycle.
 /// @competency Test scenarios VS-SYN-01 through VS-SYN-06.
 void main() {
+  late MockGetRoomByIdUseCase getRoomByIdUseCase;
   late MockGetVideoSessionUseCase getVideoSessionUseCase;
   late MockGetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase;
   late MockSubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase;
@@ -87,6 +92,17 @@ void main() {
   const leaderId = '550e8400-e29b-41d4-a716-446655440000';
   const viewerId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
+  final room = RoomEntity(
+    id: roomId,
+    name: 'Friday Movie Night',
+    description: 'Weekly watch party',
+    ownerId: leaderId,
+    isPublic: true,
+    memberCount: 2,
+    createdAt: DateTime.utc(2026, 1, 1),
+    updatedAt: DateTime.utc(2026, 1, 1),
+  );
+
   final metadata = VideoSessionMetadataEntity(
     id: 'session-uuid',
     roomId: roomId,
@@ -101,6 +117,7 @@ void main() {
   VideoSessionEntity buildSession({
     required bool isPlaying,
     Duration position = const Duration(seconds: 42),
+    String leaderId = leaderId,
   }) {
     return VideoSessionEntity(
       roomId: roomId,
@@ -134,6 +151,7 @@ void main() {
   });
 
   setUp(() {
+    getRoomByIdUseCase = MockGetRoomByIdUseCase();
     getVideoSessionUseCase = MockGetVideoSessionUseCase();
     getCurrentPlaybackStateUseCase = MockGetCurrentPlaybackStateUseCase();
     subscribeToPlaybackStateUseCase = MockSubscribeToPlaybackStateUseCase();
@@ -146,6 +164,7 @@ void main() {
     deleteSyncBarrierUseCase = MockDeleteSyncBarrierUseCase();
     subscribeToPresenceUseCase = MockSubscribeToPresenceUseCase();
 
+    when(() => getRoomByIdUseCase(roomId)).thenAnswer((_) async => Right(room));
     when(
       () => subscribeToPresenceUseCase(any()),
     ).thenAnswer((_) => const Stream.empty());
@@ -173,6 +192,7 @@ void main() {
     return VideoSyncBloc(
       roomId: roomId,
       currentUserId: currentUserId,
+      getRoomByIdUseCase: getRoomByIdUseCase,
       getVideoSessionUseCase: getVideoSessionUseCase,
       getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
       subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
@@ -564,6 +584,105 @@ void main() {
       build: () => buildBloc(currentUserId: leaderId),
       act: (bloc) => bloc.add(const VideoSyncEvent.adEnded()),
       expect: () => <VideoSyncState>[],
+    );
+  });
+
+  /// Regression tests for F-V06-T4.
+  ///
+  /// Before this ticket, `isLeader` was derived from Firebase's
+  /// `leader_id`, read by `GetCurrentPlaybackStateUseCase`. That node
+  /// does not exist until a video session has been created, so the room
+  /// owner was denied leader privileges in exactly the situation where
+  /// they are needed — creating the first session (F-V06-T3).
+  ///
+  /// @competency Unit test harness, TDD cycle.
+  /// @competency Test scenarios VS-LED-01, VS-LED-02, VS-LED-03.
+  group('leader derivation from room ownership (F-V06-T4)', () {
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'grants leader privileges to the room owner even when the room has no '
+      'video session yet (VS-LED-01)',
+      build: () {
+        when(
+          () => getVideoSessionUseCase(roomId),
+        ).thenAnswer((_) async => const Left(Failure.notFound()));
+        return buildBloc(currentUserId: leaderId);
+      },
+      act: (bloc) => bloc.add(const VideoSyncEvent.sessionJoined()),
+      expect: () => [
+        const VideoSyncState.loading(),
+        const VideoSyncState.failure(Failure.notFound()),
+      ],
+      verify: (bloc) {
+        expect(bloc.isLeader, isTrue);
+        verifyNever(() => getCurrentPlaybackStateUseCase(any()));
+      },
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'prefers room ownership over a disagreeing Firebase leader_id '
+      '(VS-LED-02)',
+      build: () {
+        when(
+          () => getVideoSessionUseCase(roomId),
+        ).thenAnswer((_) async => Right(metadata));
+        when(() => getCurrentPlaybackStateUseCase(roomId)).thenAnswer(
+          (_) async =>
+              Right(buildSession(isPlaying: false, leaderId: viewerId)),
+        );
+        when(
+          () => subscribeToPlaybackStateUseCase(roomId),
+        ).thenAnswer((_) => const Stream.empty());
+        return buildBloc(currentUserId: leaderId);
+      },
+      act: (bloc) => bloc.add(const VideoSyncEvent.sessionJoined()),
+      verify: (bloc) => expect(bloc.isLeader, isTrue),
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'denies leader privileges to a non-owner whose id matches a stale '
+      'Firebase leader_id — no write is attempted (VS-LED-02, VS-SYN-05)',
+      build: () {
+        when(
+          () => getVideoSessionUseCase(roomId),
+        ).thenAnswer((_) async => Right(metadata));
+        when(() => getCurrentPlaybackStateUseCase(roomId)).thenAnswer(
+          (_) async => Right(buildSession(isPlaying: true, leaderId: viewerId)),
+        );
+        when(
+          () => subscribeToPlaybackStateUseCase(roomId),
+        ).thenAnswer((_) => const Stream.empty());
+        return buildBloc(currentUserId: viewerId);
+      },
+      act: (bloc) async {
+        bloc.add(const VideoSyncEvent.sessionJoined());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const VideoSyncEvent.pauseRequested());
+      },
+      verify: (bloc) {
+        expect(bloc.isLeader, isFalse);
+        verifyNever(() => updatePlaybackStateUseCase(any()));
+      },
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'emits failure and grants nothing when the room fetch itself fails '
+      '(VS-LED-03)',
+      build: () {
+        when(
+          () => getRoomByIdUseCase(roomId),
+        ).thenAnswer((_) async => const Left(Failure.notFound()));
+        return buildBloc(currentUserId: leaderId);
+      },
+      act: (bloc) => bloc.add(const VideoSyncEvent.sessionJoined()),
+      expect: () => [
+        const VideoSyncState.loading(),
+        const VideoSyncState.failure(Failure.notFound()),
+      ],
+      verify: (bloc) {
+        expect(bloc.isLeader, isFalse);
+        verifyNever(() => getVideoSessionUseCase(any()));
+        verifyNever(() => getCurrentPlaybackStateUseCase(any()));
+      },
     );
   });
 }
