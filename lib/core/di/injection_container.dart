@@ -225,30 +225,30 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
 
   // Data sources
   sl.registerLazySingleton<IVideoSyncRemoteDataSource>(
-        () => VideoSyncRemoteDataSourceImpl(database: sl()),
+    () => VideoSyncRemoteDataSourceImpl(database: sl()),
   );
   sl.registerLazySingleton<IPresenceRemoteDataSource>(
-        () => PresenceRemoteDataSourceImpl(database: sl()),
+    () => PresenceRemoteDataSourceImpl(database: sl()),
   );
   sl.registerLazySingleton<ISyncBarrierRemoteDataSource>(
-        () => SyncBarrierRemoteDataSourceImpl(database: sl()),
+    () => SyncBarrierRemoteDataSourceImpl(database: sl()),
   );
   sl.registerLazySingleton<IVideoSessionRemoteDataSource>(
-        () => VideoSessionRemoteDataSourceImpl(sl()),
+    () => VideoSessionRemoteDataSourceImpl(sl()),
   );
 
   // Repositories
   sl.registerLazySingleton<IVideoSyncRepository>(
-        () => VideoSyncRepositoryImpl(remoteDataSource: sl()),
+    () => VideoSyncRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<IPresenceRepository>(
-        () => PresenceRepositoryImpl(remoteDataSource: sl()),
+    () => PresenceRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<ISyncBarrierRepository>(
-        () => SyncBarrierRepositoryImpl(remoteDataSource: sl()),
+    () => SyncBarrierRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<IVideoSessionRepository>(
-        () => VideoSessionRepositoryImpl(remoteDataSource: sl()),
+    () => VideoSessionRepositoryImpl(remoteDataSource: sl()),
   );
 
   // Use cases — video session metadata (B-V02)

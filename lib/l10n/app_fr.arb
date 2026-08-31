@@ -21,7 +21,7 @@
   "profileRoleRegistered": "Inscrit",
   "profileRoleGuest": "Invité",
   "profileLogoutButton": "Se déconnecter",
-  "homeEmptyStateMessage": "Aucune salon publique disponible pour le moment. Soyez le premier à en créer une !",
+  "homeEmptyStateMessage": "Aucun salon public disponible pour le moment. Soyez le premier à en créer un !",
   "homeErrorMessage": "Impossible de charger les salons. Veuillez réessayer.",
   "homeRoomCardMemberCount": "{count, plural, =0{Aucun membre} =1{1 membre} other{{count} membres}}",
   "@homeRoomCardMemberCount": {
@@ -31,10 +31,10 @@
       }
     }
   },
-  "createRoomPageTitle": "Créer une salon",
+  "createRoomPageTitle": "Créer un salon",
   "createRoomIsPublicLabel": "Room publique",
   "createRoomSubmitButtonLabel": "Créer la salon",
-  "createRoomAuthErrorMessage": "Vous devez être connecté pour créer une salon.",
+  "createRoomAuthErrorMessage": "Vous devez être connecté pour créer un salon.",
   "salonDetailOwnerBadgeLabel": "Propriétaire",
   "roomDetailErrorMessage": "Impossible de charger cette salon. Veuillez réessayer.",
   "roomDetailBackButtonTooltip": "Retour à la liste des salons",
@@ -76,7 +76,7 @@
   "commonBackToHomeTooltip": "Retour à l’accueil",
   "commonLoadingLabel": "Chargement",
   "homeProfileButtonTooltip": "Votre profil",
-  "homeCreateRoomButtonTooltip": "Créer une salon",
+  "homeCreateRoomButtonTooltip": "Créer un salon",
   "homeRoomCardJoiningLabel": "Connexion à {roomName}",
   "roomNameFieldLabel": "Nom de la salon",
   "roomDescriptionFieldLabel": "Description (facultative)",
