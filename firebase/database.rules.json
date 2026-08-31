@@ -1,0 +1,66 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$roomId": {
+        "playback_state": {
+          ".read": "auth != null",
+          ".write": "data.child('leader_id').val() === auth.uid",
+          ".validate": "newData.hasChildren(['youtube_video_id', 'is_playing', 'timestamp_seconds', 'last_updated_at', 'leader_id'])",
+          "youtube_video_id": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{11}$/)"
+          },
+          "is_playing": { ".validate": "newData.isBoolean()" },
+          "timestamp_seconds": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "last_updated_at": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "leader_id": {
+            ".validate": "newData.isString() && newData.val().length <= 36"
+          },
+          "$other": { ".validate": false }
+        },
+
+        "presence": {
+          ".read": "auth != null",
+          "$userId": {
+            ".write": "auth != null && auth.uid === $userId",
+            ".validate": "newData.hasChildren(['username', 'is_online', 'last_seen'])",
+            "username": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50"
+            },
+            "is_online": { ".validate": "newData.isBoolean()" },
+            "is_anonymous": { ".validate": "newData.isBoolean()" },
+            "last_seen": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
+            },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "sync_barrier": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.hasChildren(['target_timestamp', 'ready_count', 'total_count', 'all_ready'])",
+          "target_timestamp": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "ready_count": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "total_count": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "all_ready": { ".validate": "newData.isBoolean()" },
+          "$other": { ".validate": false }
+        },
+
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
