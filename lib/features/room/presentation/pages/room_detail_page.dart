@@ -128,6 +128,7 @@ class RoomDetailPage extends StatelessWidget {
           create: (_) => VideoSyncBloc(
             roomId: roomId,
             currentUserId: currentUserId,
+            getRoomByIdUseCase: getRoomByIdUseCase,
             getVideoSessionUseCase: getVideoSessionUseCase,
             getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
             subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,

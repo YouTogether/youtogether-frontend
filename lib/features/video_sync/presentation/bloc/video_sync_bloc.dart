@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:either_dart/either.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/presence_entity.dart';
@@ -35,33 +36,36 @@ import 'video_sync_state.dart';
 /// `RoomDetailPage` visit rather than registered as an app-wide
 /// singleton.
 ///
-/// ## Construction-time context (revised, F-V03-T2)
+/// ## Construction-time context
 /// [roomId] and [currentUserId] are fixed for this bloc's whole
 /// lifetime. Unlike the revision of this file, `isLeader` and
 /// `durationSeconds` are **no longer constructor parameters** — they
 /// are populated by [_onSessionJoined], derived from
-/// [GetVideoSessionUseCase] (`durationSeconds`, from PostgreSQL via
-/// `B-V02`) and [GetCurrentPlaybackStateUseCase] (`leaderId`, from
+/// [GetVideoSessionUseCase] (`durationSeconds`, from PostgreSQL
+/// and [GetCurrentPlaybackStateUseCase] (`leaderId`, from
 /// Firebase, compared against [currentUserId]). This closes the gap
 /// flagged when first shipped `LeaderControls`/`VideoSyncBloc`
 /// with no use case to supply that data.
 ///
 /// ## sessionJoined sequencing
-/// [_onSessionJoined] runs three steps in strict order:
-/// 1. [GetVideoSessionUseCase] — the room's cached metadata
+/// [_performSessionJoin] runs four steps in strict order:
+/// 1. [GetRoomByIdUseCase] — the room's `ownerId`, the sole source of
+///    truth for `isLeader`. See that field's own doc comment for why
+///    this step runs first and why it does not read Firebase's
+///    `leader_id`.
+/// 2. [GetVideoSessionUseCase] — the room's cached metadata
 ///    (`durationSeconds`, needed by every seek validated against
 ///    [PlaybackTimestamp]).
-/// 2. [GetCurrentPlaybackStateUseCase] — a single Firebase read,
+/// 3. [GetCurrentPlaybackStateUseCase] — a single Firebase read,
 ///    settling the bloc into [VideoSyncState.ready] with the position/
-///    isPlaying the player should seek to on first paint, and deriving
-///    `isLeader`.
-/// 3. [SubscribeToPlaybackStateUseCase] — opens the live subscription
-///    for ongoing updates, forwarded internally as
-///    `VideoSyncEvent.sessionUpdated`.
+///    isPlaying the player should seek to on first paint.
+/// 4. [SubscribeToPlaybackStateUseCase] — opens the live subscription.
 ///
-/// A metadata or initial-fetch failure short-circuits the sequence
-/// (steps 2/3, or 3, never run) and emits [VideoSyncState.failure]
-/// directly.
+/// Firebase's `leader_id` is retained on the node, but is no longer
+/// read by this bloc: it exists so that the Realtime Database security
+/// rules can compare it against `auth.uid` server-side. Client
+/// gating and server enforcement therefore agree by construction, since
+/// the backend writes `leader_id` from the same `ownerId`.
 ///
 /// ## Disconnect handling
 /// A `Left(FirebaseFailure)` value forwarded via `sessionUpdated` (the
@@ -82,6 +86,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   VideoSyncBloc({
     required String roomId,
     required String currentUserId,
+    required GetRoomByIdUseCase getRoomByIdUseCase,
     required GetVideoSessionUseCase getVideoSessionUseCase,
     required GetCurrentPlaybackStateUseCase getCurrentPlaybackStateUseCase,
     required SubscribeToPlaybackStateUseCase subscribeToPlaybackStateUseCase,
@@ -96,6 +101,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     SyncEngine? syncEngine,
   }) : _roomId = roomId,
        _currentUserId = currentUserId,
+       _getRoomByIdUseCase = getRoomByIdUseCase,
        _getVideoSessionUseCase = getVideoSessionUseCase,
        _getCurrentPlaybackStateUseCase = getCurrentPlaybackStateUseCase,
        _subscribeToPlaybackStateUseCase = subscribeToPlaybackStateUseCase,
@@ -125,6 +131,18 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
 
   final String _roomId;
   final String _currentUserId;
+
+  /// Resolves this room's `ownerId`, the sole source of truth for
+  /// [isLeader].
+  ///
+  /// A cross-bounded-context dependency (Video Synchronisation's
+  /// presentation layer on Room's domain layer), deliberately: the
+  /// leader *is* the room owner and the role is not transferable in the
+  /// MVP (`YouTogether_DataModel.docx`, §7.3), so duplicating an
+  /// ownership query inside this context's own domain would create a
+  /// second definition of a single concept. The dependency is on a use
+  /// case, never on `IRoomRepository`, so the layering rule holds.
+  final GetRoomByIdUseCase _getRoomByIdUseCase;
   final GetVideoSessionUseCase _getVideoSessionUseCase;
   final GetCurrentPlaybackStateUseCase _getCurrentPlaybackStateUseCase;
   final SubscribeToPlaybackStateUseCase _subscribeToPlaybackStateUseCase;
@@ -243,6 +261,13 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   Future<void> _performSessionJoin(Emitter<VideoSyncState> emit) async {
     emit(const VideoSyncState.loading());
 
+    final roomResult = await _getRoomByIdUseCase(_roomId);
+    if (roomResult.isLeft) {
+      emit(VideoSyncState.failure(roomResult.left));
+      return;
+    }
+    _isLeader = roomResult.right.ownerId == _currentUserId;
+
     final metadataResult = await _getVideoSessionUseCase(_roomId);
     if (metadataResult.isLeft) {
       emit(VideoSyncState.failure(metadataResult.left));
@@ -256,7 +281,6 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
       return;
     }
     final initialSession = initialStateResult.right;
-    _isLeader = initialSession.leaderId == _currentUserId;
     _youtubeVideoId = initialSession.youtubeVideoId;
 
     emit(

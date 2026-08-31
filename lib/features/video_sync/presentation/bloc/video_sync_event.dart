@@ -22,7 +22,7 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
   /// metadata (`GetVideoSessionUseCase`, `durationSeconds`), then the
   /// current Firebase playback state (`GetCurrentPlaybackStateUseCase`),
   /// derives `isLeader` by comparing the fetched `leaderId` to
-  /// [currentUserId], and opens the live subscription
+  /// [ownerId], and opens the live subscription
   /// (`SubscribeToPlaybackStateUseCase`). See
   /// `VideoSyncBloc._onSessionJoined`'s own doc comment for the full
   /// sequencing.
