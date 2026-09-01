@@ -117,4 +117,169 @@ void main() {
       );
     },
   );
+
+  group('VideoSessionRemoteDataSourceImpl.create', () {
+    setUp(() {
+      registerFallbackValue(<String, dynamic>{});
+    });
+
+    test('should POST /rooms/:id/video-session with the video id as the '
+        'only body field', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => Response(
+          data: buildSuccessBody(),
+          statusCode: 201,
+          requestOptions: requestOptions,
+        ),
+      );
+
+      await dataSource.create(roomId: roomId, youtubeVideoId: 'dQw4w9WgXcQ');
+
+      // The body is asserted exhaustively rather than with
+      // `containsPair`: sending an `addedBy` or `leaderId` field would
+      // be an access-control mistake, and the backend's ValidationPipe
+      // silently strips extras, so only a client-side assertion can
+      // catch it.
+      verify(
+        () => dio.post<Map<String, dynamic>>(
+          '/rooms/$roomId/video-session',
+          data: {'youtubeVideoId': 'dQw4w9WgXcQ'},
+        ),
+      ).called(1);
+    });
+
+    test('should return a VideoSessionMetadataModel parsed from the '
+        'response body on 201', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenAnswer(
+        (_) async => Response(
+          data: buildSuccessBody(),
+          statusCode: 201,
+          requestOptions: requestOptions,
+        ),
+      );
+
+      final result = await dataSource.create(
+        roomId: roomId,
+        youtubeVideoId: 'dQw4w9WgXcQ',
+      );
+
+      expect(result.durationSeconds, 213);
+      expect(result.youtubeVideoId, 'dQw4w9WgXcQ');
+    });
+
+    test('should throw ServerException with statusCode 400 when the backend '
+        'rejects the video id', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: requestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {
+              'statusCode': 400,
+              'message': 'YouTube video "zzzzzzzzzzz" was not found.',
+            },
+            statusCode: 400,
+            requestOptions: requestOptions,
+          ),
+        ),
+      );
+
+      expect(
+        () => dataSource.create(roomId: roomId, youtubeVideoId: 'zzzzzzzzzzz'),
+        throwsA(
+          isA<ServerException>().having(
+            (exception) => exception.statusCode,
+            'statusCode',
+            400,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'should throw ServerException with statusCode 403 for a non-owner',
+      () async {
+        when(
+          () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+        ).thenThrow(
+          DioException(
+            requestOptions: requestOptions,
+            type: DioExceptionType.badResponse,
+            response: Response(
+              data: {'statusCode': 403, 'message': 'Forbidden resource'},
+              statusCode: 403,
+              requestOptions: requestOptions,
+            ),
+          ),
+        );
+
+        expect(
+          () =>
+              dataSource.create(roomId: roomId, youtubeVideoId: 'dQw4w9WgXcQ'),
+          throwsA(
+            isA<ServerException>().having(
+              (exception) => exception.statusCode,
+              'statusCode',
+              403,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('should throw ServerException with statusCode 502 when the realtime '
+        'state could not be written', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: requestOptions,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            data: {
+              'statusCode': 502,
+              'message':
+                  'The realtime playback state could not be initialised: '
+                  'permission_denied',
+            },
+            statusCode: 502,
+            requestOptions: requestOptions,
+          ),
+        ),
+      );
+
+      expect(
+        () => dataSource.create(roomId: roomId, youtubeVideoId: 'dQw4w9WgXcQ'),
+        throwsA(
+          isA<ServerException>().having(
+            (exception) => exception.statusCode,
+            'statusCode',
+            502,
+          ),
+        ),
+      );
+    });
+
+    test('should throw NetworkException on a connection error', () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(any(), data: any(named: 'data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: requestOptions,
+          type: DioExceptionType.connectionError,
+        ),
+      );
+
+      expect(
+        () => dataSource.create(roomId: roomId, youtubeVideoId: 'dQw4w9WgXcQ'),
+        throwsA(isA<NetworkException>()),
+      );
+    });
+  });
 }
