@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../bloc/video_sync_bloc.dart';
 import '../bloc/video_sync_state.dart';
+import 'add_video_form.dart';
 import 'leader_controls.dart';
 import 'online_participants_indicator.dart';
 import 'player_reconciliation.dart';
@@ -83,9 +85,26 @@ class _RoomVideoSectionState extends State<RoomVideoSection> {
 
         // A failure before any session was ever loaded (e.g. the room
         // has no video session yet, `NotFoundFailure` from B-V02) leaves
-        // nothing to render but the banner and its retry action.
+        // nothing to render but the banner — and, for the leader, the
+        // form that resolves exactly that situation.
         if (bloc.youtubeVideoId.isEmpty) {
-          return const SyncStatusBanner();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SyncStatusBanner(),
+              if (bloc.isLeader)
+                const AddVideoForm()
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    AppLocalizations.of(context).videoSyncNoVideoYetMessage,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
+          );
         }
 
         final controller = _controller;

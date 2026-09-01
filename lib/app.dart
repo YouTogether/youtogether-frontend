@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
@@ -87,6 +88,7 @@ class _AppState extends State<App> {
       setPresenceUseCase: sl<SetPresenceUseCase>(),
       removePresenceUseCase: sl<RemovePresenceUseCase>(),
       subscribeToPresenceUseCase: sl<SubscribeToPresenceUseCase>(),
+      createVideoSessionUseCase: sl<CreateVideoSessionUseCase>(),
     );
   }
 

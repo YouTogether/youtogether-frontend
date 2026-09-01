@@ -220,6 +220,15 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   /// completes.
   String get youtubeVideoId => _youtubeVideoId;
 
+  /// This bloc's room id, fixed for its whole lifetime.
+  ///
+  /// Exposed for the same reason as [isLeader], [durationSeconds] and
+  /// [youtubeVideoId]: `AddVideoForm` needs it to build
+  /// `CreateVideoSessionParams`, and threading it through
+  /// `RoomVideoSection` as a constructor parameter would mean changing
+  /// every construction site of a widget that otherwise takes none.
+  String get roomId => _roomId;
+
   Duration get _currentPosition => switch (state) {
     VideoSyncPlaying(:final position) => position,
     VideoSyncPaused(:final position) => position,

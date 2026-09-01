@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_video_session_usecase.dart';
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -18,6 +19,7 @@ import '../../../video_sync/domain/usecases/set_presence_usecase.dart';
 import '../../../video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
 import '../../../video_sync/presentation/bloc/video_sync_bloc.dart';
 import '../../../video_sync/presentation/bloc/video_sync_event.dart';
+import '../../../video_sync/presentation/cubit/add_video_cubit.dart';
 import '../../../video_sync/presentation/cubit/presence_cubit.dart';
 import '../../domain/usecases/delete_room_usecase.dart';
 import '../../domain/usecases/get_room_by_id_usecase.dart';
@@ -71,6 +73,7 @@ class RoomDetailPage extends StatelessWidget {
     required this.setPresenceUseCase,
     required this.removePresenceUseCase,
     required this.subscribeToPresenceUseCase,
+    required this.createVideoSessionUseCase,
     super.key,
   });
 
@@ -94,6 +97,7 @@ class RoomDetailPage extends StatelessWidget {
   final SetPresenceUseCase setPresenceUseCase;
   final RemovePresenceUseCase removePresenceUseCase;
   final SubscribeToPresenceUseCase subscribeToPresenceUseCase;
+  final CreateVideoSessionUseCase createVideoSessionUseCase;
 
   @override
   Widget build(BuildContext context) {
@@ -161,6 +165,9 @@ class RoomDetailPage extends StatelessWidget {
             removePresenceUseCase: removePresenceUseCase,
             subscribeToPresenceUseCase: subscribeToPresenceUseCase,
           )..enterSession(),
+        ),
+        BlocProvider<AddVideoCubit>(
+          create: (_) => AddVideoCubit(createVideoSessionUseCase),
         ),
       ],
       child: RoomDetailView(roomId: roomId),
