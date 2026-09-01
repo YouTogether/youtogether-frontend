@@ -319,5 +319,15 @@
   "commonRetryButtonLabel": "Retry",
   "@commonRetryButtonLabel": {
     "description": "Label of every retry action in the application (home listing, room detail, video sync banner). Consolidated from three byte-identical keys."
-  }
+  },
+  "videoSyncAddVideoTitle": "Add a video",
+  "videoSyncAddVideoFieldLabel": "YouTube link or video id",
+  "videoSyncAddVideoFieldHelper": "Paste the full link, for example https://www.youtube.com/watch?v=...",
+  "videoSyncAddVideoInvalidInputMessage": "This is not a valid YouTube link or video id.",
+  "videoSyncAddVideoSubmitButtonLabel": "Start the session",
+  "videoSyncAddVideoRejectedMessage": "YouTube does not recognise this video. Check the link and try again.",
+  "videoSyncAddVideoUpstreamMessage": "The video could not be added right now. Please try again in a moment.",
+  "videoSyncAddVideoForbiddenMessage": "Only the room owner can add a video.",
+  "videoSyncAddVideoNetworkMessage": "The video could not be added. Check your connection and try again.",
+  "videoSyncNoVideoYetMessage": "The room owner has not added a video yet."
 }
