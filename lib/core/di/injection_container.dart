@@ -14,6 +14,7 @@ import '../../features/auth/domain/usecases/logout_usecase.dart';
 import '../../features/auth/domain/usecases/refresh_token_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/video_sync/domain/usecases/create_video_session_usecase.dart';
 import '../network/auth_interceptor.dart';
 import '../../features/room/data/datasources/i_room_remote_data_source.dart';
 import '../../features/room/data/datasources/room_remote_data_source_impl.dart';
@@ -251,8 +252,9 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
     () => VideoSessionRepositoryImpl(remoteDataSource: sl()),
   );
 
-  // Use cases — video session metadata (B-V02)
+  // Use cases — video session metadata
   sl.registerLazySingleton(() => GetVideoSessionUseCase(sl()));
+  sl.registerLazySingleton(() => CreateVideoSessionUseCase(sl()));
 
   // Use cases — playback state
   sl.registerLazySingleton(() => GetCurrentPlaybackStateUseCase(sl()));
@@ -264,7 +266,7 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   sl.registerLazySingleton(() => RemovePresenceUseCase(sl()));
   sl.registerLazySingleton(() => SubscribeToPresenceUseCase(sl()));
 
-  // Use cases — ready gate (F-V04)
+  // Use cases — ready gate
   sl.registerLazySingleton(() => CreateSyncBarrierUseCase(sl()));
   sl.registerLazySingleton(() => SubscribeToSyncBarrierUseCase(sl()));
   sl.registerLazySingleton(() => IncrementReadyCountUseCase(sl()));
