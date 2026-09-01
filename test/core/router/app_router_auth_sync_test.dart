@@ -23,6 +23,7 @@ import 'package:youtogether/features/room/domain/usecases/join_room_usecase.dart
 import 'package:youtogether/features/room/domain/usecases/leave_room_usecase.dart';
 import 'package:youtogether/features/room/domain/usecases/update_room_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/create_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
@@ -93,6 +94,9 @@ class MockRemovePresenceUseCase extends Mock implements RemovePresenceUseCase {}
 class MockSubscribeToPresenceUseCase extends Mock
     implements SubscribeToPresenceUseCase {}
 
+class MockCreateVideoSessionUseCase extends Mock
+    implements CreateVideoSessionUseCase {}
+
 /// Regression test for the reported bug: following a
 /// successful login (or registration), `HomePage` still appeared as an
 /// unauthenticated/guest view (create button hidden) and `/profile`
@@ -134,6 +138,7 @@ void main() {
   late MockSetPresenceUseCase setPresenceUseCase;
   late MockRemovePresenceUseCase removePresenceUseCase;
   late MockSubscribeToPresenceUseCase subscribeToPresenceUseCase;
+  late MockCreateVideoSessionUseCase createVideoSessionUseCase;
 
   final authenticatedUser = UserEntity(
     id: '550e8400-e29b-41d4-a716-446655440000',
@@ -182,6 +187,7 @@ void main() {
     setPresenceUseCase = MockSetPresenceUseCase();
     removePresenceUseCase = MockRemovePresenceUseCase();
     subscribeToPresenceUseCase = MockSubscribeToPresenceUseCase();
+    createVideoSessionUseCase = MockCreateVideoSessionUseCase();
 
     whenListen(
       authBloc,
@@ -220,6 +226,7 @@ void main() {
       setPresenceUseCase: setPresenceUseCase,
       removePresenceUseCase: removePresenceUseCase,
       subscribeToPresenceUseCase: subscribeToPresenceUseCase,
+      createVideoSessionUseCase: createVideoSessionUseCase,
     );
 
     await tester.pumpWidget(
