@@ -31,6 +31,26 @@ class VideoSessionRemoteDataSourceImpl
     }
   }
 
+  @override
+  Future<VideoSessionMetadataModel> create({
+    required String roomId,
+    required String youtubeVideoId,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/rooms/$roomId/video-session',
+        // Exactly one field. See this method's own doc comment on
+        // [IVideoSessionRemoteDataSource] for why neither the creator
+        // nor the leader is sent from here.
+        data: {'youtubeVideoId': youtubeVideoId},
+      );
+
+      return VideoSessionMetadataModel.fromJson(response.data!);
+    } on DioException catch (exception) {
+      throw _mapDioException(exception);
+    }
+  }
+
   /// Identical mapping strategy to
   /// `RoomRemoteDataSourceImpl._mapDioException` — duplicated here
   /// rather than extracted to a shared utility, consistent with that
