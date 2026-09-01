@@ -43,4 +43,17 @@ class VideoSessionRepositoryImpl implements IVideoSessionRepository {
       return const Left(Failure.network());
     }
   }
+
+  /// Placeholder introduced for now, which extends the port ahead
+  /// of the data layer that will satisfy it. Replaced later with
+  /// the real `POST /rooms/:id/video-session` call. No caller exists
+  /// until the further task wires the form, so this can never be reached on
+  /// `main`.
+  @override
+  Future<Either<Failure, VideoSessionMetadataEntity>> create({
+    required String roomId,
+    required String youtubeVideoId,
+  }) {
+    throw UnimplementedError('Implemented later.');
+  }
 }
