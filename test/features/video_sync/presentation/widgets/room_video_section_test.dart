@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:youtogether/core/error/failures.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/add_video_cubit.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/add_video_state.dart';
+import 'package:youtogether/features/video_sync/presentation/widgets/add_video_form.dart';
 import 'package:youtogether/l10n/generated/app_localizations.dart';
 import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
@@ -37,6 +40,9 @@ class MockVideoSyncBloc extends MockBloc<VideoSyncEvent, VideoSyncState>
 
   @override
   int get durationSeconds => duration;
+
+  @override
+  String get roomId => '7b2e6b0a-2f2a-4b6a-8e2a-1a2b3c4d5e6f';
 }
 
 class MockPresenceCubit extends MockCubit<PresenceState>
@@ -77,6 +83,9 @@ class FakeController implements YoutubePlayerControllerAdapter {
   void dispose() {}
 }
 
+class MockAddVideoCubit extends MockCubit<AddVideoState>
+    implements AddVideoCubit {}
+
 /// Widget tests for [RoomVideoSection] — the composition wired into
 /// `RoomDetailView`.
 ///
@@ -96,6 +105,13 @@ void main() {
       initialState: const PresenceState.loaded(<PresenceEntity>[]),
     );
 
+    final addVideoCubit = MockAddVideoCubit();
+    whenListen(
+      addVideoCubit,
+      const Stream<AddVideoState>.empty(),
+      initialState: const AddVideoState.initial(),
+    );
+
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -104,6 +120,7 @@ void main() {
           providers: [
             BlocProvider<VideoSyncBloc>.value(value: bloc),
             BlocProvider<PresenceCubit>.value(value: presenceCubit),
+            BlocProvider<AddVideoCubit>.value(value: addVideoCubit),
           ],
           child: SingleChildScrollView(
             child: RoomVideoSection(
@@ -144,6 +161,7 @@ void main() {
     expect(find.byType(SyncStatusBanner), findsOneWidget);
     expect(find.byKey(const Key('roomVideoSectionPlayer')), findsNothing);
     expect(find.byType(LeaderControls), findsNothing);
+    expect(find.byType(AddVideoForm), findsNothing);
   });
 
   testWidgets(
@@ -197,5 +215,71 @@ void main() {
     final controls = tester.widget<LeaderControls>(find.byType(LeaderControls));
     expect(controls.isLeader, isFalse);
     expect(controls.durationSeconds, 213);
+  });
+
+  group('RoomVideoSection — empty state (F-V06-T3)', () {
+    testWidgets('offers the add-video form to the leader when the room has '
+        'no session yet (VS-ADD-01)', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          MockVideoSyncBloc(leader: true, videoId: ''),
+          const VideoSyncState.failure(Failure.notFound()),
+        ),
+      );
+
+      expect(find.byType(AddVideoForm), findsOneWidget);
+      expect(find.byKey(const Key('roomVideoSectionPlayer')), findsNothing);
+    });
+
+    testWidgets('does not offer the form to a non-leader (VS-ADD-03)', (
+      tester,
+    ) async {
+      // Hiding the form is defence in depth, not the enforcement point:
+      // OwnershipGuard rejects the request server-side regardless. This
+      // asserts the client does not invite an action it knows will fail.
+      await tester.pumpWidget(
+        wrap(
+          MockVideoSyncBloc(videoId: ''),
+          const VideoSyncState.failure(Failure.notFound()),
+        ),
+      );
+
+      expect(find.byType(AddVideoForm), findsNothing);
+      expect(find.byType(SyncStatusBanner), findsOneWidget);
+    });
+
+    testWidgets('does not offer the form once a session is loaded', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(
+          MockVideoSyncBloc(leader: true),
+          const VideoSyncState.ready(position: Duration.zero, isPlaying: false),
+        ),
+      );
+
+      expect(find.byType(AddVideoForm), findsNothing);
+      expect(find.byKey(const Key('roomVideoSectionPlayer')), findsOneWidget);
+    });
+
+    testWidgets('shows the loading indicator, not the form, while the join '
+        'sequence runs', (tester) async {
+      // The leader submits, sessionJoined is dispatched, and the bloc
+      // returns to `loading`. Rendering the form again at that point
+      // would invite a second submission for a session already being
+      // created.
+      await tester.pumpWidget(
+        wrap(
+          MockVideoSyncBloc(leader: true, videoId: ''),
+          const VideoSyncState.loading(),
+        ),
+      );
+
+      expect(find.byType(AddVideoForm), findsNothing);
+      expect(
+        find.byKey(const Key('roomVideoSectionLoadingIndicator')),
+        findsOneWidget,
+      );
+    });
   });
 }
