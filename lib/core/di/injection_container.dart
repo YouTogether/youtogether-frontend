@@ -1,13 +1,22 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../features/auth/data/datasources/auth_local_data_source_impl.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source_impl.dart';
+import '../../features/auth/data/datasources/firebase_session_data_source_impl.dart';
+import '../../features/auth/data/datasources/firebase_token_remote_data_source_impl.dart';
 import '../../features/auth/data/datasources/i_auth_local_data_source.dart';
 import '../../features/auth/data/datasources/i_auth_remote_data_source.dart';
+import '../../features/auth/data/datasources/i_firebase_session_data_source.dart';
+import '../../features/auth/data/datasources/i_firebase_token_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/auth/data/repositories/firebase_session_repository_impl.dart';
 import '../../features/auth/domain/repositories/i_auth_repository.dart';
+import '../../features/auth/domain/repositories/i_firebase_session_repository.dart';
+import '../../features/auth/domain/usecases/end_firebase_session_usecase.dart';
+import '../../features/auth/domain/usecases/establish_firebase_session_usecase.dart';
 import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/logout_usecase.dart';
@@ -281,4 +290,29 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   // that disposal is what ends the participant's presence (see its own
   // doc comment). An app-wide singleton would never be disposed, and the
   // participant would appear to be watching forever.
+
+  // External — Firebase Authentication
+  sl.registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance);
+
+  // Data sources — Firebase session
+  sl.registerLazySingleton<IFirebaseTokenRemoteDataSource>(
+    // Must be the Dio instance carrying the authentication interceptor:
+    // POST /auth/firebase-token is guarded.
+    () => FirebaseTokenRemoteDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton<IFirebaseSessionDataSource>(
+    () => FirebaseSessionDataSourceImpl(sl()),
+  );
+
+  // Repositories — Firebase session
+  sl.registerLazySingleton<IFirebaseSessionRepository>(
+    () => FirebaseSessionRepositoryImpl(
+      tokenRemoteDataSource: sl(),
+      sessionDataSource: sl(),
+    ),
+  );
+
+  // Use cases — Firebase session
+  sl.registerLazySingleton(() => EstablishFirebaseSessionUseCase(sl()));
+  sl.registerLazySingleton(() => EndFirebaseSessionUseCase(sl()));
 }
