@@ -16,6 +16,8 @@ import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_syn
 import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 
+import 'features/auth/presentation/bloc/auth_state.dart';
+import 'features/auth/presentation/cubit/firebase_session_cubit.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'core/di/injection_container.dart';
 import 'core/router/app_router.dart';
@@ -57,13 +59,14 @@ class App extends StatefulWidget {
 class _AppState extends State<App> {
   late final AuthBloc _authBloc;
   late final GoRouter _router;
+  late final FirebaseSessionCubit _firebaseSessionCubit;
 
   @override
   void initState() {
     super.initState();
 
     _authBloc = sl<AuthBloc>()..add(const AuthEvent.checkStatusRequested());
-
+    _firebaseSessionCubit = sl<FirebaseSessionCubit>();
     _router = buildAppRouter(
       authBloc: _authBloc,
       registerUseCase: sl<RegisterUseCase>(),
@@ -93,14 +96,41 @@ class _AppState extends State<App> {
   }
 
   @override
+  void dispose() {
+    _firebaseSessionCubit.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _authBloc,
-      child: MaterialApp.router(
-        routerConfig: _router,
-        onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _authBloc),
+        BlocProvider.value(value: _firebaseSessionCubit),
+      ],
+      // Establishing the Firebase session on sign-in rather than waiting
+      // for a room means the credential is already in place by the time
+      // one is opened. Signing out releases it immediately: leaving a
+      // live named credential on the device of a user who has just
+      // logged out would be a real exposure, and re-establishing it
+      // anonymously here would do exactly that.
+      child: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          switch (state) {
+            case AuthAuthenticated(:final user):
+              _firebaseSessionCubit.synchronise(appUserId: user.id);
+            case AuthUnauthenticated():
+              _firebaseSessionCubit.release();
+            default:
+              break;
+          }
+        },
+        child: MaterialApp.router(
+          routerConfig: _router,
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
       ),
     );
   }
