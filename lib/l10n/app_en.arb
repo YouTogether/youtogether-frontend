@@ -329,5 +329,9 @@
   "videoSyncAddVideoUpstreamMessage": "The video could not be added right now. Please try again in a moment.",
   "videoSyncAddVideoForbiddenMessage": "Only the room owner can add a video.",
   "videoSyncAddVideoNetworkMessage": "The video could not be added. Check your connection and try again.",
-  "videoSyncNoVideoYetMessage": "The room owner has not added a video yet."
+  "videoSyncNoVideoYetMessage": "The room owner has not added a video yet.",
+  "firebaseSessionEstablishingMessage": "Connecting to the watch party...",
+  "firebaseSessionFailureMessage": "Could not connect to the watch party.",
+  "firebaseSessionNetworkMessage": "No connection. Check your network and try again.",
+  "firebaseSessionRetryButtonLabel": "Try again"
 }
