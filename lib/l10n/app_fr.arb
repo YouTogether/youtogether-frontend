@@ -57,6 +57,7 @@
   "roomDetailJoinErrorMessage": "Impossible de rejoindre ce salon. Veuillez réessayer.",
   "roomDetailLeaveButtonTooltip": "Quitter la salon",
   "roomDetailLeaveErrorMessage": "Impossible de quitter ce salon. Veuillez réessayer.",
+  "roomDetailOwnerBadgeLabel": "Propriétaire",
   "videoSyncRealtimeErrorMessage": "Connexion en temps réel perdue avec ce salon. La lecture est peut-être désynchronisée. Appuyez sur Réessayer pour vous reconnecter.",
   "videoSyncNotFoundErrorMessage": "Aucune vidéo n’a encore été ajoutée à ce salon.",
   "videoSyncReadyGateMessage": "En attente de tous les participants — {readyCount}/{totalCount} prêts",
