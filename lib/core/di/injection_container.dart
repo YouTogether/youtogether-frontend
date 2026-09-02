@@ -23,6 +23,7 @@ import '../../features/auth/domain/usecases/logout_usecase.dart';
 import '../../features/auth/domain/usecases/refresh_token_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/cubit/firebase_session_cubit.dart';
 import '../../features/video_sync/domain/usecases/create_video_session_usecase.dart';
 import '../network/auth_interceptor.dart';
 import '../../features/room/data/datasources/i_room_remote_data_source.dart';
@@ -315,4 +316,10 @@ Future<void> initDependencies({required String apiBaseUrl}) async {
   // Use cases — Firebase session
   sl.registerLazySingleton(() => EstablishFirebaseSessionUseCase(sl()));
   sl.registerLazySingleton(() => EndFirebaseSessionUseCase(sl()));
+  sl.registerLazySingleton(
+    () => FirebaseSessionCubit(
+      establishFirebaseSessionUseCase: sl(),
+      endFirebaseSessionUseCase: sl(),
+    ),
+  );
 }

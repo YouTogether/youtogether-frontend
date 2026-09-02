@@ -4,6 +4,7 @@ import 'package:youtogether/features/video_sync/domain/usecases/create_video_ses
 
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../auth/presentation/widgets/firebase_session_gate.dart';
 import '../../../video_sync/domain/usecases/get_current_playback_state_usecase.dart';
 import '../../../video_sync/domain/usecases/get_video_session_usecase.dart';
 import '../../../video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
@@ -113,64 +114,65 @@ class RoomDetailPage extends StatelessWidget {
     final currentUsername = authState is AuthAuthenticated
         ? authState.user.displayName
         : 'Guest';
-    // Derived from the same condition as the username fallback above,
-    // deliberately: 'Guest' *is* the anonymous case, and writing that
-    // name without the flag would make an account-less viewer
-    // indistinguishable from a registered user who happens to be called
-    // Guest.
-    final isAnonymous = authState is! AuthAuthenticated;
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) => RoomDetailCubit(getRoomByIdUseCase)..fetchRoom(roomId),
-        ),
-        BlocProvider(create: (_) => DeleteRoomCubit(deleteRoomUseCase)),
-        BlocProvider(create: (_) => JoinRoomCubit(joinRoomUseCase)),
-        BlocProvider(create: (_) => LeaveRoomCubit(leaveRoomUseCase)),
-        BlocProvider(
-          create: (_) => VideoSyncBloc(
-            roomId: roomId,
-            currentUserId: currentUserId,
-            getRoomByIdUseCase: getRoomByIdUseCase,
-            getVideoSessionUseCase: getVideoSessionUseCase,
-            getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
-            subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
-            updatePlaybackStateUseCase: updatePlaybackStateUseCase,
-            createSyncBarrierUseCase: createSyncBarrierUseCase,
-            subscribeToSyncBarrierUseCase: subscribeToSyncBarrierUseCase,
-            incrementReadyCountUseCase: incrementReadyCountUseCase,
-            updateBarrierTotalCountUseCase: updateBarrierTotalCountUseCase,
-            setAllReadyUseCase: setAllReadyUseCase,
-            deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
-            // Shared with PresenceCubit below — VideoSyncBloc reads it
-            // only to size and resize the ready gate, PresenceCubit to
-            // drive the participant list. Both observe the same node;
-            // neither owns it.
-            subscribeToPresenceUseCase: subscribeToPresenceUseCase,
-          )..add(const VideoSyncEvent.sessionJoined()),
-        ),
-        // Presence is scoped to this provider's lifetime, which is
-        // exactly the lifetime of the page carrying the player. Entering
-        // the session on creation and PresenceCubit.close() clearing it
-        // on disposal is what makes participation follow the page rather
-        // than the leave button — see PresenceCubit's own doc comment.
-        BlocProvider(
-          create: (_) => PresenceCubit(
-            roomId: roomId,
-            userId: currentUserId,
-            username: currentUsername,
-            isAnonymous: isAnonymous,
-            setPresenceUseCase: setPresenceUseCase,
-            removePresenceUseCase: removePresenceUseCase,
-            subscribeToPresenceUseCase: subscribeToPresenceUseCase,
-          )..enterSession(),
-        ),
-        BlocProvider<AddVideoCubit>(
-          create: (_) => AddVideoCubit(createVideoSessionUseCase),
-        ),
-      ],
-      child: RoomDetailView(roomId: roomId),
+    return FirebaseSessionGate(
+      appUserId: currentUserId.isEmpty ? null : currentUserId,
+      builder: (context, session) => MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) =>
+                RoomDetailCubit(getRoomByIdUseCase)..fetchRoom(roomId),
+          ),
+          BlocProvider(create: (_) => DeleteRoomCubit(deleteRoomUseCase)),
+          BlocProvider(create: (_) => JoinRoomCubit(joinRoomUseCase)),
+          BlocProvider(create: (_) => LeaveRoomCubit(leaveRoomUseCase)),
+          // Presence is scoped to this provider's lifetime, which is
+          // exactly the lifetime of the page carrying the player. Entering
+          // the session on creation and PresenceCubit.close() clearing it
+          // on disposal is what makes participation follow the page rather
+          // than the leave button — see PresenceCubit's own doc comment.
+          BlocProvider(
+            create: (_) => PresenceCubit(
+              roomId: roomId,
+              userId: session.uid,
+              username: currentUsername,
+              isAnonymous: session.isAnonymous,
+              setPresenceUseCase: setPresenceUseCase,
+              removePresenceUseCase: removePresenceUseCase,
+              subscribeToPresenceUseCase: subscribeToPresenceUseCase,
+            )..enterSession(),
+          ),
+          BlocProvider(
+            create: (_) => VideoSyncBloc(
+              roomId: roomId,
+              // The application user id, unchanged: isLeader compares
+              // this against RoomEntity.ownerId, which lives
+              // in PostgreSQL and knows nothing of Firebase uids.
+              currentUserId: currentUserId,
+              getRoomByIdUseCase: getRoomByIdUseCase,
+              getVideoSessionUseCase: getVideoSessionUseCase,
+              getCurrentPlaybackStateUseCase: getCurrentPlaybackStateUseCase,
+              subscribeToPlaybackStateUseCase: subscribeToPlaybackStateUseCase,
+              updatePlaybackStateUseCase: updatePlaybackStateUseCase,
+              createSyncBarrierUseCase: createSyncBarrierUseCase,
+              subscribeToSyncBarrierUseCase: subscribeToSyncBarrierUseCase,
+              incrementReadyCountUseCase: incrementReadyCountUseCase,
+              updateBarrierTotalCountUseCase: updateBarrierTotalCountUseCase,
+              setAllReadyUseCase: setAllReadyUseCase,
+              deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
+              // Shared with PresenceCubit below — VideoSyncBloc reads it
+              // only to size and resize the ready gate, PresenceCubit to
+              // drive the participant list. Both observe the same node;
+              // neither owns it.
+              subscribeToPresenceUseCase: subscribeToPresenceUseCase,
+            )..add(const VideoSyncEvent.sessionJoined()),
+          ),
+          BlocProvider<AddVideoCubit>(
+            create: (_) => AddVideoCubit(createVideoSessionUseCase),
+          ),
+        ],
+        child: RoomDetailView(roomId: roomId),
+      ),
     );
   }
 }
