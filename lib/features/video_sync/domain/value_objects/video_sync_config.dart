@@ -24,4 +24,14 @@ abstract final class VideoSyncConfig {
 
   /// Default offset compensating for network round-trip latency.
   static const Duration latencyOffset = Duration(milliseconds: 200);
+
+  /// Consecutive failed player sample reads before the reconciliation
+  /// loop reports itself as degraded.
+  ///
+  /// A single failed read is an incident, not a fault: the underlying
+  /// WebView bridge can miss one call under load without the session
+  /// being in any trouble. Three consecutive failures mean the
+  /// controller is no longer answering at all, which is worth telling
+  /// the enclosing view about.
+  static const int sampleFailureThreshold = 3;
 }
