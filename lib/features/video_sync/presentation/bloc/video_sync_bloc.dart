@@ -12,19 +12,19 @@ import '../../domain/services/sync_engine.dart';
 import '../../domain/usecases/create_sync_barrier_params.dart';
 import '../../domain/usecases/create_sync_barrier_usecase.dart';
 import '../../domain/usecases/delete_sync_barrier_usecase.dart';
+import '../../domain/usecases/get_current_playback_state_usecase.dart';
+import '../../domain/usecases/get_video_session_usecase.dart';
 import '../../domain/usecases/increment_ready_count_usecase.dart';
 import '../../domain/usecases/set_all_ready_usecase.dart';
+import '../../domain/usecases/subscribe_to_playback_state_usecase.dart';
 import '../../domain/usecases/subscribe_to_presence_usecase.dart';
 import '../../domain/usecases/subscribe_to_sync_barrier_usecase.dart';
 import '../../domain/usecases/update_barrier_total_count_params.dart';
 import '../../domain/usecases/update_barrier_total_count_usecase.dart';
-import '../../domain/value_objects/ready_gate_result.dart';
-import '../../domain/usecases/get_current_playback_state_usecase.dart';
-import '../../domain/usecases/get_video_session_usecase.dart';
-import '../../domain/usecases/subscribe_to_playback_state_usecase.dart';
 import '../../domain/usecases/update_playback_state_params.dart';
 import '../../domain/usecases/update_playback_state_usecase.dart';
 import '../../domain/value_objects/playback_timestamp.dart';
+import '../../domain/value_objects/ready_gate_result.dart';
 import 'video_sync_event.dart';
 import 'video_sync_state.dart';
 
@@ -99,6 +99,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     required DeleteSyncBarrierUseCase deleteSyncBarrierUseCase,
     required SubscribeToPresenceUseCase subscribeToPresenceUseCase,
     SyncEngine? syncEngine,
+    DateTime Function()? now,
   }) : _roomId = roomId,
        _currentUserId = currentUserId,
        _getRoomByIdUseCase = getRoomByIdUseCase,
@@ -114,6 +115,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
        _deleteSyncBarrierUseCase = deleteSyncBarrierUseCase,
        _subscribeToPresenceUseCase = subscribeToPresenceUseCase,
        _syncEngine = syncEngine ?? SyncEngine(),
+       _now = now ?? (() => DateTime.now().toUtc()),
        super(const VideoSyncState.initial()) {
     on<VideoSyncSessionJoined>(_onSessionJoined);
     on<VideoSyncSessionUpdated>(_onSessionUpdated);
@@ -155,6 +157,17 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   final DeleteSyncBarrierUseCase _deleteSyncBarrierUseCase;
   final SubscribeToPresenceUseCase _subscribeToPresenceUseCase;
   final SyncEngine _syncEngine;
+
+  /// Wall-clock source, injectable for tests.
+  ///
+  /// Same seam, same reason, as [_syncEngine]'s own optional
+  /// constructor parameter: `_performSessionJoin` extrapolates the
+  /// leader's last written position by the time elapsed since
+  /// `updatedAt`, and asserting that extrapolation against
+  /// `DateTime.now()` would force every test on that path into
+  /// tolerance-based matchers. Production code never passes this
+  /// argument.
+  final DateTime Function() _now;
 
   bool _isLeader = false;
   int _durationSeconds = 0;
@@ -292,9 +305,17 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     final initialSession = initialStateResult.right;
     _youtubeVideoId = initialSession.youtubeVideoId;
 
+    // Seeded here rather than waiting for the first `sessionUpdated`:
+    // `PlayerReconciliation._reconcile` returns immediately while
+    // `lastKnownSession` is null, so leaving this assignment to the
+    // live subscription alone left the 500 ms sampling loop inert for
+    // as long as the first stream event took to arrive — discarding
+    // data this very method had just read.
+    _lastKnownSession = initialSession;
+
     emit(
       VideoSyncState.ready(
-        position: initialSession.currentPosition,
+        position: _expectedPositionFor(initialSession),
         isPlaying: initialSession.isPlaying,
       ),
     );
@@ -305,6 +326,41 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     ) {
       add(VideoSyncEvent.sessionUpdated(result));
     });
+  }
+
+  /// The position a joining participant should actually start from,
+  /// given a session read from Firebase.
+  ///
+  /// Firebase stores the position as of the leader's last command,
+  /// paired with `updatedAt`; it is not a live clock. Handing
+  /// [VideoSessionEntity.currentPosition] to the player verbatim
+  /// therefore starts a late joiner as far behind as the leader's last
+  /// command is old. [SyncEngine.computeExpectedPosition] is the
+  /// existing domain rule for that extrapolation — this method only
+  /// supplies its inputs and bounds its output.
+  ///
+  /// Two bounds are applied, neither of which belongs in the domain
+  /// service (both are properties of *this* session, not of the
+  /// extrapolation rule):
+  ///
+  /// - A negative elapsed interval is treated as zero. Clock skew
+  ///   between the writing client and this one is not a reason to
+  ///   rewind playback.
+  /// - The result is capped at the video's own duration. A session
+  ///   whose leader disconnected an hour ago would otherwise extrapolate
+  ///   past the end of the content and produce an out-of-bounds
+  ///   `seekTo`.
+  Duration _expectedPositionFor(VideoSessionEntity session) {
+    final elapsed = _now().difference(session.updatedAt);
+
+    final expected = _syncEngine.computeExpectedPosition(
+      leaderPosition: session.currentPosition,
+      isPlaying: session.isPlaying,
+      elapsedSinceUpdate: elapsed.isNegative ? Duration.zero : elapsed,
+    );
+
+    final upperBound = Duration(seconds: _durationSeconds);
+    return expected > upperBound ? upperBound : expected;
   }
 
   Future<void> _onSessionUpdated(
