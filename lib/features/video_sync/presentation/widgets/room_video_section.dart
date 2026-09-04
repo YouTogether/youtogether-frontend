@@ -36,6 +36,17 @@ import 'youtube_player_widget.dart';
 /// timer) act on the controller it was *given*, not on whatever it
 /// happens to wrap. Wrapping the controls keeps the player's own
 /// subtree from rebuilding on every `VideoSyncState` transition.
+///
+/// ## Degraded reconciliation
+/// [PlayerReconciliation] reports through [onReconciliationDegraded]
+/// when its sampling loop has stopped producing readings. That is a
+/// local player fault, not a Firebase one, so it is deliberately kept
+/// out of [SyncStatusBanner]: that banner's retry action re-runs the
+/// whole `sessionJoined` sequence, which repairs nothing here and would
+/// mislabel the fault. The notice rendered instead is informational and
+/// carries no action — playback continues, only automatic drift
+/// correction is unavailable, and the user's own recourse is to reload
+/// the room.
 class RoomVideoSection extends StatefulWidget {
   const RoomVideoSection({super.key, this.controllerFactory});
 
@@ -54,6 +65,7 @@ class RoomVideoSection extends StatefulWidget {
 
 class _RoomVideoSectionState extends State<RoomVideoSection> {
   YoutubePlayerControllerAdapter? _controller;
+  bool _reconciliationDegraded = false;
 
   void _handleControllerReady(YoutubePlayerControllerAdapter controller) {
     // Deferred: see this widget's own doc comment for why setState
@@ -62,6 +74,45 @@ class _RoomVideoSectionState extends State<RoomVideoSection> {
       if (!mounted) return;
       setState(() => _controller = controller);
     });
+  }
+
+  void _handleReconciliationDegraded(bool degraded) {
+    // Invoked from a Timer callback, never during build, so setState is
+    // safe here without deferral — unlike _handleControllerReady, which
+    // fires from a descendant's initState.
+    if (!mounted || _reconciliationDegraded == degraded) return;
+    setState(() => _reconciliationDegraded = degraded);
+  }
+
+  Widget _buildDegradedNotice(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Padding(
+      key: const Key('roomVideoSectionDegradedNotice'),
+      padding: const EdgeInsets.only(top: 8),
+      child: Semantics(
+        liveRegion: true,
+        child: Row(
+          children: [
+            Icon(
+              Icons.sync_problem_outlined,
+              size: 18,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n.syncReconciliationDegraded,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -144,11 +195,13 @@ class _RoomVideoSectionState extends State<RoomVideoSection> {
             else
               PlayerReconciliation(
                 controller: controller,
+                onReconciliationDegraded: _handleReconciliationDegraded,
                 child: LeaderControls(
                   isLeader: bloc.isLeader,
                   durationSeconds: bloc.durationSeconds,
                 ),
               ),
+            if (_reconciliationDegraded) _buildDegradedNotice(context),
           ],
         );
       },

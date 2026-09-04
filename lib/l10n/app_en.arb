@@ -333,5 +333,9 @@
   "firebaseSessionEstablishingMessage": "Connecting to the watch party...",
   "firebaseSessionFailureMessage": "Could not connect to the watch party.",
   "firebaseSessionNetworkMessage": "No connection. Check your network and try again.",
-  "firebaseSessionRetryButtonLabel": "Try again"
+  "firebaseSessionRetryButtonLabel": "Try again",
+  "syncReconciliationDegraded": "Automatic synchronisation is unavailable. Playback continues, but this player may drift out of step. Reload the room to restore it.",
+  "@syncReconciliationDegraded": {
+    "description": "Shown below the player when the reconciliation sampling loop has stopped producing readings."
+  }
 }

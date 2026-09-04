@@ -95,5 +95,9 @@
   "firebaseSessionEstablishingMessage": "Connexion à la session de visionnage...",
   "firebaseSessionFailureMessage": "Connexion impossible à la session de visionnage",
   "firebaseSessionNetworkMessage": "Pas de connexion. Vérifiez vos paramètres réseaux et réessayez.",
-  "firebaseSessionRetryButtonLabel": "Réessayez"
+  "firebaseSessionRetryButtonLabel": "Réessayez",
+  "syncReconciliationDegraded": "Synchronisation automatique n'est pas disponible. La lecture continue, mais ce lecteur peut dériver. Recharchez le salon pour le restaurer.",
+    "@syncReconciliationDegraded": {
+      "description": "Affiché en-dessous du lecteur lorsque la boucle de réconsiliation s'est arrêtée de produire des indicateurs."
+    }
 }

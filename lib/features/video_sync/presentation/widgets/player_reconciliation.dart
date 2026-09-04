@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -75,11 +76,28 @@ class PlayerReconciliation extends StatefulWidget {
     required this.child,
     SyncEngine? syncEngine,
     this.samplingInterval = VideoSyncConfig.adDetectionInterval,
+    this.onReconciliationDegraded,
   }) : _syncEngine = syncEngine;
 
   final YoutubePlayerControllerAdapter controller;
   final Widget child;
   final Duration samplingInterval;
+
+  /// Reports whether the reconciliation loop is currently degraded,
+  /// once per transition in either direction.
+  ///
+  /// `true` when [VideoSyncConfig.sampleFailureThreshold] consecutive
+  /// sample reads have failed, `false` again on the first successful
+  /// read thereafter. Both edges matter: an indicator raised on failure
+  /// and never lowered would keep reporting a fault that has since
+  /// cleared.
+  ///
+  /// Deliberately a callback rather than a [VideoSyncState] transition.
+  /// `VideoSyncState.failure` drives `SyncStatusBanner`, whose retry
+  /// re-runs the whole `sessionJoined` sequence — which repairs nothing
+  /// when the fault is a detached local player, and would present a
+  /// local player fault as a Firebase outage.
+  final ValueChanged<bool>? onReconciliationDegraded;
 
   /// Overridable for tests; defaults to a real [SyncEngine] otherwise.
   final SyncEngine? _syncEngine;
@@ -92,13 +110,26 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
   late final SyncEngine _syncEngine = widget._syncEngine ?? SyncEngine();
   Timer? _timer;
   Duration? _previousPosition;
+
+  /// Guards against a second [tick] starting while the first is still
+  /// awaiting its sample. Overlapping ticks would interleave their
+  /// writes to [_previousPosition] and hand `SyncEngine.detectAd` a
+  /// comparison between two readings taken in the wrong order.
+  bool _tickInFlight = false;
+
+  /// Consecutive failed sample reads, reset by any successful one.
+  int _consecutiveSampleFailures = 0;
+
+  /// Whether the degraded transition has already been reported, so the
+  /// callback fires on crossings only and not on every tick.
+  bool _degraded = false;
   bool _adInProgress = false;
   bool _readySignalled = false;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(widget.samplingInterval, (_) => tick());
+    _timer = Timer.periodic(widget.samplingInterval, (_) => unawaited(tick()));
   }
 
   @override
@@ -107,15 +138,51 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     super.dispose();
   }
 
-  /// Performs a single sampling/reconciliation pass. Exposed
-  /// (`@visibleForTesting` in spirit, though this class is already
-  /// prefixed `PlayerReconciliationState` rather than private,
-  /// specifically so tests can call it directly via a `GlobalKey`
-  /// rather than waiting on the real [Timer] — see this file's own test
-  /// suite for why).
+  /// Performs a single sampling/reconciliation pass.
+  ///
+  /// Never completes with an error: every failure path is handled
+  /// internally, because the only caller is a [Timer] callback whose
+  /// returned future nobody can observe.
   Future<void> tick() async {
+    if (_tickInFlight) {
+      // Time has passed without a reading; the next successful sample
+      // is no longer one interval away from [_previousPosition].
+      _previousPosition = null;
+      return;
+    }
+
+    _tickInFlight = true;
+    try {
+      await _performTick();
+    } finally {
+      _tickInFlight = false;
+    }
+  }
+
+  Future<void> _performTick() async {
+    if (!mounted) return;
+
+    // Captured before the first suspension point: reading the context
+    // after an await risks doing so on an unmounted element, the same
+    // failure mode corrected on the authentication cubits in Sprint 2.
     final bloc = context.read<VideoSyncBloc>();
-    final sample = await widget.controller.getCurrentSample();
+
+    final PlayerSample sample;
+    try {
+      sample = await widget.controller.getCurrentSample().timeout(
+        widget.samplingInterval,
+      );
+    } catch (error, stackTrace) {
+      _handleSampleFailure(error, stackTrace);
+      return;
+    }
+
+    if (!mounted) return;
+    _consecutiveSampleFailures = 0;
+    if (_degraded) {
+      _degraded = false;
+      widget.onReconciliationDegraded?.call(false);
+    }
 
     final previous = _previousPosition;
     if (previous == null) {
@@ -165,6 +232,42 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     _previousPosition = sample.position;
   }
 
+  void _handleSampleFailure(Object error, StackTrace stackTrace) {
+    // A gap in the sequence invalidates the ad-detection baseline: the
+    // next successful reading is more than one interval away from the
+    // last one, so it must be treated as a fresh baseline rather than
+    // compared against a stale predecessor.
+    _previousPosition = null;
+    _consecutiveSampleFailures++;
+
+    // Logged through `dart:developer`, deliberately not through
+    // `FlutterError.reportError`. The latter routes into
+    // `FlutterError.onError`, which `flutter_test` overrides to record
+    // every reported error as a test failure — `silent: true` only
+    // suppresses the console output, not the recording. Every test that
+    // exercises a deliberate read failure would therefore fail on the
+    // report rather than on its own assertion. A failed sample read is
+    // a handled, recoverable condition, not a framework error, so
+    // `FlutterError` is the wrong channel for it in any case.
+    developer.log(
+      'Player sample read failed during reconciliation',
+      name: 'video_sync',
+      error: error,
+      stackTrace: stackTrace,
+      level: 900,
+    );
+
+    // Reported on the crossing only. Repeating it every sampling
+    // interval would replace a silent failure with an equally useless
+    // flood; a successful read resets the counter, so a later
+    // degradation reports again.
+    if (!_degraded &&
+        _consecutiveSampleFailures >= VideoSyncConfig.sampleFailureThreshold) {
+      _degraded = true;
+      widget.onReconciliationDegraded?.call(true);
+    }
+  }
+
   Future<void> _reconcile(
     VideoSyncBloc bloc,
     PlayerSample sample, {
@@ -197,7 +300,9 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
   /// returned early whenever no expected position was available, which
   /// silently dropped the play/pause along with the seek — a state
   /// saying "play" must still start the player even when there is no
-  /// authoritative position to align it to.
+  /// authoritative position to align it to. The same independence
+  /// holds when the sample read fails: the failure costs the seek,
+  /// never the play or the pause.
   ///
   /// The seek is gated by [SyncEngine.evaluateReconciliation] rather
   /// than issued unconditionally. Once F-V08-T1 adds the leader's
@@ -231,15 +336,32 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     final expected = bloc.expectedPosition;
 
     if (expected != null) {
-      final sample = await widget.controller.getCurrentSample();
+      // Contained exactly as the periodic loop's own read is, and for
+      // the same reason: this method is called through `unawaited` from
+      // a `BlocListener` callback, which cannot be `async`. An
+      // exception escaping here would become an unobserved asynchronous
+      // error — the silent-failure mode F-V07-T3 removed from [tick],
+      // walking back in through the other door.
+      PlayerSample? sample;
+      try {
+        sample = await widget.controller.getCurrentSample().timeout(
+          widget.samplingInterval,
+        );
+      } catch (error, stackTrace) {
+        _handleSampleFailure(error, stackTrace);
+      }
 
-      await _executeCommand(
-        _syncEngine.evaluateReconciliation(
-          expectedPosition: expected,
-          observedPosition: sample.position,
-          adInProgress: false,
-        ),
-      );
+      if (!mounted) return;
+
+      if (sample != null) {
+        await _executeCommand(
+          _syncEngine.evaluateReconciliation(
+            expectedPosition: expected,
+            observedPosition: sample.position,
+            adInProgress: false,
+          ),
+        );
+      }
     }
 
     if (shouldPlay) {
