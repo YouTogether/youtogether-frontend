@@ -38,7 +38,7 @@ jobs:
         run: flutter pub get
 
       - name: Run dart build_runner build
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Run dart format check
         run: dart format --output=none --set-exit-if-changed .
@@ -72,7 +72,7 @@ jobs:
         run: flutter pub get
 
       - name: Run dart build_runner build
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Run tests with coverage
         run: |
@@ -120,7 +120,7 @@ jobs:
         run: flutter pub get
 
       - name: Run dart build_runner build
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Build web (release)
         run: flutter build web --release --no-tree-shake-icons

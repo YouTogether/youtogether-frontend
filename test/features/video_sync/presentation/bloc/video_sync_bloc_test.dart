@@ -630,8 +630,6 @@ void main() {
   /// @competency Test scenarios VS-SYN-07, VS-SYN-08.
   group('VideoSyncEvent.sessionJoined — session seeding and extrapolation '
       '(F-V07-T1)', () {
-    final joinInstant = DateTime.utc(2026, 3, 1, 12, 0, 0);
-
     VideoSessionEntity sessionAt({
       required bool isPlaying,
       required Duration position,
