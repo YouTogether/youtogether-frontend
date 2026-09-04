@@ -2,7 +2,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:either_dart/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-
 import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/features/room/domain/entities/room_entity.dart';
 import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
@@ -12,15 +11,15 @@ import 'package:youtogether/features/video_sync/domain/entities/video_session_me
 import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_params.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/delete_sync_barrier_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/increment_ready_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/set_all_ready_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_presence_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_sync_barrier_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_params.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
-import 'package:youtogether/features/video_sync/domain/usecases/get_current_playback_state_usecase.dart';
-import 'package:youtogether/features/video_sync/domain/usecases/get_video_session_usecase.dart';
-import 'package:youtogether/features/video_sync/domain/usecases/subscribe_to_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_params.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
@@ -114,10 +113,26 @@ void main() {
     createdAt: DateTime.utc(2026, 1, 5),
   );
 
+  /// Fixed wall-clock instant for every bloc built by [buildBloc], and
+  /// the default `updatedAt` of every session built by [buildSession].
+  ///
+  /// Since F-V07-T1, `_performSessionJoin` extrapolates the leader's
+  /// last written position by the interval between `updatedAt` and the
+  /// bloc's clock. With a real clock and a hardcoded `updatedAt`, that
+  /// interval is months wide, every join extrapolates past the end of
+  /// the video, and the duration bound turns every expected position
+  /// into `metadata.durationSeconds` — which is exactly what happened
+  /// when this constant did not exist. Pinning both ends of the
+  /// interval to the same instant gives an elapsed time of zero, so
+  /// every test that is not specifically about extrapolation observes
+  /// the position it wrote, unchanged.
+  final testNow = DateTime.utc(2026, 3, 1, 12);
+
   VideoSessionEntity buildSession({
     required bool isPlaying,
     Duration position = const Duration(seconds: 42),
     String leaderId = leaderId,
+    DateTime? updatedAt,
   }) {
     return VideoSessionEntity(
       roomId: roomId,
@@ -125,7 +140,7 @@ void main() {
       isPlaying: isPlaying,
       currentPosition: position,
       leaderId: leaderId,
-      updatedAt: DateTime.utc(2026, 1, 5),
+      updatedAt: updatedAt ?? testNow,
     );
   }
 
@@ -188,7 +203,10 @@ void main() {
     ).thenAnswer((_) async => const Right(null));
   });
 
-  VideoSyncBloc buildBloc({required String currentUserId}) {
+  VideoSyncBloc buildBloc({
+    required String currentUserId,
+    DateTime Function()? now,
+  }) {
     return VideoSyncBloc(
       roomId: roomId,
       currentUserId: currentUserId,
@@ -204,6 +222,7 @@ void main() {
       setAllReadyUseCase: setAllReadyUseCase,
       deleteSyncBarrierUseCase: deleteSyncBarrierUseCase,
       subscribeToPresenceUseCase: subscribeToPresenceUseCase,
+      now: now ?? () => testNow,
     );
   }
 
@@ -585,6 +604,177 @@ void main() {
       act: (bloc) => bloc.add(const VideoSyncEvent.adEnded()),
       expect: () => <VideoSyncState>[],
     );
+  });
+
+  /// Regression tests for F-V07-T1.
+  ///
+  /// Two defects observed during Sprint 3 acceptance testing are
+  /// covered here.
+  ///
+  /// First, `lastKnownSession` was assigned only from `sessionUpdated`,
+  /// i.e. from the live Firebase subscription. `PlayerReconciliation._reconcile`
+  /// returns immediately while that field is `null`, so the 500 ms
+  /// sampling loop was inert between the end of `sessionJoined` and the
+  /// arrival of the first stream event — even though
+  /// `GetCurrentPlaybackStateUseCase` had already read exactly that
+  /// data and discarded it.
+  ///
+  /// Second, `ready` carried `session.currentPosition` verbatim.
+  /// Firebase stores the position as of the leader's last command,
+  /// together with `updatedAt`; a participant joining three minutes
+  /// into an active session was therefore handed a three-minute-stale
+  /// position. `SyncEngine.computeExpectedPosition` already performs
+  /// the required extrapolation and was simply not called on this path.
+  ///
+  /// @competency Unit test harness, TDD cycle.
+  /// @competency Test scenarios VS-SYN-07, VS-SYN-08.
+  group('VideoSyncEvent.sessionJoined — session seeding and extrapolation '
+      '(F-V07-T1)', () {
+    final joinInstant = DateTime.utc(2026, 3, 1, 12, 0, 0);
+
+    VideoSessionEntity sessionAt({
+      required bool isPlaying,
+      required Duration position,
+      required Duration staleness,
+    }) {
+      return buildSession(
+        isPlaying: isPlaying,
+        position: position,
+        updatedAt: testNow.subtract(staleness),
+      );
+    }
+
+    void stubJoin(VideoSessionEntity session) {
+      when(
+        () => getVideoSessionUseCase(roomId),
+      ).thenAnswer((_) async => Right(metadata));
+      when(
+        () => getCurrentPlaybackStateUseCase(roomId),
+      ).thenAnswer((_) async => Right(session));
+      when(
+        () => subscribeToPlaybackStateUseCase(roomId),
+      ).thenAnswer((_) => const Stream.empty());
+    }
+
+    test('seeds lastKnownSession from the initial single read, before any '
+        'sessionUpdated event has arrived', () async {
+      final session = sessionAt(
+        isPlaying: true,
+        position: const Duration(seconds: 100),
+        staleness: const Duration(seconds: 20),
+      );
+      stubJoin(session);
+      final bloc = buildBloc(currentUserId: leaderId, now: () => testNow);
+
+      expect(bloc.lastKnownSession, isNull);
+
+      bloc.add(const VideoSyncEvent.sessionJoined());
+      await bloc.stream.firstWhere((s) => s is VideoSyncReady);
+
+      expect(bloc.lastKnownSession, session);
+
+      await bloc.close();
+    });
+
+    test('extrapolates the ready position by the elapsed time since the '
+        'leader last wrote, while playing (VS-SYN-07)', () async {
+      stubJoin(
+        sessionAt(
+          isPlaying: true,
+          position: const Duration(seconds: 60),
+          staleness: const Duration(seconds: 30),
+        ),
+      );
+      final bloc = buildBloc(currentUserId: leaderId);
+
+      bloc.add(const VideoSyncEvent.sessionJoined());
+      await bloc.stream.firstWhere((s) => s is VideoSyncReady);
+
+      expect(
+        bloc.state,
+        const VideoSyncState.ready(
+          position: Duration(seconds: 90),
+          isPlaying: true,
+        ),
+      );
+
+      await bloc.close();
+    });
+
+    test('does not extrapolate a paused session: a paused leader has not '
+        'advanced (VS-SYN-08)', () async {
+      stubJoin(
+        sessionAt(
+          isPlaying: false,
+          position: const Duration(seconds: 90),
+          staleness: const Duration(minutes: 30),
+        ),
+      );
+      final bloc = buildBloc(currentUserId: leaderId);
+
+      bloc.add(const VideoSyncEvent.sessionJoined());
+      await bloc.stream.firstWhere((s) => s is VideoSyncReady);
+
+      expect(
+        bloc.state,
+        const VideoSyncState.ready(
+          position: Duration(seconds: 90),
+          isPlaying: false,
+        ),
+      );
+
+      await bloc.close();
+    });
+
+    test('clamps the extrapolated position to the video duration: a session '
+        'abandoned by its leader must not seek past the end', () async {
+      stubJoin(
+        sessionAt(
+          isPlaying: true,
+          position: const Duration(seconds: 100),
+          staleness: const Duration(hours: 1),
+        ),
+      );
+      final bloc = buildBloc(currentUserId: leaderId);
+
+      bloc.add(const VideoSyncEvent.sessionJoined());
+      await bloc.stream.firstWhere((s) => s is VideoSyncReady);
+
+      expect(
+        bloc.state,
+        VideoSyncState.ready(
+          position: Duration(seconds: metadata.durationSeconds),
+          isPlaying: true,
+        ),
+      );
+
+      await bloc.close();
+    });
+
+    test('treats a negative elapsed interval as zero: clock skew between the '
+        'writing client and this one must not rewind the position', () async {
+      stubJoin(
+        sessionAt(
+          isPlaying: true,
+          position: const Duration(seconds: 100),
+          staleness: const Duration(seconds: -30),
+        ),
+      );
+      final bloc = buildBloc(currentUserId: leaderId);
+
+      bloc.add(const VideoSyncEvent.sessionJoined());
+      await bloc.stream.firstWhere((s) => s is VideoSyncReady);
+
+      expect(
+        bloc.state,
+        const VideoSyncState.ready(
+          position: Duration(seconds: 100),
+          isPlaying: true,
+        ),
+      );
+
+      await bloc.close();
+    });
   });
 
   /// Regression tests for F-V06-T4.
