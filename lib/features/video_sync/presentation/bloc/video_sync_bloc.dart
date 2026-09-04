@@ -207,6 +207,22 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   /// arrives.
   VideoSessionEntity? get lastKnownSession => _lastKnownSession;
 
+  /// The position this participant's player should currently be at,
+  /// or `null` before any session is known.
+  ///
+  /// The single definition of that rule for the whole context: both
+  /// `PlayerReconciliation`'s state listener and its periodic drift
+  /// loop read it here rather than each extrapolating from
+  /// [lastKnownSession] themselves. Keeping one definition also keeps
+  /// one clock — the injectable [_now] — instead of the widget reaching
+  /// for `DateTime.now()` on its own and diverging from what this bloc
+  /// emitted moments earlier.
+  Duration? get expectedPosition {
+    final session = _lastKnownSession;
+    if (session == null) return null;
+    return _expectedPositionFor(session);
+  }
+
   /// Whether the current user is this room's leader, derived by
   /// [_onSessionJoined]. `false` before the first successful
   /// `sessionJoined`/`retryRequested` completes.
