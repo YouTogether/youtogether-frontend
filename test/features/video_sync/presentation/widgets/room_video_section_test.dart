@@ -2,23 +2,22 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:youtogether/core/error/failures.dart';
-import 'package:youtogether/features/video_sync/presentation/cubit/add_video_cubit.dart';
-import 'package:youtogether/features/video_sync/presentation/cubit/add_video_state.dart';
-import 'package:youtogether/features/video_sync/presentation/widgets/add_video_form.dart';
-import 'package:youtogether/l10n/generated/app_localizations.dart';
 import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/add_video_cubit.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/add_video_state.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/presence_cubit.dart';
+import 'package:youtogether/features/video_sync/presentation/cubit/presence_state.dart';
+import 'package:youtogether/features/video_sync/presentation/widgets/add_video_form.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/leader_controls.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/player_reconciliation.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/room_video_section.dart';
-import 'package:youtogether/features/video_sync/presentation/cubit/presence_cubit.dart';
-import 'package:youtogether/features/video_sync/presentation/cubit/presence_state.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/sync_status_banner.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/youtube_player_controller_adapter.dart';
+import 'package:youtogether/l10n/generated/app_localizations.dart';
 
 class MockVideoSyncBloc extends MockBloc<VideoSyncEvent, VideoSyncState>
     implements VideoSyncBloc {
@@ -279,6 +278,59 @@ void main() {
       expect(
         find.byKey(const Key('roomVideoSectionLoadingIndicator')),
         findsOneWidget,
+      );
+    });
+  });
+
+  /// Regression test for F-V07-T3.
+  ///
+  /// The notice is driven by
+  /// [PlayerReconciliation.onReconciliationDegraded], deliberately not by
+  /// `VideoSyncState.failure`: that state drives [SyncStatusBanner], whose
+  /// retry re-runs the whole `sessionJoined` sequence, which repairs
+  /// nothing when the fault is a detached local player.
+  ///
+  /// Only this widget's own reaction to the signal is asserted here. The
+  /// failure threshold and both crossing edges belong to
+  /// `player_reconciliation_test.dart` and are covered there.
+  ///
+  /// @competency Unit/widget test harness.
+  /// @competency Test scenario VS-SYN-13.
+  group('RoomVideoSection — degraded reconciliation (F-V07-T3)', () {
+    testWidgets('shows a degraded notice while reconciliation reports itself '
+        'as degraded, and removes it on recovery (VS-SYN-13)', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          MockVideoSyncBloc(leader: true),
+          const VideoSyncState.ready(position: Duration.zero, isPlaying: false),
+        ),
+      );
+      // Let the post-frame controller handover mount PlayerReconciliation.
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('roomVideoSectionDegradedNotice')),
+        findsNothing,
+      );
+
+      final reconciliation = tester.widget<PlayerReconciliation>(
+        find.byType(PlayerReconciliation),
+      );
+
+      reconciliation.onReconciliationDegraded!(true);
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('roomVideoSectionDegradedNotice')),
+        findsOneWidget,
+      );
+
+      reconciliation.onReconciliationDegraded!(false);
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('roomVideoSectionDegradedNotice')),
+        findsNothing,
       );
     });
   });
