@@ -25,6 +25,7 @@ import '../../domain/usecases/update_playback_state_params.dart';
 import '../../domain/usecases/update_playback_state_usecase.dart';
 import '../../domain/value_objects/playback_timestamp.dart';
 import '../../domain/value_objects/ready_gate_result.dart';
+import '../../domain/value_objects/video_sync_config.dart';
 import 'video_sync_event.dart';
 import 'video_sync_state.dart';
 
@@ -129,6 +130,7 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     on<VideoSyncPresenceCountUpdated>(_onPresenceCountUpdated);
     on<VideoSyncReadySignalled>(_onReadySignalled);
     on<VideoSyncForceStartRequested>(_onForceStartRequested);
+    on<VideoSyncHeartbeatTicked>(_onHeartbeatTicked);
   }
 
   final String _roomId;
@@ -192,6 +194,15 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
   /// is what keeps a mid-session pause-then-play from re-opening a
   /// barrier and making every participant wait again.
   bool _initialStartDone = false;
+
+  /// When the last heartbeat write was issued, `null` before the first.
+  ///
+  /// `PlayerReconciliation` forwards a position on its own sampling
+  /// cadence — twice a second — which is not a cadence anything should
+  /// write to Firebase at. This field is what turns that stream of
+  /// observations into one write per
+  /// [VideoSyncConfig.leaderHeartbeatInterval].
+  DateTime? _lastHeartbeatAt;
 
   /// The most recent session received via `sessionUpdated`, kept so
   /// `_onAdEnded` (F-V04) can re-emit the correct playing/paused state
@@ -275,6 +286,70 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     Emitter<VideoSyncState> emit,
   ) {
     return _performSessionJoin(emit);
+  }
+
+  /// Republishes the leader's current position, at most once per
+  /// [VideoSyncConfig.leaderHeartbeatInterval].
+  ///
+  /// Firebase writes otherwise happen only on play, pause and seek, so
+  /// every viewer extrapolates from an `updatedAt` that ages for the
+  /// whole session. That extrapolation is exact only while the leader's
+  /// own playback is uninterrupted; an advertisement, a buffering
+  /// episode or a backgrounded tab introduces an error nothing corrects
+  /// and that every late joiner inherits. Re-anchoring `updatedAt`
+  /// bounds that error to a single interval.
+  ///
+  /// The position comes from the event, i.e. from the leader's actual
+  /// player, never from [_currentPosition]. That getter reads the
+  /// state's own `position`, frozen at the last command: republishing it
+  /// on a timer would refresh `updatedAt` against a stale position and
+  /// make the video appear frozen to everyone joining afterwards —
+  /// worse than not republishing at all.
+  ///
+  /// Guarded by `state is! VideoSyncPlaying`, and nothing else. That one
+  /// test excludes the three cases that must not republish: a paused
+  /// session has not advanced, [VideoSyncBarrierWaiting] means the ready
+  /// gate is still open and no participant has started, and
+  /// [VideoSyncAdInProgress] means content time is frozen behind an
+  /// advertisement — publishing that frozen position with a fresh
+  /// `updatedAt` would rewind every viewer. An earlier draft also tested
+  /// [_initialStartDone]; it was redundant with the barrier state and
+  /// has been dropped rather than left as a second expression of one
+  /// rule.
+  ///
+  /// Emits nothing. [_write] exists for commands, whose outcome the
+  /// issuing participant must see; a heartbeat's only audience is the
+  /// other participants' live subscriptions. Emitting here would also
+  /// hand `LeaderControls` a fresh state every few seconds, including
+  /// mid-drag on its own slider.
+  ///
+  /// A failed write is swallowed for the same reason: the next beat is
+  /// one interval away and retries unconditionally, so surfacing
+  /// [VideoSyncState.failure] would offer `SyncStatusBanner`'s retry for
+  /// something already retrying, and would present a transient write
+  /// refusal as a lost session.
+  Future<void> _onHeartbeatTicked(
+    VideoSyncHeartbeatTicked event,
+    Emitter<VideoSyncState> emit,
+  ) async {
+    if (!_isLeader) return;
+    if (state is! VideoSyncPlaying) return;
+
+    final now = _now();
+    final last = _lastHeartbeatAt;
+    if (last != null &&
+        now.difference(last) < VideoSyncConfig.leaderHeartbeatInterval) {
+      return;
+    }
+    _lastHeartbeatAt = now;
+
+    await _updatePlaybackStateUseCase(
+      UpdatePlaybackStateParams(
+        roomId: _roomId,
+        isPlaying: true,
+        position: event.position,
+      ),
+    );
   }
 
   /// Actual `sessionJoined` sequencing logic (see this class's own doc
