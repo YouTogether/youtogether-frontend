@@ -34,4 +34,15 @@ abstract final class VideoSyncConfig {
   /// controller is no longer answering at all, which is worth telling
   /// the enclosing view about.
   static const int sampleFailureThreshold = 3;
+
+  /// Cadence at which the leader republishes its current position.
+  ///
+  /// Every viewer extrapolates from the leader's last write using
+  /// `updatedAt` as its anchor, so without republication that anchor
+  /// ages for the whole session and the extrapolation error grows with
+  /// it. Five seconds bounds that error to what one interval of leader
+  /// drift can produce, at a cost of twelve Firebase writes per minute
+  /// per active room — an order of magnitude below the presence node's
+  /// own traffic.
+  static const Duration leaderHeartbeatInterval = Duration(seconds: 5);
 }
