@@ -6,6 +6,7 @@ import 'package:youtogether/core/error/failures.dart';
 import 'package:youtogether/features/room/domain/entities/room_entity.dart';
 import 'package:youtogether/features/room/domain/usecases/get_room_by_id_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/entities/presence_entity.dart';
+import 'package:youtogether/features/video_sync/domain/entities/sync_barrier_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_entity.dart';
 import 'package:youtogether/features/video_sync/domain/entities/video_session_metadata_entity.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/create_sync_barrier_params.dart';
@@ -22,6 +23,7 @@ import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_t
 import 'package:youtogether/features/video_sync/domain/usecases/update_barrier_total_count_usecase.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_params.dart';
 import 'package:youtogether/features/video_sync/domain/usecases/update_playback_state_usecase.dart';
+import 'package:youtogether/features/video_sync/domain/value_objects/video_sync_config.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_bloc.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_event.dart';
 import 'package:youtogether/features/video_sync/presentation/bloc/video_sync_state.dart';
@@ -128,10 +130,18 @@ void main() {
   /// the position it wrote, unchanged.
   final testNow = DateTime.utc(2026, 3, 1, 12);
 
+  /// [buildSession]'s default `leaderId`.
+  ///
+  /// Declared separately because a parameter named `leaderId` shadows
+  /// the constant of the same name inside its own default expression:
+  /// `String leaderId = leaderId` resolves to the parameter referring to
+  /// itself, which is not a constant expression and does not compile.
+  const defaultSessionLeaderId = leaderId;
+
   VideoSessionEntity buildSession({
     required bool isPlaying,
     Duration position = const Duration(seconds: 42),
-    String leaderId = leaderId,
+    String leaderId = defaultSessionLeaderId,
     DateTime? updatedAt,
   }) {
     return VideoSessionEntity(
@@ -612,8 +622,9 @@ void main() {
   /// covered here.
   ///
   /// First, `lastKnownSession` was assigned only from `sessionUpdated`,
-  /// i.e. from the live Firebase subscription. `PlayerReconciliation._reconcile`
-  /// returns immediately while that field is `null`, so the 500 ms
+  /// i.e. from the live Firebase subscription.
+  /// `PlayerReconciliation._reconcile` returns immediately while that
+  /// field is `null`, so the 500 ms
   /// sampling loop was inert between the end of `sessionJoined` and the
   /// arrival of the first stream event — even though
   /// `GetCurrentPlaybackStateUseCase` had already read exactly that
@@ -870,6 +881,241 @@ void main() {
         expect(bloc.isLeader, isFalse);
         verifyNever(() => getVideoSessionUseCase(any()));
         verifyNever(() => getCurrentPlaybackStateUseCase(any()));
+      },
+    );
+  });
+
+  /// Tests for F-V08-T1.
+  ///
+  /// Firebase writes previously occurred only on play, pause and seek.
+  /// All ongoing synchronisation therefore rested on wall-clock
+  /// extrapolation from a single `updatedAt` that could be minutes old,
+  /// which holds only while the leader's own playback is uninterrupted.
+  /// Any advertisement, buffering episode or backgrounding on the
+  /// leader's side introduced an error that nothing ever corrected and
+  /// that grew for the remainder of the session — and that every late
+  /// joiner inherited.
+  ///
+  /// The handler's guard is `state is VideoSyncPlaying`, and that alone.
+  /// An earlier draft of this suite also exercised an `_initialStartDone`
+  /// flag, which was redundant: while the ready gate is open the state is
+  /// [VideoSyncBarrierWaiting], and during a local advertisement it is
+  /// [VideoSyncAdInProgress], so the state test already excludes both.
+  /// Expressing one rule once also keeps this suite clear of the barrier
+  /// machinery, which `video_sync_bloc_ready_gate_test.dart` covers.
+  ///
+  /// @competency Unit test harness, TDD cycle.
+  /// @competency Test scenario VS-SYN-10.
+  group('VideoSyncEvent.heartbeatTicked (F-V08-T1)', () {
+    const observed = Duration(seconds: 305);
+
+    /// Number of states [joinAndPlay] emits — `loading`, `ready`, then
+    /// `playing`/`paused` — skipped by the tests that assert the
+    /// heartbeat itself emits nothing.
+    const joinStateCount = 3;
+
+    /// Mutable wall clock backing every bloc built in this group.
+    ///
+    /// The heartbeat is throttled against the bloc's own clock, so a
+    /// test unable to move that clock would have to wait the real
+    /// interval to observe the throttle at all. Reset by [setUp] so that
+    /// no test inherits another's elapsed time.
+    late DateTime now;
+
+    setUp(() {
+      now = testNow;
+      when(
+        () => getVideoSessionUseCase(roomId),
+      ).thenAnswer((_) async => Right(metadata));
+      when(
+        () => getCurrentPlaybackStateUseCase(roomId),
+      ).thenAnswer((_) async => Right(buildSession(isPlaying: false)));
+      when(
+        () => subscribeToPlaybackStateUseCase(roomId),
+      ).thenAnswer((_) => const Stream.empty());
+      when(
+        () => updatePlaybackStateUseCase(any()),
+      ).thenAnswer((_) async => const Right(null));
+    });
+
+    void advance(Duration amount) => now = now.add(amount);
+
+    VideoSyncBloc buildHeartbeatBloc({String currentUserId = leaderId}) {
+      return buildBloc(currentUserId: currentUserId, now: () => now);
+    }
+
+    /// Drives the bloc to [VideoSyncPlaying] (or [VideoSyncPaused]) the
+    /// way production reaches it outside the initial collective start:
+    /// a session join followed by a leader update arriving on the live
+    /// subscription.
+    ///
+    /// The ready gate is deliberately not used. It resolves to the same
+    /// [VideoSyncPlaying] state, and driving it here would pull the
+    /// presence stream, the barrier stream and their stubs into a suite
+    /// that is about none of them.
+    Future<void> joinAndPlay(
+      VideoSyncBloc bloc, {
+      bool isPlaying = true,
+    }) async {
+      bloc.add(const VideoSyncEvent.sessionJoined());
+      await pumpEventQueue();
+      bloc.add(
+        VideoSyncEvent.sessionUpdated(
+          Right(
+            buildSession(
+              isPlaying: isPlaying,
+              position: const Duration(seconds: 300),
+            ),
+          ),
+        ),
+      );
+      await pumpEventQueue();
+    }
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'writes the observed player position while leading an active session, '
+      'without waiting for a first interval to elapse (VS-SYN-10)',
+      build: buildHeartbeatBloc,
+      act: (bloc) async {
+        await joinAndPlay(bloc);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      verify: (_) {
+        verify(
+          () => updatePlaybackStateUseCase(
+            const UpdatePlaybackStateParams(
+              roomId: roomId,
+              isPlaying: true,
+              position: observed,
+            ),
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'emits no state of its own: a heartbeat must not disturb the leader\'s '
+      'own slider while it is being dragged',
+      build: buildHeartbeatBloc,
+      act: (bloc) async {
+        await joinAndPlay(bloc);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      skip: joinStateCount,
+      expect: () => <VideoSyncState>[],
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'throttles to the configured interval: the 500 ms sampling cadence must '
+      'not become the Firebase write cadence',
+      build: buildHeartbeatBloc,
+      act: (bloc) async {
+        await joinAndPlay(bloc);
+        // Twenty sampling intervals is ten seconds of playback, which
+        // spans two heartbeat intervals: one write on the first beat,
+        // one five seconds later.
+        for (var i = 0; i < 20; i++) {
+          advance(VideoSyncConfig.adDetectionInterval);
+          bloc.add(
+            VideoSyncEvent.heartbeatTicked(
+              position: observed + Duration(milliseconds: 500 * i),
+            ),
+          );
+          await pumpEventQueue();
+        }
+      },
+      verify: (_) {
+        verify(() => updatePlaybackStateUseCase(any())).called(2);
+      },
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'ignores the heartbeat when the local participant is not the leader',
+      build: () => buildHeartbeatBloc(currentUserId: viewerId),
+      act: (bloc) async {
+        await joinAndPlay(bloc);
+        advance(VideoSyncConfig.leaderHeartbeatInterval);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      verify: (_) => verifyNever(() => updatePlaybackStateUseCase(any())),
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'ignores the heartbeat while the session is paused: a paused leader has '
+      'nothing to republish',
+      build: buildHeartbeatBloc,
+      act: (bloc) async {
+        await joinAndPlay(bloc, isPlaying: false);
+        advance(VideoSyncConfig.leaderHeartbeatInterval);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      verify: (_) => verifyNever(() => updatePlaybackStateUseCase(any())),
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'ignores the heartbeat while the ready gate is open',
+      build: buildHeartbeatBloc,
+      act: (bloc) async {
+        bloc.add(const VideoSyncEvent.sessionJoined());
+        await pumpEventQueue();
+        bloc.add(
+          const VideoSyncEvent.barrierUpdated(
+            Right(
+              SyncBarrierEntity(
+                targetTimestamp: Duration(seconds: 300),
+                readyCount: 1,
+                totalCount: 3,
+                allReady: false,
+              ),
+            ),
+          ),
+        );
+        await pumpEventQueue();
+        advance(VideoSyncConfig.leaderHeartbeatInterval);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      verify: (_) => verifyNever(() => updatePlaybackStateUseCase(any())),
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'ignores the heartbeat while an advertisement is in progress: content '
+      'time is frozen and republishing it would rewind every viewer',
+      build: buildHeartbeatBloc,
+      act: (bloc) async {
+        await joinAndPlay(bloc);
+        bloc.add(const VideoSyncEvent.adDetected());
+        await pumpEventQueue();
+        advance(VideoSyncConfig.leaderHeartbeatInterval);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      verify: (_) => verifyNever(() => updatePlaybackStateUseCase(any())),
+    );
+
+    blocTest<VideoSyncBloc, VideoSyncState>(
+      'does not surface a failed heartbeat write: the next beat retries and a '
+      'transient write refusal is not a session failure',
+      build: () {
+        final bloc = buildHeartbeatBloc();
+        when(() => updatePlaybackStateUseCase(any())).thenAnswer(
+          (_) async => const Left(Failure.firebase(message: 'write refused')),
+        );
+        return bloc;
+      },
+      act: (bloc) async {
+        await joinAndPlay(bloc);
+        bloc.add(const VideoSyncEvent.heartbeatTicked(position: observed));
+        await pumpEventQueue();
+      },
+      skip: joinStateCount,
+      expect: () => <VideoSyncState>[],
+      verify: (_) {
+        verify(() => updatePlaybackStateUseCase(any())).called(1);
       },
     );
   });

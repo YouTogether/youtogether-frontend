@@ -95,4 +95,15 @@ sealed class VideoSyncEvent with _$VideoSyncEvent {
   /// has timed out. Leader-only; a no-op otherwise.
   const factory VideoSyncEvent.forceStartRequested() =
       VideoSyncForceStartRequested;
+
+  /// A position sampled from the local player, forwarded by
+  /// `PlayerReconciliation` on its existing sampling cadence.
+  ///
+  /// Named for its purpose rather than its origin: only the leader acts
+  /// on it, and only once per [VideoSyncConfig.leaderHeartbeatInterval].
+  /// Every other participant's bloc discards it, which is why the
+  /// widget forwards unconditionally instead of testing `isLeader`
+  /// itself — the leader-gating rule stays in one place.
+  const factory VideoSyncEvent.heartbeatTicked({required Duration position}) =
+      VideoSyncHeartbeatTicked;
 }

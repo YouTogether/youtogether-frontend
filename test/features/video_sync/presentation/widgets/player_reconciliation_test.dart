@@ -764,4 +764,78 @@ void main() {
       verifyNever(() => bloc.add(const VideoSyncEvent.adDetected()));
     });
   });
+
+  /// Tests for F-V08-T1.
+  ///
+  /// The heartbeat's position source is the leader's own player, not
+  /// [VideoSyncState]'s `position` — that value is frozen at the last
+  /// command, so republishing it every few seconds would refresh
+  /// `updatedAt` against a stale position and make the video appear
+  /// frozen to every late joiner. This widget already samples the
+  /// player once per [PlayerReconciliation.samplingInterval], so it
+  /// forwards each reading and lets the bloc decide what to do with it.
+  ///
+  /// Forwarding is unconditional on purpose. Only the leader acts on a
+  /// heartbeat, and only once per
+  /// `VideoSyncConfig.leaderHeartbeatInterval`, but testing leadership
+  /// here would put the leader-gating rule in a second place — the very
+  /// duplication `VideoSyncBloc`'s own leader-gated handlers exist to
+  /// avoid.
+  ///
+  /// @competency Unit/widget test harness, TDD cycle.
+  /// @competency Test scenario VS-SYN-10.
+  group('PlayerReconciliation — heartbeat forwarding (F-V08-T1)', () {
+    Future<PlayerReconciliationState> mountPlaying(WidgetTester tester) {
+      return mount(
+        tester,
+        initialState: const VideoSyncState.playing(
+          position: Duration(seconds: 10),
+        ),
+      );
+    }
+
+    testWidgets('forwards the observed position once a baseline has been '
+        'established', (tester) async {
+      final state = await mountPlaying(tester);
+
+      // The first tick establishes the ad-detection baseline and returns
+      // before reaching any of the work that follows it, this forwarding
+      // included.
+      await state.tick();
+
+      controller.sample = const PlayerSample(
+        position: Duration(seconds: 305),
+        state: PlayerAdapterState.playing,
+      );
+      await state.tick();
+
+      verify(
+        () => bloc.add(
+          const VideoSyncEvent.heartbeatTicked(
+            position: Duration(seconds: 305),
+          ),
+        ),
+      ).called(1);
+    });
+
+    testWidgets('forwards no heartbeat while an advertisement is believed to '
+        'be in progress: a frozen content time must not be republished', (
+      tester,
+    ) async {
+      final state = await mountPlaying(tester);
+
+      controller.sample = const PlayerSample(
+        position: Duration(seconds: 120),
+        state: PlayerAdapterState.playing,
+      );
+      await state.tick();
+
+      // The same position, still reported as playing: the stagnation
+      // heuristic reads this as an advertisement.
+      await state.tick();
+
+      verify(() => bloc.add(const VideoSyncEvent.adDetected())).called(1);
+      verifyNever(() => bloc.add(any(that: isA<VideoSyncHeartbeatTicked>())));
+    });
+  });
 }

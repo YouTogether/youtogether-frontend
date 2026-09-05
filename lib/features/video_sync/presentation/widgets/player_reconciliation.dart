@@ -226,6 +226,18 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
         _readySignalled = true;
         bloc.add(const VideoSyncEvent.readySignalled());
       }
+      // Forwarded unconditionally: the bloc discards it unless this
+      // participant is the leader and content is actually progressing,
+      // and throttles it to the heartbeat interval. Deciding any of that
+      // here would put the leader-gating rule in a second place.
+      //
+      // This branch, and not the ad-recovery one above it: reaching here
+      // means `detectAd` has cleared this reading, so a position frozen
+      // by an advertisement is never republished. The ad-recovery branch
+      // is excluded for a different reason — the position observed at
+      // that exact instant is still the pre-catch-up one, since
+      // `_reconcile` has not yet run.
+      bloc.add(VideoSyncEvent.heartbeatTicked(position: sample.position));
       await _reconcile(bloc, sample, adInProgress: false);
     }
 
