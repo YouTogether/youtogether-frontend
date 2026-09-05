@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.19.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.18.0...v0.19.0) (2026-09-05)
+
+
+### Features
+
+* **auth:** [F-A06-T1] Add the Firebase session port and use cases ([#116](https://github.com/YouTogether/youtogether-frontend/issues/116)) ([bc4f4f8](https://github.com/YouTogether/youtogether-frontend/commit/bc4f4f84d143a6f0fb780b611a02e36446da71df))
+* **auth:** [F-A06-T2] Implement the Firebase session data layer ([#117](https://github.com/YouTogether/youtogether-frontend/issues/117)) ([1351883](https://github.com/YouTogether/youtogether-frontend/commit/1351883f010831fedea977ebc7f61cc663f430a3))
+* **auth:** [F-A06-T3] Gate room entry on an established Firebase session ([#118](https://github.com/YouTogether/youtogether-frontend/issues/118)) ([aa385db](https://github.com/YouTogether/youtogether-frontend/commit/aa385db92a1ca58ab713e9ba3e830c9a56b33421))
+* **room:** [F-R03-T3] edit room cancel button ([#99](https://github.com/YouTogether/youtogether-frontend/issues/99)) ([9a17bcd](https://github.com/YouTogether/youtogether-frontend/commit/9a17bcdc717fa4e556c5dc852da7ddc6be3fc996))
+* **video-sync:** [F-V01-T1] Embed the YouTube IFrame player ([#106](https://github.com/YouTogether/youtogether-frontend/issues/106)) ([491e178](https://github.com/YouTogether/youtogether-frontend/commit/491e178b0b76636d736db0fb525d2cc623e618c3))
+* **video-sync:** [F-V02-T1] Define playback domain layer ([#101](https://github.com/YouTogether/youtogether-frontend/issues/101)) ([0eacfec](https://github.com/YouTogether/youtogether-frontend/commit/0eacfec7be3da3a5b6914d9b7d933a745d612e1e))
+* **video-sync:** [F-V02-T2] Implement Firebase data source for playback state ([#104](https://github.com/YouTogether/youtogether-frontend/issues/104)) ([634a2af](https://github.com/YouTogether/youtogether-frontend/commit/634a2af9207178867309a8daeba4a4a5fb433bf4))
+* **video-sync:** [F-V02] Implement leader playback controls ([#107](https://github.com/YouTogether/youtogether-frontend/issues/107)) ([0fbf963](https://github.com/YouTogether/youtogether-frontend/commit/0fbf963f1c38b5fc079465edda38ab779c393168))
+* **video-sync:** [F-V03-T1] Add GetCurrentPlaybackStateUseCase ([#102](https://github.com/YouTogether/youtogether-frontend/issues/102)) ([bbe894f](https://github.com/YouTogether/youtogether-frontend/commit/bbe894fbf25b5eb9f67e4786e639febee7132ce2))
+* **video-sync:** [F-V03-T2] Wire initial sync, video session metadata fetch, and Firebase disconnect handling ([#108](https://github.com/YouTogether/youtogether-frontend/issues/108)) ([81dd9a4](https://github.com/YouTogether/youtogether-frontend/commit/81dd9a48d98bdcb0bffab03df0308c255dd8cfed))
+* **video-sync:** [F-V04] Implement viewer synchronisation and ad-desync recovery ([#109](https://github.com/YouTogether/youtogether-frontend/issues/109)) ([c61e385](https://github.com/YouTogether/youtogether-frontend/commit/c61e385e5a949ecbe24a4a3fda974ce752e0b552))
+* **video-sync:** [F-V05-T1] Define presence domain layer ([#103](https://github.com/YouTogether/youtogether-frontend/issues/103)) ([03cd8bc](https://github.com/YouTogether/youtogether-frontend/commit/03cd8bc31e20d6df06c41ea00645562949f23352))
+* **video-sync:** [F-V05-T2] Implement Firebase presence data source ([#105](https://github.com/YouTogether/youtogether-frontend/issues/105)) ([2bbe10a](https://github.com/YouTogether/youtogether-frontend/commit/2bbe10aa45227102c8aa2fd3a227df997a86a271))
+* **video-sync:** [F-V05-T3] Display the live participant count ([#110](https://github.com/YouTogether/youtogether-frontend/issues/110)) ([c0d8f27](https://github.com/YouTogether/youtogether-frontend/commit/c0d8f279ce6f00d41a9671a06233d69b8c6a8990))
+* **video-sync:** [F-V06-T1] Add YoutubeVideoId and CreateVideoSessionUseCase ([#113](https://github.com/YouTogether/youtogether-frontend/issues/113)) ([3b9cc50](https://github.com/YouTogether/youtogether-frontend/commit/3b9cc50e5330005cadbd515d4bc674e17885a85c))
+* **video-sync:** [F-V06-T2] Implement video session creation over REST ([#114](https://github.com/YouTogether/youtogether-frontend/issues/114)) ([6226f1d](https://github.com/YouTogether/youtogether-frontend/commit/6226f1d90fc410087f96f3dc3fd346d9c5674690))
+* **video-sync:** [F-V06-T3] Let the room leader add a video ([#115](https://github.com/YouTogether/youtogether-frontend/issues/115)) ([73982e2](https://github.com/YouTogether/youtogether-frontend/commit/73982e2f0609a6e02bcd284de0ab37265035dd31))
+* **video-sync:** [F-V08-T1] Republish the leader position periodically ([#122](https://github.com/YouTogether/youtogether-frontend/issues/122)) ([7aceed3](https://github.com/YouTogether/youtogether-frontend/commit/7aceed3cc444640bfc50f6d5cb93506fbfeac9e2))
+
+
+### Bug Fixes
+
+* **video-sync:** [F-V06-T4] Derive isLeader from room ownership ([#111](https://github.com/YouTogether/youtogether-frontend/issues/111)) ([f411d06](https://github.com/YouTogether/youtogether-frontend/commit/f411d060626016d250b9e39d322dde4935e75f30))
+* **video-sync:** [F-V06-T4] Firebase database rules and app_fr.arb ([#112](https://github.com/YouTogether/youtogether-frontend/issues/112)) ([f76b616](https://github.com/YouTogether/youtogether-frontend/commit/f76b616a6b7445fd76ae6a12975d1836c9341351))
+* **video-sync:** [F-V07-T1] Seed last known session and extrapolate the join position ([#119](https://github.com/YouTogether/youtogether-frontend/issues/119)) ([e2166c8](https://github.com/YouTogether/youtogether-frontend/commit/e2166c85496801e69db0a30fb433b7034f89e98f))
+* **video-sync:** [F-V07-T2] Apply the expected position on state transitions ([#120](https://github.com/YouTogether/youtogether-frontend/issues/120)) ([85102b4](https://github.com/YouTogether/youtogether-frontend/commit/85102b45f0e0df5e2e7be8bffb1b4f7734186442))
+* **video-sync:** [F-V07-T3] Harden the reconciliation sampling loop ([#121](https://github.com/YouTogether/youtogether-frontend/issues/121)) ([bcbc2c9](https://github.com/YouTogether/youtogether-frontend/commit/bcbc2c9e98770808da3dfb137d4a5f0384d28d03))
+* **video-sync:** [F-V09-T1] Neutralise the native player control surface ([#123](https://github.com/YouTogether/youtogether-frontend/issues/123)) ([eeacbf6](https://github.com/YouTogether/youtogether-frontend/commit/eeacbf64d043b0d92b709bcf0c6f5da74e88a67b))
+
 ## [0.18.0](https://github.com/YouTogether/youtogether-frontend/compare/v0.17.0...v0.18.0) (2026-07-22)
 
 
