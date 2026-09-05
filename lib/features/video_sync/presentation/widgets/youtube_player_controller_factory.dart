@@ -3,6 +3,40 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'youtube_player_controller_adapter.dart';
 
+/// Player parameters, identical for every participant.
+///
+/// Applies ADR-002: `LeaderControls` is the sole entry point for
+/// playback intent, so the embedded player must answer no native input
+/// from anyone. Three parameters carry that decision, and each closes a
+/// distinct hole:
+///
+/// - [YoutubePlayerParams.showControls] hides the overlay. On its own
+///   it only hides: the player still answers clicks on the video
+///   surface.
+/// - [YoutubePlayerParams.enableKeyboard] defaults to `kIsWeb`, leaving
+///   space-bar and arrow-key control active on the web build.
+/// - [YoutubePlayerParams.pointerEvents] is what actually makes the
+///   embed inert. It is also what unblocks page scrolling: the platform
+///   view otherwise consumes wheel events before the enclosing
+///   `Scrollable` ever sees them.
+///
+/// [YoutubePlayerParams.strictRelatedVideos] is set because the
+/// end screen cannot be suppressed through this API. Restricting its
+/// suggestions to the originating channel is the closest available
+/// behaviour; with pointer events disabled they are in any case not
+/// actionable.
+YoutubePlayerParams buildYoutubePlayerParams() {
+  return const YoutubePlayerParams(
+    showControls: false,
+    enableKeyboard: false,
+    pointerEvents: PointerEvents.none,
+    showFullscreenButton: false,
+    showVideoAnnotations: false,
+    strictRelatedVideos: true,
+    mute: false,
+  );
+}
+
 /// Concrete [YoutubePlayerControllerAdapter], wrapping
 /// `youtube_player_iframe`'s [YoutubePlayerController].
 ///
@@ -39,18 +73,12 @@ import 'youtube_player_controller_adapter.dart';
 ///   package).
 class _YoutubePlayerControllerAdapterImpl
     implements YoutubePlayerControllerAdapter {
-  _YoutubePlayerControllerAdapterImpl({
-    required this.videoId,
-    required bool showNativeControls,
-  }) : _controller = YoutubePlayerController.fromVideoId(
-         videoId: videoId,
-         autoPlay: false,
-         params: YoutubePlayerParams(
-           showControls: showNativeControls,
-           showFullscreenButton: false,
-           mute: false,
-         ),
-       ) {
+  _YoutubePlayerControllerAdapterImpl({required this.videoId})
+    : _controller = YoutubePlayerController.fromVideoId(
+        videoId: videoId,
+        autoPlay: false,
+        params: buildYoutubePlayerParams(),
+      ) {
     _controller.listen(_handlePlayerValue);
   }
 
@@ -139,10 +167,6 @@ class _YoutubePlayerControllerAdapterImpl
 /// `youtube_player_widget.dart`), used on every platform.
 YoutubePlayerControllerAdapter createYoutubePlayerControllerAdapter({
   required String videoId,
-  required bool showNativeControls,
 }) {
-  return _YoutubePlayerControllerAdapterImpl(
-    videoId: videoId,
-    showNativeControls: showNativeControls,
-  );
+  return _YoutubePlayerControllerAdapterImpl(videoId: videoId);
 }

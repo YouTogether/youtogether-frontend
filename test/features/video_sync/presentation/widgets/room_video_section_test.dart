@@ -123,9 +123,8 @@ void main() {
           ],
           child: SingleChildScrollView(
             child: RoomVideoSection(
-              controllerFactory:
-                  ({required videoId, required showNativeControls}) =>
-                      FakeController(videoId: videoId),
+              controllerFactory: ({required videoId}) =>
+                  FakeController(videoId: videoId),
             ),
           ),
         ),

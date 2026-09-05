@@ -13,26 +13,21 @@ import 'youtube_player_controller_factory.dart' as default_factory;
 /// WebView to construct) — mirroring how `RegisterPage` takes its use
 /// case via the constructor rather than resolving it from `get_it`
 /// internally.
-typedef YoutubePlayerControllerFactory =
-    YoutubePlayerControllerAdapter Function({
-      required String videoId,
-      required bool showNativeControls,
-    });
-
-/// Embeds a single YouTube video via `youtube_player_iframe`, which
-/// supports every platform this application targets through one
-/// controller and widget — see
-/// `youtube_player_controller_factory.dart`'s own doc comment.
 ///
-/// Native player controls (YouTube's own play/pause/seek bar overlay)
-/// are shown only when [isLeader] is `true` — for a non-leader viewer,
-/// playback must be driven exclusively by [PlayerReconciliation]
-/// reacting to `VideoSyncState`, never by the viewer directly
-/// interacting with the embedded player's own UI (Acceptance Criteria,
-/// "Play/pause/seek buttons disabled for non-leader viewers" —
-/// this widget is the first line of enforcement for that rule at the
-/// player-chrome level; `LeaderControls` is the second, for the
-/// app's own control bar).
+/// The video id is the only input: per ADR-002 the player's parameters
+/// are identical for every participant and are owned by
+/// [default_factory.buildYoutubePlayerParams], not by the caller.
+typedef YoutubePlayerControllerFactory =
+    YoutubePlayerControllerAdapter Function({required String videoId});
+
+/// Embeds a single YouTube player and reports what it is doing.
+///
+/// The embedded player answers no native input at all — see ADR-002 and
+/// [default_factory.buildYoutubePlayerParams]. It is therefore
+/// identical for every participant, and this widget takes no notion of
+/// role: enforcement of the leader role rests entirely on
+/// `LeaderControls` and on `VideoSyncBloc`'s leader-gated command
+/// handlers, which remain two independent layers.
 ///
 /// This widget only embeds and reports on playback — it never itself
 /// decides *what* to play or *when*: `videoId` is provided by the
@@ -54,7 +49,6 @@ class YouTubePlayerWidget extends StatefulWidget {
   const YouTubePlayerWidget({
     super.key,
     required this.videoId,
-    required this.isLeader,
     this.onReady,
     this.onStateChange,
     this.onError,
@@ -64,11 +58,6 @@ class YouTubePlayerWidget extends StatefulWidget {
 
   /// The YouTube video id to load.
   final String videoId;
-
-  /// Whether the current user is this room's leader. Controls whether
-  /// the embedded player's own native controls are shown — see this
-  /// class's own doc comment.
-  final bool isLeader;
 
   /// Invoked once the player has finished loading.
   final VoidCallback? onReady;
@@ -104,14 +93,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
   void initState() {
     super.initState();
 
-    _controller =
-        widget.controllerFactory(
-            videoId: widget.videoId,
-            showNativeControls: widget.isLeader,
-          )
-          ..onReady = widget.onReady
-          ..onStateChange = widget.onStateChange
-          ..onError = widget.onError;
+    _controller = widget.controllerFactory(videoId: widget.videoId)
+      ..onReady = widget.onReady
+      ..onStateChange = widget.onStateChange
+      ..onError = widget.onError;
 
     widget.onControllerReady?.call(_controller);
   }

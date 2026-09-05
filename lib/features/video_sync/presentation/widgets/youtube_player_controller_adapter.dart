@@ -16,11 +16,14 @@ enum PlayerAdapterState { unstarted, ended, playing, paused, buffering, cued }
 /// `youtube_player_controller_factory.dart`'s own doc comment for why
 /// the web/mobile split originally planned turned out to
 /// be unnecessary. This abstraction is kept regardless: it is what
-/// keeps [YouTubePlayerWidget]'s gating logic (native controls hidden
-/// for non-leaders) and callback wiring unit-testable against a
-/// `FakeYoutubePlayerControllerAdapter`, without constructing a real
-/// `YoutubePlayerController` (which requires a real WebView) in a
-/// widget test.
+/// keeps [YouTubePlayerWidget]'s callback wiring and
+/// `PlayerReconciliation`'s entire sampling and command loop
+/// unit-testable against a `FakeYoutubePlayerControllerAdapter`,
+/// without constructing a real `YoutubePlayerController` (which
+/// requires a real WebView) in a widget test.
+///
+/// It no longer abstracts any role-dependent behaviour: since ADR-002
+/// the player is constructed identically for every participant.
 ///
 /// @see createYoutubePlayerControllerAdapter — the default
 ///   implementation
