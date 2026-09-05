@@ -1,17 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:youtogether/features/video_sync/presentation/widgets/youtube_player_controller_adapter.dart';
 import 'package:youtogether/features/video_sync/presentation/widgets/youtube_player_widget.dart';
 
 class FakeYoutubePlayerControllerAdapter
     implements YoutubePlayerControllerAdapter {
-  FakeYoutubePlayerControllerAdapter({
-    required this.videoId,
-    required this.showNativeControls,
-  });
-
-  final bool showNativeControls;
+  FakeYoutubePlayerControllerAdapter({required this.videoId});
 
   @override
   final String videoId;
@@ -65,165 +59,116 @@ class FakeYoutubePlayerControllerAdapter
 
 /// Unit and widget tests for [YouTubePlayerWidget].
 ///
-/// @competency Unit test harness.
+/// Since F-V09-T1 applied ADR-002, this widget carries no notion of
+/// role: the embedded player is constructed identically for every
+/// participant and answers no native input. The assertion that used to
+/// live here — that the leader and a viewer get the same player — is no
+/// longer expressible at this level, because there is no longer a
+/// parameter to vary. It is carried directly by
+/// `youtube_player_controller_factory_test.dart`, against
+/// `buildYoutubePlayerParams` itself.
+///
+/// What remains this widget's own responsibility, and what these tests
+/// cover, is the wiring: it constructs exactly one controller from the
+/// video id it was given, hands that same instance to its caller, keeps
+/// the SDK callbacks connected, and releases the controller when it
+/// leaves the tree.
+///
+/// @competency Unit/widget test harness.
 void main() {
-  group('YouTubePlayerWidget — native controls gating', () {
-    testWidgets('should request native controls when isLeader is true', (
-      tester,
-    ) async {
-      bool? capturedShowNativeControls;
+  late FakeYoutubePlayerControllerAdapter fake;
+  late List<String> requestedVideoIds;
 
-      await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: YouTubePlayerWidget(
-            videoId: 'dQw4w9WgXcQ',
-            isLeader: true,
-            controllerFactory:
-                ({required videoId, required showNativeControls}) {
-                  capturedShowNativeControls = showNativeControls;
-                  return FakeYoutubePlayerControllerAdapter(
-                    videoId: videoId,
-                    showNativeControls: showNativeControls,
-                  );
-                },
-          ),
-        ),
-      );
+  setUp(() {
+    requestedVideoIds = [];
+  });
 
-      expect(capturedShowNativeControls, isTrue);
+  YoutubePlayerControllerAdapter factory({required String videoId}) {
+    requestedVideoIds.add(videoId);
+    return fake = FakeYoutubePlayerControllerAdapter(videoId: videoId);
+  }
+
+  Widget subject({
+    String videoId = 'dQw4w9WgXcQ',
+    VoidCallback? onReady,
+    ValueChanged<PlayerAdapterState>? onStateChange,
+    ValueChanged<String>? onError,
+    ValueChanged<YoutubePlayerControllerAdapter>? onControllerReady,
+  }) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: YouTubePlayerWidget(
+        videoId: videoId,
+        onReady: onReady,
+        onStateChange: onStateChange,
+        onError: onError,
+        onControllerReady: onControllerReady,
+        controllerFactory: factory,
+      ),
+    );
+  }
+
+  group('YouTubePlayerWidget — controller construction', () {
+    testWidgets('builds a single controller from the given video id and '
+        'renders its view', (tester) async {
+      await tester.pumpWidget(subject());
+
+      expect(requestedVideoIds, ['dQw4w9WgXcQ']);
       expect(find.byKey(const Key('fakePlayerView')), findsOneWidget);
     });
 
-    testWidgets(
-      'should request native controls hidden when isLeader is false',
-      (tester) async {
-        bool? capturedShowNativeControls;
+    testWidgets('hands the controller it built to onControllerReady, so '
+        'PlayerReconciliation drives the same instance rather than a '
+        'second, disconnected one', (tester) async {
+      YoutubePlayerControllerAdapter? published;
 
-        await tester.pumpWidget(
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: YouTubePlayerWidget(
-              videoId: 'dQw4w9WgXcQ',
-              isLeader: false,
-              controllerFactory:
-                  ({required videoId, required showNativeControls}) {
-                    capturedShowNativeControls = showNativeControls;
-                    return FakeYoutubePlayerControllerAdapter(
-                      videoId: videoId,
-                      showNativeControls: showNativeControls,
-                    );
-                  },
-            ),
-          ),
-        );
+      await tester.pumpWidget(subject(onControllerReady: (c) => published = c));
 
-        expect(capturedShowNativeControls, isFalse);
-      },
-    );
-  });
-
-  group('YouTubePlayerWidget — callback wiring', () {
-    late FakeYoutubePlayerControllerAdapter capturedController;
-
-    Future<void> pump(
-      WidgetTester tester, {
-      VoidCallback? onReady,
-      ValueChanged<PlayerAdapterState>? onStateChange,
-      ValueChanged<String>? onError,
-    }) {
-      return tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: YouTubePlayerWidget(
-            videoId: 'dQw4w9WgXcQ',
-            isLeader: true,
-            onReady: onReady,
-            onStateChange: onStateChange,
-            onError: onError,
-            controllerFactory:
-                ({required videoId, required showNativeControls}) {
-                  capturedController = FakeYoutubePlayerControllerAdapter(
-                    videoId: videoId,
-                    showNativeControls: showNativeControls,
-                  );
-                  return capturedController;
-                },
-          ),
-        ),
-      );
-    }
-
-    testWidgets(
-      'should invoke widget.onReady when the controller fires its ready callback',
-      (tester) async {
-        var readyCalled = false;
-        await pump(tester, onReady: () => readyCalled = true);
-
-        capturedController.fireReady();
-
-        expect(readyCalled, isTrue);
-      },
-    );
-
-    testWidgets(
-      'should invoke widget.onStateChange with the mapped PlayerAdapterState',
-      (tester) async {
-        PlayerAdapterState? received;
-        await pump(tester, onStateChange: (state) => received = state);
-
-        capturedController.fireStateChange(PlayerAdapterState.playing);
-
-        expect(received, PlayerAdapterState.playing);
-      },
-    );
-
-    testWidgets('should invoke widget.onError with the reported message', (
-      tester,
-    ) async {
-      String? received;
-      await pump(tester, onError: (message) => received = message);
-
-      capturedController.fireError('Video unavailable');
-
-      expect(received, 'Video unavailable');
+      expect(published, same(fake));
     });
 
-    testWidgets('should dispose the controller when the widget is disposed', (
+    testWidgets('disposes the controller when it leaves the tree', (
       tester,
     ) async {
-      await pump(tester);
+      await tester.pumpWidget(subject());
+      expect(fake.disposed, isFalse);
 
       await tester.pumpWidget(const SizedBox());
 
-      expect(capturedController.disposed, isTrue);
+      expect(fake.disposed, isTrue);
+    });
+  });
+
+  group('YouTubePlayerWidget — SDK callback forwarding', () {
+    testWidgets('forwards the ready callback', (tester) async {
+      var readyCount = 0;
+      await tester.pumpWidget(subject(onReady: () => readyCount++));
+
+      fake.fireReady();
+
+      expect(readyCount, 1);
     });
 
-    testWidgets(
-      'should invoke onControllerReady once with the constructed controller (F-V04)',
-      (tester) async {
-        YoutubePlayerControllerAdapter? received;
+    testWidgets('forwards playback state changes', (tester) async {
+      final observed = <PlayerAdapterState>[];
+      await tester.pumpWidget(subject(onStateChange: observed.add));
 
-        await tester.pumpWidget(
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: YouTubePlayerWidget(
-              videoId: 'dQw4w9WgXcQ',
-              isLeader: true,
-              onControllerReady: (controller) => received = controller,
-              controllerFactory:
-                  ({required videoId, required showNativeControls}) {
-                    return FakeYoutubePlayerControllerAdapter(
-                      videoId: videoId,
-                      showNativeControls: showNativeControls,
-                    );
-                  },
-            ),
-          ),
-        );
+      fake.fireStateChange(PlayerAdapterState.buffering);
+      fake.fireStateChange(PlayerAdapterState.playing);
 
-        expect(received, isA<FakeYoutubePlayerControllerAdapter>());
-      },
-    );
+      expect(observed, [
+        PlayerAdapterState.buffering,
+        PlayerAdapterState.playing,
+      ]);
+    });
+
+    testWidgets('forwards player errors', (tester) async {
+      final observed = <String>[];
+      await tester.pumpWidget(subject(onError: observed.add));
+
+      fake.fireError('embedding disabled');
+
+      expect(observed, ['embedding disabled']);
+    });
   });
 }
