@@ -129,7 +129,6 @@ class _RoomVideoSectionState extends State<RoomVideoSection> {
               child: YouTubePlayerWidget(
                 key: const Key('roomVideoSectionPlayer'),
                 videoId: bloc.youtubeVideoId,
-                isLeader: bloc.isLeader,
                 onControllerReady: _handleControllerReady,
                 controllerFactory:
                     widget.controllerFactory ??
