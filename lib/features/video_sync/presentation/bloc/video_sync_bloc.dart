@@ -512,6 +512,22 @@ class VideoSyncBloc extends Bloc<VideoSyncEvent, VideoSyncState> {
     );
 
     result.fold((failure) => emit(VideoSyncState.failure(failure)), (_) {
+      // The leader's own listener aligns its player against
+      // `expectedPosition`, which derives from `_lastKnownSession`.
+      // Without this update the leader would compare its player against
+      // the session *before* its own command, find no drift, and never
+      // seek; the Firebase echo that follows carries the same state and
+      // is therefore never emitted. The echo still overwrites this
+      // optimistic copy with the server's `updatedAt`, silently.
+      final previous = _lastKnownSession;
+      if (previous != null) {
+        _lastKnownSession = previous.copyWith(
+          isPlaying: isPlaying,
+          currentPosition: position,
+          updatedAt: _now(),
+        );
+      }
+
       emit(
         isPlaying
             ? VideoSyncState.playing(position: position)
