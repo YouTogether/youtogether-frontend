@@ -451,8 +451,9 @@ void main() {
       expect(controller.calls, ['seekTo:0:03:40.000000', 'play']);
     });
 
-    testWidgets('applies the playback intent when the sample read fails: a '
-        'failed read costs the seek, never the play', (tester) async {
+    testWidgets('seeks unconditionally when the sample read fails: an '
+        'unobservable player still gets the expected position, and the '
+        'playback intent follows', (tester) async {
       bloc.expectedPosition = const Duration(seconds: 220);
       controller.sampleError = StateError('controller detached');
 
@@ -467,7 +468,13 @@ void main() {
         ],
       );
 
-      expect(controller.calls, ['play']);
+      // The drift gate exists only to spare a redundant seek. When the
+      // player cannot be read, the gate cannot be evaluated, and a
+      // redundant seek is the cheaper failure: it costs a stutter,
+      // whereas a missing one costs the synchronisation — with the
+      // periodic loop equally blind, this path is the only one left
+      // holding the room together.
+      expect(controller.calls, ['seekTo:0:03:40.000000', 'play']);
     });
 
     testWidgets('does not let a sample read failing on the listener path '
