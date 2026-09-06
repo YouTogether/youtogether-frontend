@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,8 +25,8 @@ import 'youtube_player_controller_adapter.dart';
 ///    the local player — never `LeaderControls` or
 ///    `YouTubePlayerWidget` directly, and never in response to a
 ///    non-leader's tap: those are structurally prevented from ever
-///    reaching this point (`YouTubePlayerWidget` hides native controls
-///    for non-leaders; `LeaderControls` disables its buttons
+///    reaching this point (the embedded player answers no native input
+///    from anyone, per ADR-002; `LeaderControls` disables its controls
 ///    for non-leaders; `VideoSyncBloc`'s command handlers are
 ///    themselves leader-gated no-ops) — every play/pause the
 ///    local player ever performs originates from a leader's action,
@@ -64,6 +63,11 @@ import 'youtube_player_controller_adapter.dart';
 /// A state's `position` remains a presentation value, frozen at the
 /// instant it was emitted, and is consumed as such by `LeaderControls`
 /// for its slider.
+///
+/// Both responsibilities also read the player through one bounded,
+/// non-throwing path, [_readSample], so that a controller which has
+/// stopped answering degrades their behaviour rather than suspending
+/// it.
 ///
 /// @see SyncEngine — the pure Dart computation this widget is the sole
 ///   consumer of
@@ -167,22 +171,8 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     // failure mode corrected on the authentication cubits in Sprint 2.
     final bloc = context.read<VideoSyncBloc>();
 
-    final PlayerSample sample;
-    try {
-      sample = await widget.controller.getCurrentSample().timeout(
-        widget.samplingInterval,
-      );
-    } catch (error, stackTrace) {
-      _handleSampleFailure(error, stackTrace);
-      return;
-    }
-
-    if (!mounted) return;
-    _consecutiveSampleFailures = 0;
-    if (_degraded) {
-      _degraded = false;
-      widget.onReconciliationDegraded?.call(false);
-    }
+    final sample = await _readSample();
+    if (sample == null || !mounted) return;
 
     final previous = _previousPosition;
     if (previous == null) {
@@ -244,6 +234,35 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     _previousPosition = sample.position;
   }
 
+  /// Reads a sample within one sampling interval, or returns `null`.
+  ///
+  /// The single path through which this widget observes the player,
+  /// shared by the periodic loop and the state-driven alignment. Bounded
+  /// by [PlayerReconciliation.samplingInterval] because a reading slower
+  /// than the cadence is stale on arrival, and never throwing because a
+  /// controller that has stopped answering must degrade the caller's
+  /// behaviour, not suspend it. A `null` result has already been
+  /// accounted for by [_handleSampleFailure]; a non-null one resets the
+  /// failure count and lowers the degraded flag if it was raised.
+  Future<PlayerSample?> _readSample() async {
+    final PlayerSample sample;
+    try {
+      sample = await widget.controller.getCurrentSample().timeout(
+        widget.samplingInterval,
+      );
+    } catch (error, stackTrace) {
+      _handleSampleFailure(error, stackTrace);
+      return null;
+    }
+
+    _consecutiveSampleFailures = 0;
+    if (_degraded) {
+      _degraded = false;
+      widget.onReconciliationDegraded?.call(false);
+    }
+    return sample;
+  }
+
   void _handleSampleFailure(Object error, StackTrace stackTrace) {
     // A gap in the sequence invalidates the ad-detection baseline: the
     // next successful reading is more than one interval away from the
@@ -251,23 +270,6 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     // compared against a stale predecessor.
     _previousPosition = null;
     _consecutiveSampleFailures++;
-
-    // Logged through `dart:developer`, deliberately not through
-    // `FlutterError.reportError`. The latter routes into
-    // `FlutterError.onError`, which `flutter_test` overrides to record
-    // every reported error as a test failure — `silent: true` only
-    // suppresses the console output, not the recording. Every test that
-    // exercises a deliberate read failure would therefore fail on the
-    // report rather than on its own assertion. A failed sample read is
-    // a handled, recoverable condition, not a framework error, so
-    // `FlutterError` is the wrong channel for it in any case.
-    developer.log(
-      'Player sample read failed during reconciliation',
-      name: 'video_sync',
-      error: error,
-      stackTrace: stackTrace,
-      level: 900,
-    );
 
     // Reported on the crossing only. Repeating it every sampling
     // interval would replace a silent failure with an equally useless
@@ -312,19 +314,24 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
   /// returned early whenever no expected position was available, which
   /// silently dropped the play/pause along with the seek — a state
   /// saying "play" must still start the player even when there is no
-  /// authoritative position to align it to. The same independence
-  /// holds when the sample read fails: the failure costs the seek,
-  /// never the play or the pause.
+  /// authoritative position to align it to.
   ///
   /// The seek is gated by [SyncEngine.evaluateReconciliation] rather
-  /// than issued unconditionally. Once F-V08-T1 adds the leader's
+  /// than issued unconditionally. Since F-V08-T1 added the leader's
   /// position heartbeat, [VideoSyncState.playing] transitions arrive on
   /// a fixed cadence and not only on the leader's commands; seeking to
-  /// a position the player already holds would then produce a visible
+  /// a position the player already holds would produce a visible
   /// stutter every few seconds. `adInProgress: false` is correct here
   /// because [_playbackIntentFor] yields `null` for
   /// [VideoSyncState.adInProgress], so an advertisement never reaches
   /// this method.
+  ///
+  /// When the player cannot be read, the gate cannot be evaluated and
+  /// the seek is issued unconditionally instead. The gate exists only
+  /// to spare a redundant seek, and a redundant seek is a far cheaper
+  /// failure than a missing one: the first costs a brief stutter, the
+  /// second costs the synchronisation itself. The play/pause follows in
+  /// either case.
   ///
   /// Seek before play/pause, deliberately. The IFrame Player API starts
   /// playback when `seekTo` is called from any state other than
@@ -344,28 +351,20 @@ class PlayerReconciliationState extends State<PlayerReconciliation> {
     final shouldPlay = _playbackIntentFor(state);
     if (shouldPlay == null) return;
 
-    final bloc = context.read<VideoSyncBloc>();
-    final expected = bloc.expectedPosition;
+    // Captured before the first suspension point, for the same reason
+    // as in [_performTick].
+    final expected = context.read<VideoSyncBloc>().expectedPosition;
 
     if (expected != null) {
-      // Contained exactly as the periodic loop's own read is, and for
-      // the same reason: this method is called through `unawaited` from
-      // a `BlocListener` callback, which cannot be `async`. An
-      // exception escaping here would become an unobserved asynchronous
-      // error — the silent-failure mode F-V07-T3 removed from [tick],
-      // walking back in through the other door.
-      PlayerSample? sample;
-      try {
-        sample = await widget.controller.getCurrentSample().timeout(
-          widget.samplingInterval,
-        );
-      } catch (error, stackTrace) {
-        _handleSampleFailure(error, stackTrace);
-      }
-
+      // Read only when there is something to compare against: with no
+      // expected position, a sample would serve no decision and would
+      // only expose the caller to a failure it cannot act on.
+      final sample = await _readSample();
       if (!mounted) return;
 
-      if (sample != null) {
+      if (sample == null) {
+        await widget.controller.seekTo(expected);
+      } else {
         await _executeCommand(
           _syncEngine.evaluateReconciliation(
             expectedPosition: expected,

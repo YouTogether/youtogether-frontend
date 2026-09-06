@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:flutter/widgets.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
@@ -47,30 +50,32 @@ YoutubePlayerParams buildYoutubePlayerParams() {
 /// https://pub.dev/packages/youtube_player_iframe. No
 /// platform-conditional code is needed in this application at all.
 ///
-/// API verified directly against the package's published class
-/// documentation (v6.0.2), correcting two errors from earlier drafts of
-/// this file:
-/// - Playback methods are [YoutubePlayerController.playVideo] and
-///   [YoutubePlayerController.pauseVideo] — not the plain `play()`/
-///   `pause()` names that appeared in one README code sample. The
-///   authoritative class reference
-///   (pub.dev/documentation/.../YoutubePlayerController-class.html)
-///   lists only `playVideo()`/`pauseVideo()`; there is no `play()`/
-///   `pause()` method on this class.
-/// - [YoutubePlayerValue] has **no** `isReady` property. Its actual
-///   properties are `playerState`, `hasError`, `error`, `metaData`,
-///   `playbackQuality`, `playbackRate`, `fullScreenOption` — confirmed
-///   against the same class reference
-///   (pub.dev/documentation/.../YoutubePlayerValue-class.html).
-///   Readiness is instead inferred from [PlayerState] itself: the
-///   controller's initial value is `PlayerState.unknown` ("No video has
-///   been loaded. Initial state."), and the first state reported
-///   thereafter is `PlayerState.unStarted` ("Player is ready but
-///   playback has not started.") — so "ready" is defined here as the
-///   first [listen] callback where `playerState != PlayerState.unknown`.
-/// - The player widget is [YoutubePlayer] — not `YoutubePlayerIFrame`
-///   (that name belongs to unrelated community forks, not this
-///   package).
+/// ## Reading the player
+/// Readiness is inferred from [PlayerState] itself: the controller's
+/// initial value is `PlayerState.unknown` ("No video has been loaded.
+/// Initial state."), and the first state reported thereafter is
+/// `PlayerState.unStarted` ("Player is ready but playback has not
+/// started.") — so "ready" is defined here as the first [listen]
+/// callback where `playerState != PlayerState.unknown`.
+/// [YoutubePlayerValue] carries no `isReady` property of its own.
+///
+/// ## Seeking
+/// [seekTo] does not use the package's own `seekTo`. The package sends
+/// `player.seekTo(seconds, allowSeekAhead)` to the iframe, whose
+/// embedded script (`assets/player.html`, `_safeCall`) passes the whole
+/// argument list through a single `JSON.parse` and forwards the result
+/// as one argument. Two comma-separated arguments are not valid JSON;
+/// the call throws inside the iframe, the exception is swallowed, and
+/// the player never moves. This holds on every platform, since the
+/// script is shared. The single-argument form `player.seekTo(seconds)`
+/// parses, and the IFrame Player API treats an omitted `allowSeekAhead`
+/// as permission to seek outside the buffered range. See ADR-003 for
+/// the evidence and the retirement criterion.
+///
+/// Play and pause go through the package's own methods: they carry no
+/// arguments, so the same script executes them correctly, and the
+/// package's readiness gate is preserved. [seekTo] reconstitutes that
+/// gate with [_ready], because `runJavaScript` bypasses it.
 class _YoutubePlayerControllerAdapterImpl
     implements YoutubePlayerControllerAdapter {
   _YoutubePlayerControllerAdapterImpl({required this.videoId})
@@ -96,12 +101,17 @@ class _YoutubePlayerControllerAdapterImpl
   @override
   ValueChanged<String>? onError;
 
-  bool _readyFired = false;
+  /// Completes on the first value whose state is not `unknown`: the
+  /// player has loaded and is accepting commands. Commands sent before
+  /// that point through `runJavaScript` are posted to an iframe with no
+  /// listener yet and are lost.
+  final Completer<void> _ready = Completer<void>();
+
   PlayerAdapterState _lastState = PlayerAdapterState.unstarted;
 
   void _handlePlayerValue(YoutubePlayerValue value) {
-    if (!_readyFired && value.playerState != PlayerState.unknown) {
-      _readyFired = true;
+    if (!_ready.isCompleted && value.playerState != PlayerState.unknown) {
+      _ready.complete();
       onReady?.call();
     }
 
@@ -130,26 +140,45 @@ class _YoutubePlayerControllerAdapterImpl
     return YoutubePlayer(controller: _controller, aspectRatio: 16 / 9);
   }
 
-  @override
-  Future<void> play() => _controller.playVideo();
+  /// Bounds a command's wait.
+  ///
+  /// A command carries no return value the caller could act on, so a
+  /// transport that stops acknowledging must not suspend the caller:
+  /// `PlayerReconciliation` issues `play()`/`pause()` only once the
+  /// seek that precedes them has returned. Logged on timeout rather
+  /// than swallowed, so the condition stays visible.
+  Future<void> _bounded(String name, Future<void> command) async {
+    try {
+      await command.timeout(const Duration(seconds: 1));
+    } on TimeoutException {
+      developer.log(
+        'Player command $name was not acknowledged within 1 s',
+        name: 'video_sync',
+        level: 900,
+      );
+    }
+  }
 
   @override
-  Future<void> pause() => _controller.pauseVideo();
+  Future<void> play() => _bounded('play', _controller.playVideo());
 
   @override
-  Future<void> seekTo(Duration position) {
-    return _controller.seekTo(
-      seconds: position.inMilliseconds / 1000,
-      allowSeekAhead: true,
+  Future<void> pause() => _bounded('pause', _controller.pauseVideo());
+
+  @override
+  Future<void> seekTo(Duration position) async {
+    await _ready.future;
+
+    // One argument only — see the class comment. Milliseconds rather
+    // than `inSeconds`, which truncates: the precision
+    // `computeExpectedPosition` produces is not worth discarding.
+    final seconds = position.inMilliseconds / Duration.millisecondsPerSecond;
+    await _bounded(
+      'seekTo',
+      _controller.webViewController.runJavaScript('player.seekTo($seconds)'),
     );
   }
 
-  /// NOTE: `getCurrentTime()` is exposed by `YoutubePlayerController` as
-  /// a `Future<double>` `currentTime` getter per the package's
-  /// published API. Like the corrections already noted above for
-  /// `playVideo`/`pauseVideo`, this could not be re-verified against a live
-  /// `pub.dev` fetch in this offline environment — confirm the exact getter
-  /// name against the pinned version before this compiles for real.
   @override
   Future<PlayerSample> getCurrentSample() async {
     final seconds = await _controller.currentTime;
